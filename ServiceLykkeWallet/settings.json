@@ -1,10 +1,10 @@
 ﻿{
   "RestEndPoint": "http://+:8085",
   "InQueueConnectionString": "UseDevelopmentStorage=true",
-  "OutQueueConnectionString": "UseDevelopmentStorage=true",
+  "OutQueueConnectionString": "UseDevelopmentStorage=true;",
   "LykkeCredentials": {
     "PublicAddress": "xxxxxxxxx",
     "PrivateKey": "xxxxxxxxx"
   }
-  
-  }
+
+}

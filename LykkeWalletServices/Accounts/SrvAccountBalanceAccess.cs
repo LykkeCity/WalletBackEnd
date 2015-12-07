@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace LykkeWalletServices.Accounts
 {
@@ -19,7 +20,7 @@ namespace LykkeWalletServices.Accounts
         public IEnumerable<AccountBalance> GetAccountBalances(string publicAdress)
         {
             // ToDo - Implement Account Balance
-            return new AccountBalance[0];
+            throw new NotImplementedException();
         } 
     }
 }

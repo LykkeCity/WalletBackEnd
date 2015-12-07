@@ -2,28 +2,26 @@
 using System.Threading.Tasks;
 using System.Web.Http;
 using LykkeWalletServices.Accounts;
+using ServiceLykkeWallet.Models;
 
 namespace ServiceLykkeWallet.Controllers
 {
     public class AccountsController : ApiController
     {
 
-        [HttpGet]
+        [HttpPost]
         public IHttpActionResult GenerateAddresses()
         {
             var srvAccountGenerator = new SrvAccountGenerator();
             var result = srvAccountGenerator.GenerateAccount();
             return Json(
-                new 
+                new GenerateAccountContract
                 {
-                   privateKey = result.PrivateKey,
-                   multisigPublicAddress = result.MultisigPublicAddress,
-                   ccPublicAddress = result.CcPublicAddress,
-                   publicAddress = result.PublicAddress,
-
-                }
-
-                );
+                    PrivateKey = result.PrivateKey,
+                    MultisigPublicAddress = result.MultisigPublicAddress,
+                    CcPublicAddress = result.CcPublicAddress,
+                    PublicAddress = result.PublicAddress
+                });
         }
 
 

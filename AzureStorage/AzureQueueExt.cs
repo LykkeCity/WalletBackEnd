@@ -21,6 +21,7 @@ namespace AzureStorage
             var queueClient = storageAccount.CreateCloudQueueClient();
 
             _queue = queueClient.GetQueueReference(queueName);
+
             _queue.CreateIfNotExists();
 
             RegisterTypes(types);

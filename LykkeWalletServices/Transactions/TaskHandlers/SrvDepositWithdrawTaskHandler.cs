@@ -77,7 +77,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
         }
 
-        public void Execute(TaskToDoDepositWithdraw data, IQueueWriter queueWriter, ILog log)
+        public void Execute(TaskToDoDepositWithdraw data, Func<bool, Task> asyncResult, ILog log)
         {
             Task.Run(async () =>
             {
@@ -88,12 +88,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     var clinetAccount = await _lykkeAccountReader.GetAccountModel(data.ClientPublicAddress);
                     var lykkeAccount = await _lykkeAccountReader.GetAccountModel(LykkeConstats.LykkePublicAddress);
                     var result = await ExecuteTaskAsync(clinetAccount, lykkeAccount, data.AssetId, data.Amount);
-                    await queueWriter.WriteQueue(TransactionResultModel.Create(data.TransactionId, result));
+                    await asyncResult(result);
+
+
                 }
                 catch (Exception ex)
                 {
                     await log.WriteError(GetType().ToString(), "Execute", data.ToJson(), ex);
-                    await queueWriter.WriteQueue(TransactionResultModel.Create(data.TransactionId, false));
+                    await asyncResult(false);
+
                 }
 
             });

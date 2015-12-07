@@ -12,6 +12,10 @@ namespace Core
     {
         public string ClientPublicAddress { get; set; }
         public string AssetId { get; set; }
+        /// <summary>
+        /// >0 - Deposit
+        /// <0 - Withdraw
+        /// </summary>
         public double Amount { get; set; }
     }
 
