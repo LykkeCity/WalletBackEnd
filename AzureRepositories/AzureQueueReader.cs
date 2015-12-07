@@ -13,7 +13,7 @@ namespace AzureRepositories
             _queueExt = queueExt;
 
             _queueExt.RegisterTypes(
-                QueueType.Create("DepositWithdraw", typeof (TaskToDoDepositWithdraw)),
+                QueueType.Create("DepositWithdraw", typeof (TaskToDoDepositWithdraw)), 
                 QueueType.Create("Exchange", typeof (TaskToDoSendAsset)));
         }
 

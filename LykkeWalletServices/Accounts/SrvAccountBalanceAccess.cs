@@ -19,6 +19,9 @@ namespace LykkeWalletServices.Accounts
         /// <returns>List of balances of all assets</returns>
         public IEnumerable<AccountBalance> GetAccountBalances(string publicAdress)
         {
+
+
+
             // ToDo - Implement Account Balance
             throw new NotImplementedException();
         } 
