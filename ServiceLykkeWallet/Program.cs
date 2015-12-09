@@ -15,19 +15,23 @@ namespace ServiceLykkeWallet
         static void Main(string[] args)
         {
             var settings = SettingsReader.ReadAppSettins();
-
+            
             // ToDo - Then we go production - put here log to Database
             var log = new LogToConsole();
 
+            // ToDo - Local Azure Emulator could not be started yet
+
+            /*
             var queueReader = new AzureQueueReader(new AzureQueueExt(settings.InQueueConnectionString, "indata"));
             var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, "outdata"));
             var lykkeAccountReader = new LykkeAccountReader(settings.LykkeCredentials);
 
             var srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter, log);
+            
             srvQueueReader.Start();
-
+            
             Console.WriteLine("Queue reader is started");
-
+            */
             using (WebApp.Start(settings.RestEndPoint))
             {
                 Console.WriteLine($"Http Server started: {settings.RestEndPoint}");

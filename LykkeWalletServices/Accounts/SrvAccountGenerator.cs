@@ -7,12 +7,13 @@ namespace LykkeWalletServices.Accounts
 
     public class SrvAccountGenerator
     {
-        public AccountModel GenerateAccount()
+        public AccountModel GenerateAccount(NetworkType network)
         {
-            var a = LykkeConstats.LykkePublicAddress;
-
-            //ToDo - Implement Account Generation
-            throw new NotImplementedException();
+            return new AccountModel
+            {
+                Key = new NBitcoin.Key(),
+                NetworkType = network
+            };
         }
 
     }
