@@ -5,9 +5,9 @@ namespace Core
     public class TransactionResultModel
     {
         public string TransactionId { get; set; }
-        public bool Result { get; set; }
+        public object Result { get; set; }
 
-        public static TransactionResultModel Create(string transactionId, bool result)
+        public static TransactionResultModel Create(string transactionId, object result)
         {
             return new TransactionResultModel
             {

@@ -13,7 +13,7 @@ namespace LykkeWalletServices
         private readonly IQueueWriter _queueWriter;
         private readonly ILog _log;
 
-        public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log) 
+        public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log)
             : base("SrvQueueReader", 5000, log)
         {
             _lykkeAccountReader = lykkeAccountReader;
@@ -28,6 +28,17 @@ namespace LykkeWalletServices
 
             if (@event == null)
                 return;
+
+            var transactionGetBalance = @event as TaskToDoGetBalance;
+            if (transactionGetBalance != null)
+            {
+                var service = new SrvGetBalanceTask();
+                service.Execute(transactionGetBalance, async result =>
+                {
+                    await _queueWriter.WriteQueue(
+                        TransactionResultModel.Create(@event.TransactionId, result));
+                });
+            }
 
             var transactionDepositWithdraw = @event as TaskToDoDepositWithdraw;
             if (transactionDepositWithdraw != null)

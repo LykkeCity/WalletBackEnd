@@ -7,6 +7,13 @@ namespace Core
         public string TransactionId { get; set; }
     }
 
+    public class TaskToDoGetBalance : TransactionToDoBase
+    {
+        public string WalletAddress { get; set; }
+
+        public string AssetID { get; set; }
+    }
+
     #region type of messages our queue can read
     public class TaskToDoDepositWithdraw : TransactionToDoBase
     {

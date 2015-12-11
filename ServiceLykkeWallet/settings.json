@@ -5,6 +5,16 @@
   "LykkeCredentials": {
     "PublicAddress": "xxxxxxxxx",
     "PrivateKey": "xxxxxxxxx"
-  }
-
+  },
+  "AssetDefinitions": 
+    [
+      {
+        "AssetId": "ARe5TkHAjAZubkBMCBomNn93m9ZV6HGFqg",
+        "Name": "bjkUSD"
+      },
+      {
+        "AssetId": "ASYfetm7ue3Pk5NyK9NDdGU9mWHApaPuur",
+        "Name": "bjkEUR"
+      }
+    ]
 }

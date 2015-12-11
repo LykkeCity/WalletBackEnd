@@ -11,11 +11,16 @@ namespace ServiceLykkeWallet
             app.UseCors(CorsOptions.AllowAll);
 
             var config = new HttpConfiguration();
+            
             config.Routes.MapHttpRoute(
                 name: "DefaultApi",
                 routeTemplate: "{controller}/{action}",
                 defaults: new { id = RouteParameter.Optional }
             );
+
+            // ToDo - Make the setting reading once in Program.cs
+            var settings = SettingsReader.ReadAppSettins();
+            config.Properties["assets"] = settings.AssetDefinitions;
 
             app.UseWebApi(config);
         }

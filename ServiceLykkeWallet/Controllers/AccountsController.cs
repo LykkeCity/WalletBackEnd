@@ -1,11 +1,10 @@
-﻿using System.Linq;
-using System.Threading.Tasks;
-using System.Web.Http;
+﻿using Core;
 using LykkeWalletServices.Accounts;
-using ServiceLykkeWallet.Models;
-using Core;
 using NBitcoin;
-using System;
+using ServiceLykkeWallet.Models;
+using System.Linq;
+using System.Web.Http;
+using static ServiceLykkeWallet.SettingsReader;
 
 namespace ServiceLykkeWallet.Controllers
 {
@@ -21,6 +20,21 @@ namespace ServiceLykkeWallet.Controllers
             return Json(ConvertAccountModelToAccountContract(result));
         }
 
+        /// <summary>
+        /// Returns assets type supported by the exchange
+        /// </summary>
+        /// <returns>An array of available assets in json format</returns>
+        /// <remarks>
+        /// Configed value are in settings.json
+        /// Sample url: http://localhost:8085/Accounts/GetAvailableAssets
+        /// Sample response: [{"AssetId":"ARe5TkHAjAZubkBMCBomNn93m9ZV6HGFqg","Name":"bjkUSD"},{"AssetId":"ASYfetm7ue3Pk5NyK9NDdGU9mWHApaPuur","Name":"bjkEUR"}]
+        /// </remarks>
+        [HttpGet]
+        public IHttpActionResult GetAvailableAssets()
+        {
+            return Json((AssetDefinition[])Configuration.Properties["assets"]);
+        }
+        
         private GenerateAccountContract ConvertAccountModelToAccountContract(AccountModel m)
         {
             GenerateAccountContract contract = new GenerateAccountContract();

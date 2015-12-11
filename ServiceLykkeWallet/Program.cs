@@ -20,8 +20,7 @@ namespace ServiceLykkeWallet
             var log = new LogToConsole();
 
             // ToDo - Local Azure Emulator could not be started yet
-
-            /*
+            
             var queueReader = new AzureQueueReader(new AzureQueueExt(settings.InQueueConnectionString, "indata"));
             var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, "outdata"));
             var lykkeAccountReader = new LykkeAccountReader(settings.LykkeCredentials);
@@ -31,7 +30,7 @@ namespace ServiceLykkeWallet
             srvQueueReader.Start();
             
             Console.WriteLine("Queue reader is started");
-            */
+            
             using (WebApp.Start(settings.RestEndPoint))
             {
                 Console.WriteLine($"Http Server started: {settings.RestEndPoint}");
@@ -42,6 +41,11 @@ namespace ServiceLykkeWallet
 
     public static class SettingsReader
     {
+        public class AssetDefinition
+        {
+            public string AssetId { get; set; }
+            public string Name { get; set; }
+        }
         public class LykkeCredentials : ILykkeCredentials
         {
             public string PublicAddress { get; set; }
@@ -56,6 +60,8 @@ namespace ServiceLykkeWallet
             public string OutQueueConnectionString { get; set; }
 
             public LykkeCredentials LykkeCredentials { get; set; }
+
+            public AssetDefinition[] AssetDefinitions { get; set; }
         }
 
         public static TheSettings ReadAppSettins()

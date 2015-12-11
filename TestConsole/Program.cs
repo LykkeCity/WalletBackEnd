@@ -13,7 +13,7 @@ namespace TestConsole
         {
             var accGenerator = new SrvAccountGenerator();
 
-            var result = accGenerator.GenerateAccount();
+            //var result = accGenerator.GenerateAccount();
         }
     }
 }
