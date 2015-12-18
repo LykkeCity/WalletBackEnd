@@ -18,6 +18,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     {
         public async Task<TaskResultGetBalance> ExecuteTask(TaskToDoGetBalance data)
         {
+            TaskResultGetBalance resultGetBalance = new TaskResultGetBalance();
+            var ret = await OpenAssetsHelper.GetAccountBalance(data.WalletAddress, data.AssetID);
+            resultGetBalance.Balance = ret.Item1;
+            resultGetBalance.UnconfirmedBalance = ret.Item2;
+            resultGetBalance.HasErrorOccurred = ret.Item3;
+            resultGetBalance.ErrorMessage = ret.Item4;
+            resultGetBalance.SequenceNumber = -1;
+            return resultGetBalance;
+            /*
             // ToDo - We currently use coinprism api, later we should replace
             // with our self implementation
             string baseUrl = "https://api.coinprism.com/v1/addresses/";
@@ -55,6 +64,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 resultGetBalance.ErrorMessage = e.ToString();
             }
             return resultGetBalance;
+            */
         }
 
         /*
@@ -74,6 +84,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             ]
         }
         */
+
+        /*
         private class CoinprismGetBalanceResponse
         {
             public string address { get; set; }
@@ -91,6 +103,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             public string balance { get; set; }
             public string unconfirmed_balance { get; set; }
         }
+        */
 
         public void Execute(TaskToDoGetBalance data, Func<TaskResultGetBalance, Task> invokeResult)
         {

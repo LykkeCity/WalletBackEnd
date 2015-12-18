@@ -40,6 +40,39 @@ namespace LykkeWalletServices
                 });
             }
 
+            var transactionGenerateExchangeTransfer = @event as TaskToDoGenerateExchangeTransfer;
+            if (transactionGenerateExchangeTransfer != null)
+            {
+                var service = new SrvGenerateExchangeTransferTask();
+                service.Execute(transactionGenerateExchangeTransfer, async result =>
+                {
+                    await _queueWriter.WriteQueue(
+                        TransactionResultModel.Create(@event.TransactionId, result));
+                });
+            }
+
+            var transactionGetTransactionToSign = @event as TaskToDoGetTransactionToSign;
+            if (transactionGetTransactionToSign != null)
+            {
+                var service = new SrvGetTransactionToSignTask();
+                service.Execute(transactionGetTransactionToSign, async result =>
+                {
+                    await _queueWriter.WriteQueue(
+                        TransactionResultModel.Create(@event.TransactionId, result));
+                });
+            }
+
+            var transactionReturnSignedTransaction = @event as TaskToDoReturnSignedTransaction;
+            if (transactionReturnSignedTransaction != null)
+            {
+                var service = new SrvReturnSignedTransactionTask();
+                service.Execute(transactionReturnSignedTransaction, async result =>
+                {
+                    await _queueWriter.WriteQueue(
+                        TransactionResultModel.Create(@event.TransactionId, result));
+                });
+            }
+
             var transactionDepositWithdraw = @event as TaskToDoDepositWithdraw;
             if (transactionDepositWithdraw != null)
             {

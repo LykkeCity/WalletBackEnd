@@ -14,6 +14,29 @@ namespace Core
         public string AssetID { get; set; }
     }
 
+    public class TaskToDoGenerateExchangeTransfer : TransactionToDoBase
+    {
+        public string WalletAddress01 { get; set; }
+        public string WalletAddress02 { get; set; }
+        public string Asset01 { get; set; }
+        public string Asset02 { get; set; }
+        public int Amount01 { get; set; }
+        public int Amount02 { get; set; }
+
+    }
+
+    public class TaskToDoGetTransactionToSign : TransactionToDoBase
+    {
+        public string WalletAddress { get; set; }
+    }
+
+    public class TaskToDoReturnSignedTransaction : TransactionToDoBase
+    {
+        public string ExchangeId { get; set; }
+        public string WalletAddress { get; set; }
+        public string SignedTransaction { get; set; }
+    }
+
     #region type of messages our queue can read
     public class TaskToDoDepositWithdraw : TransactionToDoBase
     {

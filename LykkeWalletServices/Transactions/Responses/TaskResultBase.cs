@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LykkeWalletServices.Transactions.Responses
+﻿namespace LykkeWalletServices.Transactions.Responses
 {
     public class TaskResultBase
     {
         public bool HasErrorOccurred { get; set; }
         public string ErrorMessage { get; set; }
+        public int SequenceNumber { get; set; } // -1, means there will be no answers
     }
 }

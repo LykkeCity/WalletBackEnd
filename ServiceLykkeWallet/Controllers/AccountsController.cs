@@ -10,7 +10,7 @@ namespace ServiceLykkeWallet.Controllers
 {
     public class AccountsController : ApiController
     {
-        // curl -X POST http://localhost:8085/Accounts/GenerateAddresses -H "Content-Type:application/json" -d "=Main"
+        // curl -X POST http://localhost:8085/Accounts/GenerateAddresses -d "=Main"
         // The story of = sign is stated here: http://encosia.com/using-jquery-to-post-frombody-parameters-to-web-api/
         [HttpPost]
         public IHttpActionResult GenerateAddresses([FromBody]NetworkType network)
