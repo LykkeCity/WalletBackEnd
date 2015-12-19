@@ -20,6 +20,17 @@
           <Property Name="FirstClientSigned" Type="integer" />
           <Property Name="SecondClientSigned" Type="integer" />
         </EntityType>
+        <EntityType Name="KeyStorage">
+          <Key>
+            <PropertyRef Name="WalletAddress" />
+          </Key>
+          <Property Name="WalletAddress" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+          <Property Name="WalletPrivateKey" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+          <Property Name="MultiSigAddress" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+          <Property Name="MultiSigScript" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+          <Property Name="ExchangePrivateKey" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+          <Property Name="Network" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+        </EntityType>
         <EntityType Name="TransactionsToBeSigned">
           <Key>
             <PropertyRef Name="ExchangeId" />
@@ -44,6 +55,7 @@
         </Association>
         <EntityContainer Name="LykkeServicesModelStoreContainer">
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" store:Type="Tables" />
+          <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" store:Type="Tables" />
           <EntitySet Name="TransactionsToBeSigned" EntityType="Self.TransactionsToBeSigned" store:Type="Tables" />
           <AssociationSet Name="FK_TransactionsToBeSigned_0_0" Association="Self.FK_TransactionsToBeSigned_0_0">
             <End Role="ExchangeRequests" EntitySet="ExchangeRequests" />
@@ -77,6 +89,7 @@
             <End Role="ExchangeRequest" EntitySet="ExchangeRequests" />
             <End Role="TransactionsToBeSigned" EntitySet="TransactionsToBeSigneds" />
           </AssociationSet>
+          <EntitySet Name="KeyStorages" EntityType="LykkeServicesModel.KeyStorage" />
         </EntityContainer>
         <EntityType Name="TransactionsToBeSigned">
           <Key>
@@ -101,6 +114,17 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <EntityType Name="KeyStorage">
+          <Key>
+            <PropertyRef Name="WalletAddress" />
+          </Key>
+          <Property Name="WalletAddress" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+          <Property Name="WalletPrivateKey" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+          <Property Name="MultiSigAddress" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+          <Property Name="MultiSigScript" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+          <Property Name="ExchangePrivateKey" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+          <Property Name="Network" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+        </EntityType>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -130,6 +154,18 @@
                 <ScalarProperty Name="UnsignedTransaction" ColumnName="UnsignedTransaction" />
                 <ScalarProperty Name="WalletAddress" ColumnName="WalletAddress" />
                 <ScalarProperty Name="ExchangeId" ColumnName="ExchangeId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="KeyStorages">
+            <EntityTypeMapping TypeName="LykkeServicesModel.KeyStorage">
+              <MappingFragment StoreEntitySet="KeyStorage">
+                <ScalarProperty Name="Network" ColumnName="Network" />
+                <ScalarProperty Name="ExchangePrivateKey" ColumnName="ExchangePrivateKey" />
+                <ScalarProperty Name="MultiSigScript" ColumnName="MultiSigScript" />
+                <ScalarProperty Name="MultiSigAddress" ColumnName="MultiSigAddress" />
+                <ScalarProperty Name="WalletPrivateKey" ColumnName="WalletPrivateKey" />
+                <ScalarProperty Name="WalletAddress" ColumnName="WalletAddress" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

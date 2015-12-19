@@ -12,7 +12,7 @@ namespace AzureStorage
     {
         private readonly CloudQueue _queue;
 
-        private readonly Dictionary<string, Type> _types = new Dictionary<string, Type>(); 
+        private readonly Dictionary<string, Type> _types = new Dictionary<string, Type>();
 
         public AzureQueueExt(string conectionString, string queueName, params QueueType[] types)
         {
@@ -29,7 +29,8 @@ namespace AzureStorage
 
         private static string SerializeObject(object itm)
         {
-            return itm.GetType()+":"+Newtonsoft.Json.JsonConvert.SerializeObject(itm);
+            //return itm.GetType() + ":" + Newtonsoft.Json.JsonConvert.SerializeObject(itm);
+            return Newtonsoft.Json.JsonConvert.SerializeObject(itm);
         }
 
         private object DeserializeObject(string itm)
@@ -41,10 +42,10 @@ namespace AzureStorage
             if (!_types.ContainsKey(typeStr))
                 return null;
 
-            var data = itm.Substring(i + 1, itm.Count() - i-1);
+            var data = itm.Substring(i + 1, itm.Count() - i - 1);
 
             return Newtonsoft.Json.JsonConvert.DeserializeObject(data, _types[typeStr]);
-            
+
         }
 
         public void PutMessage(object itm)
@@ -88,7 +89,7 @@ namespace AzureStorage
             var cloudQueueMessages = messages as CloudQueueMessage[] ?? messages.ToArray();
             foreach (var cloudQueueMessage in cloudQueueMessages)
                 _queue.DeleteMessage(cloudQueueMessage);
-          
+
             return cloudQueueMessages
                 .Select(message => DeserializeObject(message.AsString))
                 .Where(itm => itm != null).ToArray();

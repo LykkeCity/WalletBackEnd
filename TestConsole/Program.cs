@@ -11,6 +11,12 @@ namespace TestConsole
     {
         private static void TestBitcoinScripts(string WalletAddress01PrivateKey, string WalletAddress02PrivateKey)
         {
+            Key exchangeKey = new Key();
+
+
+            string exchangePrivateKeyMain = new BitcoinSecret(exchangeKey, Network.Main).PrivateKey.GetWif(Network.Main).ToWif();
+            string exchangePrivateKeyTest = new BitcoinSecret(exchangeKey, Network.TestNet).PrivateKey.GetWif(Network.TestNet).ToWif();
+
             var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { (new BitcoinSecret(WalletAddress01PrivateKey)).PubKey ,
                 (new BitcoinSecret(WalletAddress02PrivateKey)).PubKey });
             var address = multiSigAddress.GetScriptAddress(Network.Main);
@@ -28,7 +34,7 @@ namespace TestConsole
             string Asset01 = settings.AssetDefinitions[0].AssetId;
             string Asset02 = settings.AssetDefinitions[1].AssetId;
 
-            // TestBitcoinScripts(WalletAddress01PrivateKey, WalletAddress02PrivateKey);
+            TestBitcoinScripts(WalletAddress01PrivateKey, WalletAddress02PrivateKey);
 
             // Submitting a request to create an exchange transfer, after this clients should sign the transaction
             TaskToDoGenerateExchangeTransfer exchangeRequest = new TaskToDoGenerateExchangeTransfer

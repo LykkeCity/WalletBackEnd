@@ -19,7 +19,9 @@ namespace ServiceLykkeWallet
             );
 
             // ToDo - Make the setting reading once in Program.cs
-            var settings = SettingsReader.ReadAppSettins();
+            var settingsTask = SettingsReader.ReadAppSettins();
+            settingsTask.Wait();
+            var settings = settingsTask.Result;
             config.Properties["assets"] = settings.AssetDefinitions;
 
             app.UseWebApi(config);

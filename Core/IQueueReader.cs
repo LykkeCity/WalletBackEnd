@@ -7,6 +7,10 @@ namespace Core
         public string TransactionId { get; set; }
     }
 
+    public class TaskToDoGenerateNewWallet : TransactionToDoBase
+    {
+    }
+
     public class TaskToDoGetBalance : TransactionToDoBase
     {
         public string WalletAddress { get; set; }

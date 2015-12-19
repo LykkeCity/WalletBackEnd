@@ -3,6 +3,8 @@ using Common;
 using Common.Log;
 using Core;
 using LykkeWalletServices.Transactions.TaskHandlers;
+using System;
+using NBitcoin;
 
 namespace LykkeWalletServices
 {
@@ -12,14 +14,18 @@ namespace LykkeWalletServices
         private readonly IQueueReader _queueReader;
         private readonly IQueueWriter _queueWriter;
         private readonly ILog _log;
+        private readonly Network _network;
+        private readonly string _exchangePrivateKey;
 
-        public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log)
+        public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log, Network network, string exchangePrivateKey)
             : base("SrvQueueReader", 5000, log)
         {
             _lykkeAccountReader = lykkeAccountReader;
             _queueReader = queueReader;
             _queueWriter = queueWriter;
             _log = log;
+            _network = network;
+            _exchangePrivateKey = exchangePrivateKey;
         }
 
         protected override async Task Execute()
@@ -29,6 +35,18 @@ namespace LykkeWalletServices
             if (@event == null)
                 return;
 
+            var transactionGenerateNewWallet = @event as TaskToDoGenerateNewWallet;
+            if(transactionGenerateNewWallet != null)
+            {
+                var service = new SrvGenerateNewWalletTask(_network, _exchangePrivateKey);
+                service.Execute(transactionGenerateNewWallet, async result =>
+                {
+                    await _queueWriter.WriteQueue(
+                        TransactionResultModel.Create(@event.TransactionId, result.Item1, result.Item2));
+                });
+            }
+
+            /*
             var transactionGetBalance = @event as TaskToDoGetBalance;
             if (transactionGetBalance != null)
             {
@@ -96,7 +114,7 @@ namespace LykkeWalletServices
                 });
                 return;
             }
-
+            */
             await _log.WriteWarning("SrvQueueReader", "Execute", "", $"Unknown task type: {@event.GetType()}");
 
         }

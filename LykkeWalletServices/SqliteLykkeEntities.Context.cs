@@ -27,5 +27,6 @@ namespace LykkeWalletServices
     
         public virtual DbSet<ExchangeRequest> ExchangeRequests { get; set; }
         public virtual DbSet<TransactionsToBeSigned> TransactionsToBeSigneds { get; set; }
+        public virtual DbSet<KeyStorage> KeyStorages { get; set; }
     }
 }

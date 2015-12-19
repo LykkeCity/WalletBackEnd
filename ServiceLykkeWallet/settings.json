@@ -2,19 +2,38 @@
   "RestEndPoint": "http://+:8085",
   "InQueueConnectionString": "UseDevelopmentStorage=true",
   "OutQueueConnectionString": "UseDevelopmentStorage=true;",
+  "NetworkType": "TestNet",
+  "exchangePrivateKey": "xxxx",
   "LykkeCredentials": {
     "PublicAddress": "xxxxxxxxx",
     "PrivateKey": "xxxxxxxxx"
   },
-  "AssetDefinitions": 
-    [
-      {
-        "AssetId": "ARe5TkHAjAZubkBMCBomNn93m9ZV6HGFqg",
-        "Name": "bjkUSD"
-      },
-      {
-        "AssetId": "ASYfetm7ue3Pk5NyK9NDdGU9mWHApaPuur",
-        "Name": "bjkEUR"
-      }
-    ]
+  "AssetDefinitions": [
+    {
+      "AssetId": "xxx",
+      "Name": "bjkUSD"
+    },
+    {
+      "AssetId": "xxx",
+      "Name": "bjkEUR"
+    }
+  ],
+  "WalletDefinitions": [
+    {
+      "Address": "xxx",
+      "PrivateKey": "xxx"
+    },
+    {
+      "Address": "xxx",
+      "PrivateKey": "xxx"
+    },
+    {
+      "Address": "xxx",
+      "PrivateKey": "xxx"
+    },
+    {
+      "Address": "xxx",
+      "PrivateKey": "xxx"
+    }
+  ]
 }

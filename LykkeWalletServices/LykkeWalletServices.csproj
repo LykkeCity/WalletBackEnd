@@ -46,9 +46,9 @@
     <Reference Include="NBitcoin.BouncyCastle">
       <HintPath>..\..\NBitcoin\NBitcoin\bin\Debug\NBitcoin.BouncyCastle.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -82,6 +82,9 @@
     <Compile Include="ExchangeRequest.cs">
       <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="KeyStorage.cs">
+      <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="OpenAssetsHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SqliteLykkeEntities.Context.cs">
@@ -111,6 +114,7 @@
     <Compile Include="Transactions\TaskHandlers\SrvExchangeTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvDepositWithdrawTaskHandler.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateExchangeTransferTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvGenerateNewWalletTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetBalanceTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetTransactionToSignTask.cs" />

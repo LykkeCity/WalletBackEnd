@@ -5,17 +5,42 @@ namespace Core
     public class TransactionResultModel
     {
         public string TransactionId { get; set; }
-        public object Result { get; set; }
+        public ITaskResult Result { get; set; }
+        public Error Error { get; set; }
 
-        public static TransactionResultModel Create(string transactionId, object result)
+        public static TransactionResultModel Create(string transactionId, ITaskResult result, Error error)
         {
             return new TransactionResultModel
             {
                 TransactionId = transactionId,
+                Error = error,
                 Result = result,
       
             };
         }
+    }
+
+    public interface ITaskResult
+    {
+
+    }
+
+    public class Error
+    {
+        public ErrorCode Code { get; set; }
+        public string Message { get; set; }
+    }
+
+    public enum ErrorCode
+    {
+        Exception
+    }
+
+    public class GenerateNewWalletTaskResult : ITaskResult
+    {
+        public string WalletAddress { get; set; }
+        public string WalletPrivateKey { get; set; }
+        public string MultiSigAddress { get; set; }
     }
 
 
