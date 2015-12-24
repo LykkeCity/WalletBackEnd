@@ -16,8 +16,14 @@ namespace LykkeWalletServices
         private readonly ILog _log;
         private readonly Network _network;
         private readonly string _exchangePrivateKey;
+        private readonly OpenAssetsHelper.AssetDefinition[] _assets;
+        private readonly string _rpcUsername = null;
+        private readonly string _rpcPassword = null;
+        private readonly string _rpcServer = null;
 
-        public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log, Network network, string exchangePrivateKey)
+        public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log,
+            Network network, string exchangePrivateKey, OpenAssetsHelper.AssetDefinition[] assets, string rpcUsername,
+            string rpcPassword, string rpcServer)
             : base("SrvQueueReader", 5000, log)
         {
             _lykkeAccountReader = lykkeAccountReader;
@@ -26,6 +32,10 @@ namespace LykkeWalletServices
             _log = log;
             _network = network;
             _exchangePrivateKey = exchangePrivateKey;
+            _assets = assets;
+            _rpcUsername = rpcUsername;
+            _rpcPassword = rpcPassword;
+            _rpcServer = rpcServer;
         }
 
         protected override async Task Execute()
@@ -36,13 +46,24 @@ namespace LykkeWalletServices
                 return;
 
             var transactionGenerateNewWallet = @event as TaskToDoGenerateNewWallet;
-            if(transactionGenerateNewWallet != null)
+            if (transactionGenerateNewWallet != null)
             {
                 var service = new SrvGenerateNewWalletTask(_network, _exchangePrivateKey);
                 service.Execute(transactionGenerateNewWallet, async result =>
                 {
                     await _queueWriter.WriteQueue(
                         TransactionResultModel.Create(@event.TransactionId, result.Item1, result.Item2));
+                });
+            }
+
+            var transactionCashIn = @event as TaskToDoCashIn;
+            if (transactionCashIn != null)
+            {
+                var service = new SrvCashInTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer);
+                service.Execute(transactionCashIn, async result =>
+                {
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        (@event.TransactionId, result.Item1, result.Item2));
                 });
             }
 

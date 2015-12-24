@@ -33,7 +33,9 @@ namespace Core
 
     public enum ErrorCode
     {
-        Exception
+        Exception,
+        ProblemInRetrivingWalletOutput,
+        NotEnoughBitcoinInTransaction
     }
 
     public class GenerateNewWalletTaskResult : ITaskResult
@@ -41,6 +43,11 @@ namespace Core
         public string WalletAddress { get; set; }
         public string WalletPrivateKey { get; set; }
         public string MultiSigAddress { get; set; }
+    }
+
+    public class CashInTaskResult : ITaskResult
+    {
+        public string TransactionHex { get; set; }
     }
 
 

@@ -1,5 +1,6 @@
 ﻿using Core;
 using LykkeWalletServices.Transactions.Responses;
+using NBitcoin;
 using System;
 using System.Threading.Tasks;
 
@@ -7,7 +8,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     public class SrvGenerateExchangeTransferTask
     {
-        public static async Task<TaskResultGenerateExchangeTransfer> ExecuteTask(TaskToDoGenerateExchangeTransfer data)
+        Network network;
+        public SrvGenerateExchangeTransferTask(Network network)
+        {
+            this.network = network;
+        }
+        public async Task<TaskResultGenerateExchangeTransfer> ExecuteTask(TaskToDoGenerateExchangeTransfer data)
         {
             TaskResultGenerateExchangeTransfer result = new TaskResultGenerateExchangeTransfer();
             if (data.WalletAddress01 == data.WalletAddress02)
@@ -20,7 +26,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             // Checking the asset amounts
             // ToDo - Alert Unbalanced output is also included
-            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress01, data.Asset01, data.Amount01, true))
+            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress01, data.Asset01, data.Amount01, network, true))
             {
                 result.HasErrorOccurred = true;
                 result.ErrorMessage = "Wallet Address " + data.WalletAddress01 + " has not enough of asset " + data.Asset01 + " .";
@@ -28,7 +34,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 return result;
             }
             // ToDo - Alert Unbalanced output is also included
-            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress02, data.Asset02, data.Amount02, true))
+            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress02, data.Asset02, data.Amount02, network, true))
             {
                 result.HasErrorOccurred = true;
                 result.ErrorMessage = "Wallet Address " + data.WalletAddress02 + " has not enough of asset " + data.Asset02 + " .";

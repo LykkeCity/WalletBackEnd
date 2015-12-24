@@ -1,11 +1,6 @@
 ﻿using Core;
-using LykkeWalletServices.Transactions.Responses;
 using NBitcoin;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
@@ -36,7 +31,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                 var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
                 (new BitcoinSecret(exchangePrivateKey, network)).PubKey });
-                result.MultiSigAddress = multiSigAddress.GetScriptAddress(Network.Main).ToString();
+                result.MultiSigAddress = multiSigAddress.GetScriptAddress(network).ToString();
 
                 using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
                 {
@@ -62,44 +57,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             }
             return new Tuple<GenerateNewWalletTaskResult, Error>(result, error);
         }
-
-        /*
-        {
-        "address": "1Ls5Xa9GAoUJ33L9USjgs8F1yZt4noFuzq",
-        "asset_address": "akWpxmjxbeHMyuHVWX4qsWz9bKB4EnAc6AE",
-        "bitcoin_address": "1Ls5Xa9GAoUJ33L9USjgs8F1yZt4noFuzq",
-        "issuable_asset": "AeAaWWDkF7BsFDbb4duxnb82a42MiKqVQQ",
-        "balance": 0,
-        "unconfirmed_balance": 0,
-        "assets": [
-            {
-            "id": "ARe5TkHAjAZubkBMCBomNn93m9ZV6HGFqg",
-            "balance": "0",
-            "unconfirmed_balance": "3500"
-            }
-            ]
-        }
-        */
-
-        /*
-        private class CoinprismGetBalanceResponse
-        {
-            public string address { get; set; }
-            public string asset_address { get; set; }
-            public string bitcoin_address { get; set; }
-            public string issuable_asset { get; set; }
-            public float balance { get; set; }
-            public float unconfirmed_balance { get; set; }
-            public ColoredCoinBalance[] assets { get; set; }
-        }
-
-        private class ColoredCoinBalance
-        {
-            public string id { get; set; }
-            public string balance { get; set; }
-            public string unconfirmed_balance { get; set; }
-        }
-        */
 
         public void Execute(TaskToDoGenerateNewWallet data, Func<Tuple<GenerateNewWalletTaskResult, Error>, Task> invokeResult)
         {

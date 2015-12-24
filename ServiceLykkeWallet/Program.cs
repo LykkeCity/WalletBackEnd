@@ -20,21 +20,23 @@ namespace ServiceLykkeWallet
             var settingsTask = SettingsReader.ReadAppSettins();
             settingsTask.Wait();
             var settings = settingsTask.Result;
-            
+
             // ToDo - Then we go production - put here log to Database
             var log = new LogToConsole();
 
             // ToDo - Local Azure Emulator could not be started yet
-            
+
             var queueReader = new AzureQueueReader(new AzureQueueExt(settings.InQueueConnectionString, "indata"));
             var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, "outdata"));
             var lykkeAccountReader = new LykkeAccountReader(settings.LykkeCredentials);
 
             var srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
-                log, settings.NetworkType == NetworkType.Main? Network.Main : Network.TestNet, settings.exchangePrivateKey);
-            
+                log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
+                settings.exchangePrivateKey, settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
+                settings.RPCServerIpAddress);
+
             srvQueueReader.Start();
-            
+
             Console.WriteLine("Queue reader is started");
 
             /*
@@ -51,11 +53,7 @@ namespace ServiceLykkeWallet
     {
         private static bool settingsRead = false;
         private static TheSettings settings = null;
-        public class AssetDefinition
-        {
-            public string AssetId { get; set; }
-            public string Name { get; set; }
-        }
+
         public class LykkeCredentials : ILykkeCredentials
         {
             public string PublicAddress { get; set; }
@@ -71,9 +69,12 @@ namespace ServiceLykkeWallet
 
             public LykkeCredentials LykkeCredentials { get; set; }
 
-            public AssetDefinition[] AssetDefinitions { get; set; }
+            public OpenAssetsHelper.AssetDefinition[] AssetDefinitions { get; set; }
             public NetworkType NetworkType { get; set; }
             public string exchangePrivateKey { get; set; }
+            public string RPCUsername { get; set; }
+            public string RPCPassword { get; set; }
+            public string RPCServerIpAddress { get; set; }
         }
 
         public static async Task<TheSettings> ReadAppSettins()
@@ -82,7 +83,11 @@ namespace ServiceLykkeWallet
             {
                 try
                 {
+#if DEBUG
                     var json = await ReadTextAsync("F:\\Lykkex\\settings.json");
+#else
+                    var json = await ReadTextAsync("settings.json");
+#endif
                     settings = Newtonsoft.Json.JsonConvert.DeserializeObject<TheSettings>(json);
                     settingsRead = true;
                     return settings;

@@ -114,6 +114,7 @@
     <Compile Include="Transactions\TaskHandlers\SrvExchangeTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvDepositWithdrawTaskHandler.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateExchangeTransferTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvCashInTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateNewWalletTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetBalanceTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />

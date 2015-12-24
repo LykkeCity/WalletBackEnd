@@ -9,6 +9,25 @@ namespace TestConsole
 {
     class Program
     {
+
+        private static void TestRPC()
+        {
+            /*
+            string username = "bitcoinrpc";
+            string password = "73GQrFhQNuM2rhV6cWYxDMBM4bsxD9TC6hoSZo5PSqka";
+            string ip = "185.117.72.57";
+            Network network = Network.TestNet;
+            */
+            string username = "bitcoinrpc";
+            string password = "!Lykke2";
+            string ip = "23.97.233.80";
+            Network network = Network.TestNet;
+
+            NBitcoin.RPC.RPCClient client = new NBitcoin.RPC.RPCClient
+                (new System.Net.NetworkCredential(username, password),
+                ip, network);
+            int count = client.GetBlockCount();
+        }
         private static void TestBitcoinScripts(string WalletAddress01PrivateKey, string WalletAddress02PrivateKey)
         {
             Key exchangeKey = new Key();
@@ -34,8 +53,10 @@ namespace TestConsole
             string Asset01 = settings.AssetDefinitions[0].AssetId;
             string Asset02 = settings.AssetDefinitions[1].AssetId;
 
-            TestBitcoinScripts(WalletAddress01PrivateKey, WalletAddress02PrivateKey);
+            //TestBitcoinScripts(WalletAddress01PrivateKey, WalletAddress02PrivateKey);
+            TestRPC();
 
+            /*
             // Submitting a request to create an exchange transfer, after this clients should sign the transaction
             TaskToDoGenerateExchangeTransfer exchangeRequest = new TaskToDoGenerateExchangeTransfer
             {
@@ -53,10 +74,11 @@ namespace TestConsole
 
             ClientGetTransactionSignItReturnIt(WalletAddress01, WalletAddress01PrivateKey);
             ClientGetTransactionSignItReturnIt(WalletAddress02, WalletAddress02PrivateKey);
-            
+            */
             Console.ReadLine();
         }
 
+        /*
         private static void ClientGetTransactionSignItReturnIt(string walletAddress, string walletAddressPrivateKey)
         {
             TaskToDoGetTransactionToSign getTxToSign = new TaskToDoGetTransactionToSign
@@ -86,6 +108,7 @@ namespace TestConsole
                 }
             }
         }
+        */
     }
 
     public static class SettingsReader
@@ -94,6 +117,7 @@ namespace TestConsole
         {
             public string AssetId { get; set; }
             public string Name { get; set; }
+            public string PrivateKey { get; set; }
         }
 
         public class WalletDefinition
@@ -125,7 +149,13 @@ namespace TestConsole
         {
             try
             {
+                // var json = File.ReadAllText("F:\\Lykkex\\settings.json");
+                // var json = File.ReadAllText("settings.json");
+#if DEBUG
                 var json = File.ReadAllText("F:\\Lykkex\\settings.json");
+#else
+                    var json = File.ReadAllText("settings.json");
+#endif
                 return Newtonsoft.Json.JsonConvert.DeserializeObject<TheSettings>(json);
             }
             catch (Exception ex)

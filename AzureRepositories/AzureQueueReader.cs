@@ -14,9 +14,10 @@ namespace AzureRepositories
 
             _queueExt.RegisterTypes(
                 QueueType.Create("GenerateNewWallet", typeof(TaskToDoGenerateNewWallet)),
+                QueueType.Create("CashIn", typeof(TaskToDoCashIn)),
                 QueueType.Create("GetBalance", typeof(TaskToDoGetBalance)),
-                QueueType.Create("DepositWithdraw", typeof (TaskToDoDepositWithdraw)), 
-                QueueType.Create("Exchange", typeof (TaskToDoSendAsset)));
+                QueueType.Create("DepositWithdraw", typeof(TaskToDoDepositWithdraw)),
+                QueueType.Create("Exchange", typeof(TaskToDoSendAsset)));
         }
 
         public async Task<TransactionToDoBase> GetTaskToDo()

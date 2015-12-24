@@ -1,9 +1,12 @@
-﻿{
+{
   "RestEndPoint": "http://+:8085",
   "InQueueConnectionString": "UseDevelopmentStorage=true",
   "OutQueueConnectionString": "UseDevelopmentStorage=true;",
   "NetworkType": "TestNet",
   "exchangePrivateKey": "xxxx",
+  "RPCUsername": "xxx",
+  "RPCPassword": "xxx",
+  "RPCServerIpAddress": "xxx",
   "LykkeCredentials": {
     "PublicAddress": "xxxxxxxxx",
     "PrivateKey": "xxxxxxxxx"

@@ -13,7 +13,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     public class SrvReturnSignedTransactionTask
     {
-        public static async Task<TaskResultReturnSignedTransaction> ExecuteTask(TaskToDoReturnSignedTransaction data)
+        Network network;
+        public SrvReturnSignedTransactionTask(Network network)
+        {
+            this.network = network;
+        }
+        public async Task<TaskResultReturnSignedTransaction> ExecuteTask(TaskToDoReturnSignedTransaction data)
         {
             TaskResultReturnSignedTransaction result = new TaskResultReturnSignedTransaction();
             try
@@ -64,7 +69,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                     if (exchangeTransaction.FirstClientSigned == 1 && exchangeTransaction.SecondClientSigned == 1)
                     {
-                        var tx = await GenerateTransactionHex(data.ExchangeId, entitiesContext);
+                        var tx = await GenerateTransactionHex(data.ExchangeId, entitiesContext, network);
 
 
                         var transactions = await (from t in entitiesContext.TransactionsToBeSigneds
@@ -97,7 +102,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         /// <param name="exchangeId">Id of the exchange transaction to be built.</param>
         /// <param name="entitiesContext">The database context to read the transaction data from.</param>
         /// <returns>The transaction hex made for the exchange transaction.</returns>
-        private static async Task<string> GenerateTransactionHex(string exchangeId, SqliteLykkeServicesEntities entitiesContext)
+        private static async Task<string> GenerateTransactionHex(string exchangeId, SqliteLykkeServicesEntities entitiesContext, Network network)
         {
             var transaction = await (from tx in entitiesContext.ExchangeRequests
                                      where tx.ExchangeId == exchangeId
@@ -114,34 +119,37 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             // ToDo - Alert Unbalanced output is also included
             if (!(await OpenAssetsHelper.IsAssetsEnough(transaction.WalletAddress01,
-                transaction.Asset01, (int)transaction.Amount01, true)))
+                transaction.Asset01, (int)transaction.Amount01, network, true)))
             {
                 throw new Exception("Not sufficient funds for asset: " + transaction.Asset01 +
                     " in wallet: " + transaction.WalletAddress01);
             }
             // ToDo - Alert Unbalanced output is also included
             if (!(await OpenAssetsHelper.IsAssetsEnough(transaction.WalletAddress02,
-                transaction.Asset02, (int)transaction.Amount02, true)))
+                transaction.Asset02, (int)transaction.Amount02, network, true)))
             {
                 throw new Exception("Not sufficient funds for asset: " + transaction.Asset02 +
                     " in wallet: " + transaction.WalletAddress02);
             }
 
-            var wallet01Outputs = await OpenAssetsHelper.GetWalletOutputs(transaction.WalletAddress01);
+            var wallet01Outputs = await OpenAssetsHelper.GetWalletOutputs(transaction.WalletAddress01, network);
             if (wallet01Outputs.Item2)
             {
                 throw new Exception("Could not get the wallet available outputs. The actual error message is: " + wallet01Outputs.Item3);
             }
 
-            var wallet02Outputs = await OpenAssetsHelper.GetWalletOutputs(transaction.WalletAddress02);
+            var wallet02Outputs = await OpenAssetsHelper.GetWalletOutputs(transaction.WalletAddress02, network);
             if (wallet02Outputs.Item2)
             {
                 throw new Exception("Could not get the wallet available outputs. The actual error message is: " + wallet02Outputs.Item3);
             }
 
-            var wallet01Coins = await GetColoredUnColoredCoins(wallet01Outputs.Item1, transaction.Asset01);
-            var wallet02Coins = await GetColoredUnColoredCoins(wallet02Outputs.Item1, transaction.Asset02);
-
+            // ToDo - Fix the credentials, probably it will be removed entirely
+            var wallet01Coins = await OpenAssetsHelper.GetColoredUnColoredCoins
+                (wallet01Outputs.Item1, transaction.Asset01, network, null, null, null);
+            var wallet02Coins = await OpenAssetsHelper.GetColoredUnColoredCoins
+                (wallet02Outputs.Item1, transaction.Asset02, network, null, null, null);
+                
             /*
             var wallet01AssetOutputs = OpenAssetsHelper.GetWalletOutputsForAsset(wallet01Outputs.Item1, transaction.Asset01);
             var wallet01UncoloredOutputs = OpenAssetsHelper.GetWalletOutputsUncolored(wallet01Outputs.Item1);
@@ -184,57 +192,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             return txToBroadcast.ToHex();
         }
 
-        public static async Task<Tuple<ColoredCoin[], Coin[]>> GetColoredUnColoredCoins(OpenAssetsHelper.CoinprismUnspentOutput[] walletOutputs,
-            string assetId)
-        {
-            var walletAssetOutputs = OpenAssetsHelper.GetWalletOutputsForAsset(walletOutputs, assetId);
-            var walletUncoloredOutputs = OpenAssetsHelper.GetWalletOutputsUncolored(walletOutputs);
-            var walletColoredTransactions = await GetTransactionsHex(walletAssetOutputs);
-            var walletUncoloredTransactions = await GetTransactionsHex(walletUncoloredOutputs);
-            var walletColoredCoins = GenerateWalletColoredCoins(walletColoredTransactions, walletAssetOutputs, assetId);
-            var walletUncoloredCoins = GenerateWalletUnColoredCoins(walletUncoloredTransactions, walletUncoloredOutputs);
-            return new Tuple<ColoredCoin[], Coin[]>(walletColoredCoins, walletUncoloredCoins);
-        }
-
-        private static ColoredCoin[] GenerateWalletColoredCoins(Transaction[] transactions, OpenAssetsHelper.CoinprismUnspentOutput[] usableOutputs, string assetId)
-        {
-            ColoredCoin[] coins = new ColoredCoin[transactions.Length];
-            for (int i = 0; i < transactions.Length; i++)
-            {
-                coins[i] = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), (int)usableOutputs[i].asset_quantity),
-                    new Coin(transactions[i], (uint)usableOutputs[i].output_index));
-            }
-            return coins;
-        }
-
-        private static Coin[] GenerateWalletUnColoredCoins(Transaction[] transactions, OpenAssetsHelper.CoinprismUnspentOutput[] usableOutputs)
-        {
-            Coin[] coins = new Coin[transactions.Length];
-            for (int i = 0; i < transactions.Length; i++)
-            {
-                coins[i] = new Coin(transactions[i], (uint)usableOutputs[i].output_index);
-            }
-            return coins;
-        }
-
-        private static async Task<Transaction[]> GetTransactionsHex(OpenAssetsHelper.CoinprismUnspentOutput[] outputList)
-        {
-            Transaction[] walletTransactions = new Transaction[outputList.Length];
-            for (int i = 0; i < walletTransactions.Length; i++)
-            {
-                var ret = await OpenAssetsHelper.GetTransactionHex(outputList[i].transaction_hash);
-                if (!ret.Item1)
-                {
-                    walletTransactions[i] = new Transaction(ret.Item3);
-                }
-                else
-                {
-                    throw new Exception("Could not get the transaction hex for the transaction with id: "
-                        + outputList[i].transaction_hash + " . The exact error message is " + ret.Item2);
-                }
-            }
-            return walletTransactions;
-        }
+        
 
         public void Execute(TaskToDoReturnSignedTransaction data, Func<TaskResultReturnSignedTransaction, Task> invokeResult)
         {

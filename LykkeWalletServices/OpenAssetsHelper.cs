@@ -1,4 +1,7 @@
-﻿using System;
+﻿using NBitcoin;
+using NBitcoin.OpenAsset;
+using NBitcoin.RPC;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -9,6 +12,71 @@ namespace LykkeWalletServices
     public sealed class OpenAssetsHelper
     {
         const string baseUrl = "https://api.coinprism.com/v1/addresses/";
+        const string testnetBaseUrl = "https://testnet.api.coinprism.com/v1/addresses/";
+        public const uint MinimumRequiredSatoshi = 50000; // 100000000 satoshi is one BTC
+        public const uint TransactionSendFeesInSatoshi = 10000;
+
+        public class AssetDefinition
+        {
+            public string AssetId { get; set; }
+            public string Name { get; set; }
+            public string PrivateKey { get; set; }
+        }
+
+        public static async Task<Tuple<ColoredCoin[], Coin[]>> GetColoredUnColoredCoins(OpenAssetsHelper.CoinprismUnspentOutput[] walletOutputs,
+            string assetId, Network network, string username, string password, string ipAddress)
+        {
+            var walletAssetOutputs = GetWalletOutputsForAsset(walletOutputs, assetId);
+            var walletUncoloredOutputs = GetWalletOutputsUncolored(walletOutputs);
+            var walletColoredTransactions = await GetTransactionsHex(walletAssetOutputs, network, username, password, ipAddress);
+            var walletUncoloredTransactions = await GetTransactionsHex(walletUncoloredOutputs, network, username, password, ipAddress);
+            var walletColoredCoins = GenerateWalletColoredCoins(walletColoredTransactions, walletAssetOutputs, assetId);
+            var walletUncoloredCoins = GenerateWalletUnColoredCoins(walletUncoloredTransactions, walletUncoloredOutputs);
+            return new Tuple<ColoredCoin[], Coin[]>(walletColoredCoins, walletUncoloredCoins);
+        }
+
+        private static ColoredCoin[] GenerateWalletColoredCoins(Transaction[] transactions, OpenAssetsHelper.CoinprismUnspentOutput[] usableOutputs, string assetId)
+        {
+            ColoredCoin[] coins = new ColoredCoin[transactions.Length];
+            for (int i = 0; i < transactions.Length; i++)
+            {
+                coins[i] = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), (int)usableOutputs[i].asset_quantity),
+                    new Coin(transactions[i], (uint)usableOutputs[i].output_index));
+            }
+            return coins;
+        }
+
+        private static Coin[] GenerateWalletUnColoredCoins(Transaction[] transactions, OpenAssetsHelper.CoinprismUnspentOutput[] usableOutputs)
+        {
+            Coin[] coins = new Coin[transactions.Length];
+            for (int i = 0; i < transactions.Length; i++)
+            {
+                coins[i] = new Coin(transactions[i], (uint)usableOutputs[i].output_index);
+            }
+            return coins;
+        }
+
+        private static async Task<Transaction[]> GetTransactionsHex(CoinprismUnspentOutput[] outputList, Network network,
+            string username, string password, string ipAddress)
+        {
+            Transaction[] walletTransactions = new Transaction[outputList.Length];
+            for (int i = 0; i < walletTransactions.Length; i++)
+            {
+                var ret = await GetTransactionHex(outputList[i].transaction_hash, network, username, password, ipAddress);
+                if (!ret.Item1)
+                {
+                    walletTransactions[i] = new Transaction(ret.Item3);
+                }
+                else
+                {
+                    throw new Exception("Could not get the transaction hex for the transaction with id: "
+                        + outputList[i].transaction_hash + " . The exact error message is " + ret.Item2);
+                }
+            }
+            return walletTransactions;
+        }
+
+        // public static GetSumOfUncoloredCoins()
 
         public static CoinprismUnspentOutput[] GetWalletOutputsUncolored(CoinprismUnspentOutput[] input)
         {
@@ -27,17 +95,21 @@ namespace LykkeWalletServices
         public static CoinprismUnspentOutput[] GetWalletOutputsForAsset(CoinprismUnspentOutput[] input, string assetId)
         {
             IList<CoinprismUnspentOutput> outputs = new List<CoinprismUnspentOutput>();
-            foreach (var item in input)
+            if (assetId != null)
             {
-                if (item.asset_id == assetId)
+                foreach (var item in input)
                 {
-                    outputs.Add(item);
+                    if (item.asset_id == assetId)
+                    {
+                        outputs.Add(item);
+                    }
                 }
             }
 
             return outputs.ToArray();
         }
-        public static async Task<Tuple<CoinprismUnspentOutput[], bool, string>> GetWalletOutputs(string walletAddress)
+        public static async Task<Tuple<CoinprismUnspentOutput[], bool, string>> GetWalletOutputs(string walletAddress,
+            Network network)
         {
             bool errorOccured = false;
             string errorMessage = string.Empty;
@@ -49,7 +121,16 @@ namespace LykkeWalletServices
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    HttpResponseMessage result = await client.GetAsync(baseUrl + walletAddress + "/unspents");
+                    string url = null;
+                    if(network == Network.Main)
+                    {
+                        url = baseUrl + walletAddress;
+                    }
+                    else
+                    {
+                        url = testnetBaseUrl + walletAddress;
+                    }
+                    HttpResponseMessage result = await client.GetAsync(url + "/unspents");
                     if (!result.IsSuccessStatusCode)
                     {
                         errorOccured = true;
@@ -79,19 +160,29 @@ namespace LykkeWalletServices
         /// <param name="assetId">The id of asset to check the balance.</param>
         /// <returns>A tuple, first part is balance, second part is unconfirmed balance, third part is whether error has occured or not,
         ///  forth part is the error message.</returns>
-        public static async Task<Tuple<float, float, bool, string>> GetAccountBalance(string walletAddress, string assetId)
+        public static async Task<Tuple<float, float, bool, string>> GetAccountBalance(string walletAddress,
+            string assetId, Network network)
         {
             float balance = 0;
             float unconfirmedBalance = 0;
             bool errorOccured = false;
             string errorMessage = "";
+            string url;
             // ToDo - We currently use coinprism api, later we should replace
             // with our self implementation
             try
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    HttpResponseMessage result = await client.GetAsync(baseUrl + walletAddress);
+                    if (network == Network.Main)
+                    {
+                        url = baseUrl + walletAddress;
+                    }
+                    else
+                    {
+                        url = testnetBaseUrl + walletAddress;
+                    }
+                    HttpResponseMessage result = await client.GetAsync(url);
                     if (!result.IsSuccessStatusCode)
                     {
                         return new Tuple<float, float, bool, string>(0, 0, true, result.ReasonPhrase);
@@ -121,6 +212,35 @@ namespace LykkeWalletServices
             return new Tuple<float, float, bool, string>(balance, unconfirmedBalance, errorOccured, errorMessage);
         }
 
+        public static bool IsBitcoinsEnough(CoinprismUnspentOutput[] outputs,
+            uint amountInSatoshi, bool includeUnconfirmed = false)
+        {
+            int total = 0;
+            foreach(var item in outputs)
+            {
+                if (item.confirmations == 0)
+                {
+                    if (includeUnconfirmed)
+                    {
+                        total += item.value;
+                    }
+                }
+                else
+                {
+                    total += item.value;
+                }
+            }
+
+            if(total >= amountInSatoshi)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         /// <summary>
         /// Checks whether the amount for assetId of the wallet is enough
         /// </summary>
@@ -130,9 +250,9 @@ namespace LykkeWalletServices
         /// <returns>Whether the asset amount is enough or not.</returns>
         /// ToDo - Figure out a method for unconfirmed balance
         public static async Task<bool> IsAssetsEnough(string walletAddress, string assetId,
-            int amount, bool includeUnconfirmed = false)
+            int amount, Network network, bool includeUnconfirmed = false)
         {
-            Tuple<float, float, bool, string> result = await GetAccountBalance(walletAddress, assetId);
+            Tuple<float, float, bool, string> result = await GetAccountBalance(walletAddress, assetId, network);
             if (result.Item3 == true)
             {
                 return false;
@@ -167,7 +287,8 @@ namespace LykkeWalletServices
         // ToDo - Remove call from api.blockcypher.com
         // The returned object is a Tuple with first parameter specifing if an error has occured,
         // second the error message and third the transaction hex
-        public static async Task<Tuple<bool, string, string>> GetTransactionHex(string transactionId)
+        public static async Task<Tuple<bool, string, string>> GetTransactionHex(string transactionId, Network network,
+            string username, string password, string ipAddress)
         {
             string transactionHex = "";
             bool errorOccured = false;
@@ -176,10 +297,19 @@ namespace LykkeWalletServices
             // with our self implementation
             try
             {
+                /*
                 using (HttpClient client = new HttpClient())
                 {
-                    HttpResponseMessage result = await client.GetAsync("https://api.blockcypher.com/v1/btc/main/txs/"
-                        + transactionId + "?includeHex=true");
+                    string url = null;
+                    if (network == Network.Main)
+                    {
+                        url = "https://api.blockcypher.com/v1/btc/main/txs/" + transactionId + "?includeHex=true";
+                    }
+                    else
+                    {
+                        url = "https://api.blockcypher.com/v1/btc/test3/txs/" + transactionId + "?includeHex=true";
+                    }
+                    HttpResponseMessage result = await client.GetAsync(url);
                     if (!result.IsSuccessStatusCode)
                     {
                         return new Tuple<bool, string, string>(true, result.ReasonPhrase, "");
@@ -192,6 +322,10 @@ namespace LykkeWalletServices
                         transactionHex = response.hex;
                     }
                 }
+                */
+                RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
+                                ipAddress, network);
+                transactionHex = (await client.GetRawTransactionAsync(uint256.Parse(transactionId), true)).ToHex();
             }
             catch (Exception e)
             {
@@ -208,39 +342,6 @@ namespace LykkeWalletServices
         {
             var instance = System.Data.SQLite.EF6.SQLiteProviderFactory.Instance;
         }
-
-
-        /*
-        [
-  {
-    "transaction_hash": "ee960436a29ac507b59843ba1ec7d9cfcbb6decf9645d0a7308993c2b65910a7",
-    "output_index": 0,
-    "value": 600,
-    "asset_id": "ARe5TkHAjAZubkBMCBomNn93m9ZV6HGFqg",
-    "asset_quantity": 3500,
-    "addresses": [
-      "1Ls5Xa9GAoUJ33L9USjgs8F1yZt4noFuzq"
-    ],
-    "script_hex": "76a914d9e2f78ddf74c17706d23338de6058a10c6b552e88ac",
-    "spent": false,
-    "confirmations": 533
-  },
-  {
-    "transaction_hash": "81da11841c59718186bebf24f91228954363123c248961f3da26f7db686a640e",
-    "output_index": 0,
-    "value": 600,
-    "asset_id": "ASYfetm7ue3Pk5NyK9NDdGU9mWHApaPuur",
-    "asset_quantity": 250000,
-    "addresses": [
-      "1Ls5Xa9GAoUJ33L9USjgs8F1yZt4noFuzq"
-    ],
-    "script_hex": "76a914d9e2f78ddf74c17706d23338de6058a10c6b552e88ac",
-    "spent": false,
-    "confirmations": 0
-  }
-]
-
-        */
 
         public class CoinprismUnspentOutput
         {

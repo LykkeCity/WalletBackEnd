@@ -1,5 +1,6 @@
 ﻿using Core;
 using LykkeWalletServices.Transactions.Responses;
+using NBitcoin;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,10 +17,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     /// </summary>
     public class SrvGetBalanceTask
     {
+        private Network network;
+        public SrvGetBalanceTask(Network network)
+        {
+            this.network = network;
+        }
         public async Task<TaskResultGetBalance> ExecuteTask(TaskToDoGetBalance data)
         {
             TaskResultGetBalance resultGetBalance = new TaskResultGetBalance();
-            var ret = await OpenAssetsHelper.GetAccountBalance(data.WalletAddress, data.AssetID);
+            var ret = await OpenAssetsHelper.GetAccountBalance(data.WalletAddress, data.AssetID, network);
             resultGetBalance.Balance = ret.Item1;
             resultGetBalance.UnconfirmedBalance = ret.Item2;
             resultGetBalance.HasErrorOccurred = ret.Item3;

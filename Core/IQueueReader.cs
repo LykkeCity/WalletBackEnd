@@ -11,6 +11,14 @@ namespace Core
     {
     }
 
+    public class TaskToDoCashIn : TransactionToDoBase
+    {
+        public string MultisigAddress { get; set; }
+        // ToDo - At first we assume the currency is not divisable
+        public long Amount { get; set; }
+        public string Currency { get; set; }
+    }
+
     public class TaskToDoGetBalance : TransactionToDoBase
     {
         public string WalletAddress { get; set; }
