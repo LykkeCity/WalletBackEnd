@@ -35,7 +35,8 @@ namespace Core
     {
         Exception,
         ProblemInRetrivingWalletOutput,
-        NotEnoughBitcoinInTransaction
+        NotEnoughBitcoinInTransaction,
+        PossibleDoubleSpend
     }
 
     public class GenerateNewWalletTaskResult : ITaskResult
@@ -50,7 +51,10 @@ namespace Core
         public string TransactionHex { get; set; }
     }
 
-
+    public class CashOutTaskResult : ITaskResult
+    {
+        public string TransactionHex { get; set; }
+    }
     /// <summary>
     /// Interface, which gives access to output queue
     /// </summary>
