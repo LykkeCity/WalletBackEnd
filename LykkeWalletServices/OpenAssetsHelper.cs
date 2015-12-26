@@ -122,7 +122,7 @@ namespace LykkeWalletServices
                 using (HttpClient client = new HttpClient())
                 {
                     string url = null;
-                    if(network == Network.Main)
+                    if (network == Network.Main)
                     {
                         url = baseUrl + walletAddress;
                     }
@@ -212,11 +212,46 @@ namespace LykkeWalletServices
             return new Tuple<float, float, bool, string>(balance, unconfirmedBalance, errorOccured, errorMessage);
         }
 
+        // ToDo - Clear fractional currencies case
+        // ToDo - Clear confirmation number
+        public static bool IsAssetsEnough(CoinprismUnspentOutput[] outputs,
+            string assetId, float assetAmount, bool includeUnconfirmed = false)
+        {
+            float total = 0;
+            foreach (var item in outputs)
+            {
+                if (item.asset_id.Equals(assetId))
+                {
+                    if (item.confirmations == 0)
+                    {
+                        if (includeUnconfirmed)
+                        {
+                            total += (float)item.asset_quantity;
+                        }
+                    }
+                    else
+                    {
+                        total += (float)item.asset_quantity;
+                    }
+                }
+            }
+
+            if (total >= assetAmount)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        // ToDo - Clear confirmation number
         public static bool IsBitcoinsEnough(CoinprismUnspentOutput[] outputs,
             uint amountInSatoshi, bool includeUnconfirmed = false)
         {
             int total = 0;
-            foreach(var item in outputs)
+            foreach (var item in outputs)
             {
                 if (item.confirmations == 0)
                 {
@@ -231,7 +266,7 @@ namespace LykkeWalletServices
                 }
             }
 
-            if(total >= amountInSatoshi)
+            if (total >= amountInSatoshi)
             {
                 return true;
             }
@@ -284,7 +319,6 @@ namespace LykkeWalletServices
             }
         }
 
-        // ToDo - Remove call from api.blockcypher.com
         // The returned object is a Tuple with first parameter specifing if an error has occured,
         // second the error message and third the transaction hex
         public static async Task<Tuple<bool, string, string>> GetTransactionHex(string transactionId, Network network,
@@ -293,36 +327,8 @@ namespace LykkeWalletServices
             string transactionHex = "";
             bool errorOccured = false;
             string errorMessage = "";
-            // ToDo - We currently use coinprism api, later we should replace
-            // with our self implementation
             try
             {
-                /*
-                using (HttpClient client = new HttpClient())
-                {
-                    string url = null;
-                    if (network == Network.Main)
-                    {
-                        url = "https://api.blockcypher.com/v1/btc/main/txs/" + transactionId + "?includeHex=true";
-                    }
-                    else
-                    {
-                        url = "https://api.blockcypher.com/v1/btc/test3/txs/" + transactionId + "?includeHex=true";
-                    }
-                    HttpResponseMessage result = await client.GetAsync(url);
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        return new Tuple<bool, string, string>(true, result.ReasonPhrase, "");
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        BlockCypherGetTransactionResult response = Newtonsoft.Json.JsonConvert.DeserializeObject<BlockCypherGetTransactionResult>
-                            (webResponse);
-                        transactionHex = response.hex;
-                    }
-                }
-                */
                 RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
                                 ipAddress, network);
                 transactionHex = (await client.GetRawTransactionAsync(uint256.Parse(transactionId), true)).ToHex();

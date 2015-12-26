@@ -31,6 +31,22 @@
           <Property Name="ExchangePrivateKey" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
           <Property Name="Network" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
         </EntityType>
+        <EntityType Name="SentTransactions">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="integer" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="TransactionHex" Type="nvarchar" MaxLength="2147483647" />
+        </EntityType>
+        <EntityType Name="SpentOutputs">
+          <Key>
+            <PropertyRef Name="PrevHash" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="PrevHash" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+          <Property Name="OutputNumber" Type="integer" Nullable="false" />
+          <Property Name="SentTransactionId" Type="integer" />
+        </EntityType>
         <EntityType Name="TransactionsToBeSigned">
           <Key>
             <PropertyRef Name="ExchangeId" />
@@ -41,25 +57,27 @@
           <Property Name="UnsignedTransaction" Type="nvarchar" MaxLength="2147483647" />
           <Property Name="SignedTransaction" Type="nvarchar" MaxLength="2147483647" />
         </EntityType>
-        <Association Name="FK_TransactionsToBeSigned_0_0">
-          <End Role="ExchangeRequests" Type="Self.ExchangeRequests" Multiplicity="1" />
-          <End Role="TransactionsToBeSigned" Type="Self.TransactionsToBeSigned" Multiplicity="*" />
+        <Association Name="FK_SpentOutputs_0_0">
+          <End Role="SentTransactions" Type="Self.SentTransactions" Multiplicity="0..1" />
+          <End Role="SpentOutputs" Type="Self.SpentOutputs" Multiplicity="*" />
           <ReferentialConstraint>
-            <Principal Role="ExchangeRequests">
-              <PropertyRef Name="ExchangeId" />
+            <Principal Role="SentTransactions">
+              <PropertyRef Name="id" />
             </Principal>
-            <Dependent Role="TransactionsToBeSigned">
-              <PropertyRef Name="ExchangeId" />
+            <Dependent Role="SpentOutputs">
+              <PropertyRef Name="SentTransactionId" />
             </Dependent>
           </ReferentialConstraint>
         </Association>
         <EntityContainer Name="LykkeServicesModelStoreContainer">
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" store:Type="Tables" />
           <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" store:Type="Tables" />
+          <EntitySet Name="SentTransactions" EntityType="Self.SentTransactions" store:Type="Tables" />
+          <EntitySet Name="SpentOutputs" EntityType="Self.SpentOutputs" store:Type="Tables" />
           <EntitySet Name="TransactionsToBeSigned" EntityType="Self.TransactionsToBeSigned" store:Type="Tables" />
-          <AssociationSet Name="FK_TransactionsToBeSigned_0_0" Association="Self.FK_TransactionsToBeSigned_0_0">
-            <End Role="ExchangeRequests" EntitySet="ExchangeRequests" />
-            <End Role="TransactionsToBeSigned" EntitySet="TransactionsToBeSigned" />
+          <AssociationSet Name="FK_SpentOutputs_0_0" Association="Self.FK_SpentOutputs_0_0">
+            <End Role="SentTransactions" EntitySet="SentTransactions" />
+            <End Role="SpentOutputs" EntitySet="SpentOutputs" />
           </AssociationSet>
         </EntityContainer>
       </Schema></edmx:StorageModels>
@@ -90,6 +108,12 @@
             <End Role="TransactionsToBeSigned" EntitySet="TransactionsToBeSigneds" />
           </AssociationSet>
           <EntitySet Name="KeyStorages" EntityType="LykkeServicesModel.KeyStorage" />
+          <EntitySet Name="SentTransactions" EntityType="LykkeServicesModel.SentTransaction" />
+          <EntitySet Name="SpentOutputs" EntityType="LykkeServicesModel.SpentOutput" />
+          <AssociationSet Name="FK_SpentOutputs_0_0" Association="LykkeServicesModel.FK_SpentOutputs_0_0">
+            <End Role="SentTransaction" EntitySet="SentTransactions" />
+            <End Role="SpentOutput" EntitySet="SpentOutputs" />
+          </AssociationSet>
         </EntityContainer>
         <EntityType Name="TransactionsToBeSigned">
           <Key>
@@ -125,6 +149,36 @@
           <Property Name="ExchangePrivateKey" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
           <Property Name="Network" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
         </EntityType>
+        <EntityType Name="SentTransaction">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="TransactionHex" Type="String" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+          <NavigationProperty Name="SpentOutputs" Relationship="LykkeServicesModel.FK_SpentOutputs_0_0" FromRole="SentTransaction" ToRole="SpentOutput" />
+        </EntityType>
+        <EntityType Name="SpentOutput">
+          <Key>
+            <PropertyRef Name="PrevHash" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="PrevHash" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+          <Property Name="OutputNumber" Type="Int64" Nullable="false" />
+          <Property Name="SentTransactionId" Type="Int64" />
+          <NavigationProperty Name="SentTransaction" Relationship="LykkeServicesModel.FK_SpentOutputs_0_0" FromRole="SpentOutput" ToRole="SentTransaction" />
+        </EntityType>
+        <Association Name="FK_SpentOutputs_0_0">
+          <End Type="LykkeServicesModel.SentTransaction" Role="SentTransaction" Multiplicity="0..1" />
+          <End Type="LykkeServicesModel.SpentOutput" Role="SpentOutput" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="SentTransaction">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="SpentOutput">
+              <PropertyRef Name="SentTransactionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -166,6 +220,23 @@
                 <ScalarProperty Name="MultiSigAddress" ColumnName="MultiSigAddress" />
                 <ScalarProperty Name="WalletPrivateKey" ColumnName="WalletPrivateKey" />
                 <ScalarProperty Name="WalletAddress" ColumnName="WalletAddress" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="SentTransactions">
+            <EntityTypeMapping TypeName="LykkeServicesModel.SentTransaction">
+              <MappingFragment StoreEntitySet="SentTransactions">
+                <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="SpentOutputs">
+            <EntityTypeMapping TypeName="LykkeServicesModel.SpentOutput">
+              <MappingFragment StoreEntitySet="SpentOutputs">
+                <ScalarProperty Name="SentTransactionId" ColumnName="SentTransactionId" />
+                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="PrevHash" ColumnName="PrevHash" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

@@ -67,6 +67,17 @@ namespace LykkeWalletServices
                 });
             }
 
+            var transactionCashOut = @event as TaskToDoCashOut;
+            if (transactionCashOut != null)
+            {
+                var service = new SrvCashOutTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _exchangePrivateKey);
+                service.Execute(transactionCashOut, async result =>
+                {
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        (@event.TransactionId, result.Item1, result.Item2));
+                });
+            }
+
             /*
             var transactionGetBalance = @event as TaskToDoGetBalance;
             if (transactionGetBalance != null)
