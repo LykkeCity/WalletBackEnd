@@ -1,19 +1,15 @@
 ﻿using Core;
-using LykkeWalletServices.Transactions.Responses;
 using NBitcoin;
 using NBitcoin.OpenAsset;
 using NBitcoin.RPC;
 using System;
-using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
-    // Sample Input: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"cV8fFLxWfj7vUt4GqCCx98ecnHdNwExj5gkHiVa4zkbcd13oqAMJ"}
+    // Sample Input: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":""}
     // Sample output: {"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
     public class SrvCashOutTask : SrvNetworkInvolvingExchangeBase
     {
