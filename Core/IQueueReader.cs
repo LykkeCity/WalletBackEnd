@@ -19,6 +19,11 @@ namespace Core
         public string Currency { get; set; }
     }
 
+    public class TaskToDoGetCurrentBalance : TransactionToDoBase
+    {
+        public string MultisigAddress { get; set; }
+    }
+
     public class TaskToDoCashOut : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }

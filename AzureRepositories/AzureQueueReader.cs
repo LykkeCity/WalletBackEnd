@@ -16,6 +16,7 @@ namespace AzureRepositories
                 QueueType.Create("GenerateNewWallet", typeof(TaskToDoGenerateNewWallet)),
                 QueueType.Create("CashIn", typeof(TaskToDoCashIn)),
                 QueueType.Create("CashOut", typeof(TaskToDoCashOut)),
+                QueueType.Create("GetCurrentBalance", typeof(TaskToDoGetCurrentBalance)),
                 QueueType.Create("GetBalance", typeof(TaskToDoGetBalance)),
                 QueueType.Create("DepositWithdraw", typeof(TaskToDoDepositWithdraw)),
                 QueueType.Create("Exchange", typeof(TaskToDoSendAsset)));
