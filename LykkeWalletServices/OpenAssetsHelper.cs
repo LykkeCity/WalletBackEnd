@@ -214,38 +214,9 @@ namespace LykkeWalletServices
 
         // ToDo - Clear fractional currencies case
         // ToDo - Clear confirmation number
-        public static float GetAssetBalance(CoinprismUnspentOutput[] outputs,
-            string assetId, bool includeUnconfirmed = false)
-        {
-            float total = 0;
-            foreach (var item in outputs)
-            {
-                if (item.asset_id != null)
-                {
-                    if (item.asset_id.Equals(assetId))
-                    {
-                        if (item.confirmations == 0)
-                        {
-                            if (includeUnconfirmed)
-                            {
-                                total += (float)item.asset_quantity;
-                            }
-                        }
-                        else
-                        {
-                            total += (float)item.asset_quantity;
-                        }
-                    }
-                }
-            }
-
-            return total;
-        }
-
         public static bool IsAssetsEnough(CoinprismUnspentOutput[] outputs,
             string assetId, float assetAmount, bool includeUnconfirmed = false)
         {
-            /*
             float total = 0;
             foreach (var item in outputs)
             {
@@ -264,8 +235,7 @@ namespace LykkeWalletServices
                     }
                 }
             }
-            */
-            float total = GetAssetBalance(outputs, assetId, includeUnconfirmed);
+
             if (total >= assetAmount)
             {
                 return true;

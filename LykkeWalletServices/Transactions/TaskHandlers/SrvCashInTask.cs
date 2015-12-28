@@ -12,6 +12,38 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample response {"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
     public class SrvCashInTask : SrvNetworkBase
     {
+        /*
+        protected Network Network
+        {
+            get; set;
+        }
+        protected OpenAssetsHelper.AssetDefinition[] Assets
+        {
+            get; set;
+        }
+        protected string Username
+        {
+            get; set;
+        }
+        protected string Password
+        {
+            get; set;
+        }
+        protected string IpAddress
+        {
+            get; set;
+        }
+        public SrvCashInTask(Network network, OpenAssetsHelper.AssetDefinition[] assets,
+            string username, string password, string ipAddress)
+        {
+            this.Network = network;
+            this.Assets = assets;
+            this.Username = username;
+            this.Password = password;
+            this.IpAddress = ipAddress;
+        }
+        */
+
         public SrvCashInTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
             string password, string ipAddress) : base(network, assets, username, password, ipAddress)
         {

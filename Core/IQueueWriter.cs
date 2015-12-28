@@ -55,17 +55,6 @@ namespace Core
     {
         public string TransactionHex { get; set; }
     }
-    public class GetCurrentBalanceTaskResult : ITaskResult
-    {
-        public GetCurrentBalanceTaskResultElement[] ResultArray;
-    }
-
-    public class GetCurrentBalanceTaskResultElement
-    {
-        public string Asset { get; set; }
-        public float Amount { get; set; }
-    }
-
     /// <summary>
     /// Interface, which gives access to output queue
     /// </summary>
