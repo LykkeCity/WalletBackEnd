@@ -117,6 +117,7 @@
     <Compile Include="Transactions\Responses\TaskResultGetTransactionToSign.cs" />
     <Compile Include="Transactions\Responses\TaskResultGenerateExchangeTransfer.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetBalance.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvSwapTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetCurrentBalanceTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvCashOutTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvExchangeTask.cs" />

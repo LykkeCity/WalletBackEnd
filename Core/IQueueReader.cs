@@ -33,6 +33,16 @@ namespace Core
         public string PrivateKey { get; set; }
     }
 
+    public class TaskToDoSwap : TransactionToDoBase
+    {
+        public string MultisigCustomer1 { get; set; }
+        public float Amount1 { get; set; }
+        public string Asset1 { get; set; }
+        public string MultisigCustomer2 { get; set; }
+        public float Amount2 { get; set; }
+        public string Asset2 { get; set; }
+    }
+
     public class TaskToDoGetBalance : TransactionToDoBase
     {
         public string WalletAddress { get; set; }

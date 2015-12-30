@@ -15,7 +15,7 @@ namespace Core
                 TransactionId = transactionId,
                 Error = error,
                 Result = result,
-      
+
             };
         }
     }
@@ -55,6 +55,12 @@ namespace Core
     {
         public string TransactionHex { get; set; }
     }
+
+    public class SwapTaskResult : ITaskResult
+    {
+        public string TransactionHex { get; set; }
+    }
+
     public class GetCurrentBalanceTaskResult : ITaskResult
     {
         public GetCurrentBalanceTaskResultElement[] ResultArray;

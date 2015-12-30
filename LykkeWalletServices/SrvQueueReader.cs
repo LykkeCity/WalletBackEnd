@@ -90,77 +90,19 @@ namespace LykkeWalletServices
                 });
             }
 
-            /*
-            var transactionGetBalance = @event as TaskToDoGetBalance;
-            if (transactionGetBalance != null)
+            var transactionSwap = @event as TaskToDoSwap;
+            if (transactionSwap != null)
             {
-                var service = new SrvGetBalanceTask();
-                service.Execute(transactionGetBalance, async result =>
+                var service = new SrvSwapTask(_network, _assets, _rpcUsername,
+                    _rpcPassword, _rpcServer, _exchangePrivateKey);
+                service.Execute(transactionSwap, async result =>
                 {
-                    await _queueWriter.WriteQueue(
-                        TransactionResultModel.Create(@event.TransactionId, result));
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        (@event.TransactionId, result.Item1, result.Item2));
                 });
             }
 
-            var transactionGenerateExchangeTransfer = @event as TaskToDoGenerateExchangeTransfer;
-            if (transactionGenerateExchangeTransfer != null)
-            {
-                var service = new SrvGenerateExchangeTransferTask();
-                service.Execute(transactionGenerateExchangeTransfer, async result =>
-                {
-                    await _queueWriter.WriteQueue(
-                        TransactionResultModel.Create(@event.TransactionId, result));
-                });
-            }
-
-            var transactionGetTransactionToSign = @event as TaskToDoGetTransactionToSign;
-            if (transactionGetTransactionToSign != null)
-            {
-                var service = new SrvGetTransactionToSignTask();
-                service.Execute(transactionGetTransactionToSign, async result =>
-                {
-                    await _queueWriter.WriteQueue(
-                        TransactionResultModel.Create(@event.TransactionId, result));
-                });
-            }
-
-            var transactionReturnSignedTransaction = @event as TaskToDoReturnSignedTransaction;
-            if (transactionReturnSignedTransaction != null)
-            {
-                var service = new SrvReturnSignedTransactionTask();
-                service.Execute(transactionReturnSignedTransaction, async result =>
-                {
-                    await _queueWriter.WriteQueue(
-                        TransactionResultModel.Create(@event.TransactionId, result));
-                });
-            }
-
-            var transactionDepositWithdraw = @event as TaskToDoDepositWithdraw;
-            if (transactionDepositWithdraw != null)
-            {
-                var service = new SrvDepositWithdrawTaskHandler(_lykkeAccountReader);
-                service.Execute(transactionDepositWithdraw, async result =>
-                {
-                    await _queueWriter.WriteQueue(TransactionResultModel.Create(@event.TransactionId, result));
-                },
-                    _log);
-                return;
-            }
-
-
-            var taskToDoSendAsset = @event as TaskToDoSendAsset;
-            if (taskToDoSendAsset != null)
-            {
-                var service = new SrvExchangeTaskHandler();
-                service.Execute(taskToDoSendAsset, async result =>
-                {
-                    await _queueWriter.WriteQueue(TransactionResultModel.Create(@event.TransactionId, result));
-                });
-                return;
-            }
-            */
             await _log.WriteWarning("SrvQueueReader", "Execute", "", $"Unknown task type: {@event.GetType()}");
-
         }
     }
 }
