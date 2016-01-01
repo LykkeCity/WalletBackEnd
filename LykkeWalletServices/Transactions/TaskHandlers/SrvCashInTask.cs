@@ -36,6 +36,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     string assetId = null;
                     string assetPrivateKey = null;
                     BitcoinAddress assetAddress = null;
+                    string assetDefinitionUrl = null;
 
 
                     // Getting the assetid from asset name
@@ -47,6 +48,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             assetPrivateKey = item.PrivateKey;
                             assetAddress = (new BitcoinSecret(assetPrivateKey, Network)).PubKey.
                                 GetAddress(Network);
+                            assetDefinitionUrl = item.DefinitionUrl;
                             break;
                         }
                     }
@@ -74,6 +76,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             var coins = (await OpenAssetsHelper.GetColoredUnColoredCoins(bitcoinOutputs, null, Network,
                                 Username, Password, IpAddress)).Item2;
                             IssuanceCoin issueCoin = new IssuanceCoin(coins.Last());
+                            issueCoin.DefinitionUrl = new Uri(assetDefinitionUrl);
                             var txCoins = coins.Take(coins.Length - 1);
 
                             var multiSigScript = new Script(matchingAddress.MultiSigScript);

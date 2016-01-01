@@ -14,13 +14,14 @@ namespace LykkeWalletServices
         const string baseUrl = "https://api.coinprism.com/v1/addresses/";
         const string testnetBaseUrl = "https://testnet.api.coinprism.com/v1/addresses/";
         public const uint MinimumRequiredSatoshi = 50000; // 100000000 satoshi is one BTC
-        public const uint TransactionSendFeesInSatoshi = 10000;
+        public const uint TransactionSendFeesInSatoshi = 15000;
 
         public class AssetDefinition
         {
             public string AssetId { get; set; }
             public string Name { get; set; }
             public string PrivateKey { get; set; }
+            public string DefinitionUrl { get; set; }
         }
 
         public static async Task<Tuple<ColoredCoin[], Coin[]>> GetColoredUnColoredCoins(OpenAssetsHelper.CoinprismUnspentOutput[] walletOutputs,

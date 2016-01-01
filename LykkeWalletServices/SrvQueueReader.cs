@@ -40,6 +40,8 @@ namespace LykkeWalletServices
 
         protected override async Task Execute()
         {
+            bool knownTaskType = false;
+
             var @event = await _queueReader.GetTaskToDo();
 
             if (@event == null)
@@ -54,6 +56,7 @@ namespace LykkeWalletServices
                     await _queueWriter.WriteQueue(
                         TransactionResultModel.Create(@event.TransactionId, result.Item1, result.Item2));
                 });
+                knownTaskType = true;
             }
 
             var transactionCashIn = @event as TaskToDoCashIn;
@@ -65,6 +68,7 @@ namespace LykkeWalletServices
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         (@event.TransactionId, result.Item1, result.Item2));
                 });
+                knownTaskType = true;
             }
 
             var transactionCashOut = @event as TaskToDoCashOut;
@@ -76,6 +80,7 @@ namespace LykkeWalletServices
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         (@event.TransactionId, result.Item1, result.Item2));
                 });
+                knownTaskType = true;
             }
 
             var transactionGetCurrentBalance = @event as TaskToDoGetCurrentBalance;
@@ -88,6 +93,7 @@ namespace LykkeWalletServices
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         (@event.TransactionId, result.Item1, result.Item2));
                 });
+                knownTaskType = true;
             }
 
             var transactionSwap = @event as TaskToDoSwap;
@@ -100,9 +106,17 @@ namespace LykkeWalletServices
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         (@event.TransactionId, result.Item1, result.Item2));
                 });
+                knownTaskType = true;
             }
 
-            await _log.WriteWarning("SrvQueueReader", "Execute", "", $"Unknown task type: {@event.GetType()}");
+            if (knownTaskType)
+            {
+                await _log.WriteWarning("SrvQueueReader", "Execute", "", $"{@event.GetType()}");
+            }
+            else
+            {
+                await _log.WriteWarning("SrvQueueReader", "Execute", "", $"Unknown task type: {@event.GetType()}");
+            }
         }
     }
 }

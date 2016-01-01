@@ -3,40 +3,46 @@
   "InQueueConnectionString": "UseDevelopmentStorage=true",
   "OutQueueConnectionString": "UseDevelopmentStorage=true;",
   "NetworkType": "TestNet",
-  "exchangePrivateKey": "xxxx",
-  "RPCUsername": "xxx",
-  "RPCPassword": "xxx",
-  "RPCServerIpAddress": "xxx",
+  "exchangePrivateKey": "xxx",
   "LykkeCredentials": {
     "PublicAddress": "xxxxxxxxx",
     "PrivateKey": "xxxxxxxxx"
   },
-  "AssetDefinitions": [
-    {
-      "AssetId": "xxx",
-      "Name": "bjkUSD"
-    },
-    {
-      "AssetId": "xxx",
-      "Name": "bjkEUR"
-    }
-  ],
-  "WalletDefinitions": [
-    {
-      "Address": "xxx",
-      "PrivateKey": "xxx"
-    },
-    {
-      "Address": "xxx",
-      "PrivateKey": "xxx"
-    },
-    {
-      "Address": "xxx",
-      "PrivateKey": "xxx"
-    },
-    {
-      "Address": "xxx",
-      "PrivateKey": "xxx"
-    }
-  ]
+   "RPCUsername":"xxx",
+   "RPCPassword":"xxx",
+   "RPCServerIpAddress":"xxx",
+  "AssetDefinitions": 
+    [
+      {
+        "AssetId": "oXjVb4XRo23tp53QFgVUxLhctPKPt6Q127",
+        "Name": "bjkUSD",
+        "PrivateKey":"xxx",
+        "DefinitionUrl":"https://www.cpr.sm/XxASx1ojFD"
+      },
+      {
+        "AssetId": "oKVtKPjuhsWHeR3eNSNJj7ubCzWrxKmexV",
+        "Name": "bjkEUR",
+        "PrivateKey":"xxx",
+        "DefinitionUrl":"https://www.cpr.sm/xVMAMwAYvv"
+      },
+      {
+        "AssetId": "ocmVkVUHnrdSKASFWuHy6hxqTWFc9vdL9d",
+        "Name": "TestExchangeUSD",
+        "PrivateKey":"xxx",
+        "DefinitionUrl":"https://www.cpr.sm/-KDPVKLTlL"
+      },
+     {
+     "AssetId": "oZTd8ZfoyRPkYFhbeLXvordpcpND2YpqPg",
+     "Name": "TestExchangeEUR",
+     "PrivateKey":"xxx",
+     "DefinitionUrl":"https://www.cpr.sm/SBi9SeNlyB"
+     }
+    ],
+    "WalletDefinitions": 
+    [
+      {
+        "Address": "1Ls5Xa9GAoUJ33L9USjgs8F1yZt4noFuzq",
+        "PrivateKey": "xxx"
+      }
+    ]
 }
