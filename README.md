@@ -13,32 +13,32 @@ All service are queue based
 *   Generate New Wallet
 
         Sample input: GenerateNewWallet:{"TransactionId":"10"}
-        Sample output: {"TransactionId":"10","Result":"WalletAddress":"xxxx","WalletPrivateKey":"xxxx","MultiSigAddress":"xxx"},"Error":null}
+        Sample output: GenerateNewWallet:{"TransactionId":"10","Result":"WalletAddress":"xxxx","WalletPrivateKey":"xxxx","MultiSigAddress":"xxx"},"Error":null}
    
 *   Cash In
 
         Sample input: CashIn:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B","Amount":5000,"Currency":"bjkUSD"}
-        Sample output: {"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+        Sample output: CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
 
 *   Cash Out
 
-        Sample Input: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx"}
-        Sample output: {"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
+        Sample input: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx"}
+        Sample output: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
 
 *   GetCurrentBalance
 
-        Sample request: GetCurrentBalance:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B" }
-        Sample response: {"TransactionId":"10","Result":{"ResultArray":[{"Asset":"bjkUSD","Amount":9400.0},{"Asset":"bjkEUR","Amount":1300.0},{"Asset":"TestExchangeUSD","Amount":1300.0}]},"Error":null}
+        Sample input: GetCurrentBalance:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B" }
+        Sample input: GetCurrentBalance:{"TransactionId":"10","Result":{"ResultArray":[{"Asset":"bjkUSD","Amount":9400.0},{"Asset":"bjkEUR","Amount":1300.0},{"Asset":"TestExchangeUSD","Amount":1300.0}]},"Error":null}
 
 *   Swap
 
-        Swap:{"TransactionId":"10", MultisigCustomer1:"2N8zbehwdz2wcCd2JwZktnt6uKZ8fFMZVPp", "Amount1":200, "Asset1":"TestExchangeUSD", MultisigCustomer2:"2N8Z7FLao3qWc8h8mveDXaAA9q1Q53xMsyL", "Amount2":300, "Asset2":"TestExchangeEUR"}
-        Response: {"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
+        Sample request: Swap:{"TransactionId":"10", MultisigCustomer1:"2N8zbehwdz2wcCd2JwZktnt6uKZ8fFMZVPp", "Amount1":200, "Asset1":"TestExchangeUSD", MultisigCustomer2:"2N8Z7FLao3qWc8h8mveDXaAA9q1Q53xMsyL", "Amount2":300, "Asset2":"TestExchangeEUR"}
+        Sample response: Swap:{"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
 
 ## Some notes
 *   In file Program.cs in line `var json = await ReadTextAsync("F:\\Lykkex\\settings.json");` correct path to json file, this is only for the debug; the release version uses the settings.json in the solution path.
 
-*   In the settings.json correct the 
+*   In the settings.json, please correct the following
 
 | Name | Defaul Value | Description |
 |------|--------------|-------------|
@@ -49,7 +49,18 @@ All service are queue based
 |RPCUsername|Nothing|The username for the server running the bitcoind, this is the rpc username|
 |RPCPassword|Nothing|The password for the server running the bitcoind, this is the rpc password|
 |RPCServerIpAddress|Nothing|This is the server address for the bitcoind rpc server|
-|AssetDefinitions|Nothing|The array of assets used by the exchange, it consists of the AssetId, Name, and the PrivateKey of the Asset|
+|AssetDefinitions|Nothing|The array of assets used by the exchange,consisting of various fields described in the following table.|
+
+The AssetDefinitions is an array of json, with the following fields:
+
+| Name | Description |
+|------|-------------|
+|AssetId|Id of the asset in Base 58|
+|Name|Name of the asset which is used while mentioning the asset in API Call|
+|PrivateKey|Private key of the asset used while issuing the asset|
+|DefinitionUrl|The asset definition url, used while issuing the asset|
+|Divisibility|Number of decimal places for the asset|
+
 
 *   The exchange private key could be generated using TestConsole project, Program.cs, function TestBitcoinScripts, for the configured Main or TestNet.
 

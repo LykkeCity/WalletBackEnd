@@ -54,7 +54,7 @@ namespace LykkeWalletServices
                 service.Execute(transactionGenerateNewWallet, async result =>
                 {
                     await _queueWriter.WriteQueue(
-                        TransactionResultModel.Create(@event.TransactionId, result.Item1, result.Item2));
+                        TransactionResultModel.Create("GenerateNewWallet", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -66,7 +66,7 @@ namespace LykkeWalletServices
                 service.Execute(transactionCashIn, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
-                        (@event.TransactionId, result.Item1, result.Item2));
+                        ("CashIn", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -78,7 +78,7 @@ namespace LykkeWalletServices
                 service.Execute(transactionCashOut, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
-                        (@event.TransactionId, result.Item1, result.Item2));
+                        ("CashOut", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -91,7 +91,7 @@ namespace LykkeWalletServices
                 service.Execute(transactionGetCurrentBalance, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
-                        (@event.TransactionId, result.Item1, result.Item2));
+                        ("GetCurrentBalance", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -104,7 +104,7 @@ namespace LykkeWalletServices
                 service.Execute(transactionSwap, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
-                        (@event.TransactionId, result.Item1, result.Item2));
+                        ("Swap", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }

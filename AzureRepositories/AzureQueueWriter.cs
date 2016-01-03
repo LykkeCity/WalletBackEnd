@@ -16,7 +16,11 @@ namespace AzureRepositories
         public Task WriteQueue(TransactionResultModel transactionResult)
         {
             // ToDo - Handle connection absents. For instance: put to local queue and after try to send to the realone
-            return _queueWriter.PutMessageAsync(transactionResult);
+            string message = transactionResult.OperationName + ":" +
+                Newtonsoft.Json.JsonConvert.SerializeObject(transactionResult);
+
+            //return _queueWriter.PutMessageAsync(transactionResult);
+            return _queueWriter.PutMessageAsync(message);
         }
     }
 }

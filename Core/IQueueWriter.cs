@@ -1,17 +1,21 @@
-﻿using System.Threading.Tasks;
+﻿using Newtonsoft.Json;
+using System.Threading.Tasks;
 
 namespace Core
 {
     public class TransactionResultModel
     {
+        [JsonIgnore]
+        public string OperationName { get; set; }
         public string TransactionId { get; set; }
         public ITaskResult Result { get; set; }
         public Error Error { get; set; }
 
-        public static TransactionResultModel Create(string transactionId, ITaskResult result, Error error)
+        public static TransactionResultModel Create(string operationName, string transactionId, ITaskResult result, Error error)
         {
             return new TransactionResultModel
             {
+                OperationName = operationName,
                 TransactionId = transactionId,
                 Error = error,
                 Result = result,

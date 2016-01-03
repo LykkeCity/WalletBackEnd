@@ -22,6 +22,14 @@ namespace LykkeWalletServices
             public string Name { get; set; }
             public string PrivateKey { get; set; }
             public string DefinitionUrl { get; set; }
+            public int Divisibility { get; set; }
+            public long MultiplyFactor
+            {
+                get
+                {
+                    return (long)Math.Pow(10, Divisibility);
+                }
+            }
         }
 
         public static async Task<Tuple<ColoredCoin[], Coin[]>> GetColoredUnColoredCoins(OpenAssetsHelper.CoinprismUnspentOutput[] walletOutputs,
@@ -216,7 +224,7 @@ namespace LykkeWalletServices
         // ToDo - Clear fractional currencies case
         // ToDo - Clear confirmation number
         public static float GetAssetBalance(CoinprismUnspentOutput[] outputs,
-            string assetId, bool includeUnconfirmed = false)
+            string assetId, long multiplyFactor, bool includeUnconfirmed = false)
         {
             float total = 0;
             foreach (var item in outputs)
@@ -240,11 +248,11 @@ namespace LykkeWalletServices
                 }
             }
 
-            return total;
+            return total / multiplyFactor;
         }
 
         public static bool IsAssetsEnough(CoinprismUnspentOutput[] outputs,
-            string assetId, float assetAmount, bool includeUnconfirmed = false)
+            string assetId, float assetAmount, long multiplyFactor, bool includeUnconfirmed = false)
         {
             /*
             float total = 0;
@@ -266,7 +274,7 @@ namespace LykkeWalletServices
                 }
             }
             */
-            float total = GetAssetBalance(outputs, assetId, includeUnconfirmed);
+            float total = GetAssetBalance(outputs, assetId, multiplyFactor, includeUnconfirmed);
             if (total >= assetAmount)
             {
                 return true;
@@ -316,7 +324,7 @@ namespace LykkeWalletServices
         /// <returns>Whether the asset amount is enough or not.</returns>
         /// ToDo - Figure out a method for unconfirmed balance
         public static async Task<bool> IsAssetsEnough(string walletAddress, string assetId,
-            int amount, Network network, bool includeUnconfirmed = false)
+            int amount, Network network, long multiplyFactor, bool includeUnconfirmed = false)
         {
             Tuple<float, float, bool, string> result = await GetAccountBalance(walletAddress, assetId, network);
             if (result.Item3 == true)

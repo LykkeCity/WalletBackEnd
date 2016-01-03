@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     // Sample input: GenerateNewWallet:{"TransactionId":"10"}
-    // Sample output: {"TransactionId":"10","Result":{"WalletAddress":"xxxx","WalletPrivateKey":"xxxx","MultiSigAddress":"xxx"},"Error":null}
+    // Sample output: GenerateNewWallet:{"TransactionId":"10","Result":{"WalletAddress":"mtgbKeNYngWvjmUaSfqhnKD3s2niC3tsCx","WalletPrivateKey":"xxx","MultiSigAddress":"2NDSoShWdKkVmjp9RMTRFsAwCRiNouTL6dv"},"Error":null}
     public class SrvGenerateNewWalletTask
     {
         private Network network = null;

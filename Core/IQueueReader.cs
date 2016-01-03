@@ -15,7 +15,7 @@ namespace Core
     {
         public string MultisigAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
-        public long Amount { get; set; }
+        public float Amount { get; set; }
         public string Currency { get; set; }
     }
 
@@ -28,7 +28,7 @@ namespace Core
     {
         public string MultisigAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
-        public long Amount { get; set; }
+        public float Amount { get; set; }
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
     }

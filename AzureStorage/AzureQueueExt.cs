@@ -29,7 +29,7 @@ namespace AzureStorage
 
         private static string SerializeObject(object itm)
         {
-            //return itm.GetType() + ":" + Newtonsoft.Json.JsonConvert.SerializeObject(itm);
+            // return itm.GetType() + ":" + Newtonsoft.Json.JsonConvert.SerializeObject(itm);
             return Newtonsoft.Json.JsonConvert.SerializeObject(itm);
         }
 
@@ -56,7 +56,16 @@ namespace AzureStorage
 
         public Task PutMessageAsync(object itm)
         {
-            var msg = SerializeObject(itm);
+            string msg = null;
+            if (itm is string)
+            {
+                msg = itm as string;
+            }
+            else
+            {
+                msg = SerializeObject(itm);
+            }
+
             return _queue.AddMessageAsync(new CloudQueueMessage(msg));
         }
 

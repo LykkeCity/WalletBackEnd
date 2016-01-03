@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     // Sample request: CashIn:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B","Amount":5000,"Currency":"bjkUSD"}
-    // Sample response {"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+    // Sample response CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
     public class SrvCashInTask : SrvNetworkBase
     {
         public SrvCashInTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
@@ -37,6 +37,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     string assetPrivateKey = null;
                     BitcoinAddress assetAddress = null;
                     string assetDefinitionUrl = null;
+                    long assetMultiplicationFactor = 1;
 
 
                     // Getting the assetid from asset name
@@ -49,6 +50,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             assetAddress = (new BitcoinSecret(assetPrivateKey, Network)).PubKey.
                                 GetAddress(Network);
                             assetDefinitionUrl = item.DefinitionUrl;
+                            assetMultiplicationFactor = item.MultiplyFactor;
                             break;
                         }
                     }
@@ -87,7 +89,9 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 .AddCoins(issueCoin)
                                 .AddCoins(txCoins)
                                 .IssueAsset(multiSigScript.GetScriptAddress(Network), new NBitcoin.OpenAsset.AssetMoney(
-                                    new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(assetId, Network)), data.Amount))
+                                    new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(assetId, Network)),
+                                    //   (long) (data.Amount * assetMultiplicationFactor))) // if data.Amount * assetMultiplicationFactor is 43 the (long)() returns 43
+                                    Convert.ToInt64(data.Amount * assetMultiplicationFactor)))
                                 .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
                                 .SetChange(assetAddress)
                                 .BuildTransaction(true);

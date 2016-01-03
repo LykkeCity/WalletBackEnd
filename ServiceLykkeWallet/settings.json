@@ -16,27 +16,31 @@
       {
         "AssetId": "oXjVb4XRo23tp53QFgVUxLhctPKPt6Q127",
         "Name": "bjkUSD",
-        "PrivateKey":"xxx",
-        "DefinitionUrl":"https://www.cpr.sm/XxASx1ojFD"
+        "PrivateKey": "xxx",
+        "DefinitionUrl": "https://www.cpr.sm/XxASx1ojFD",
+        "Divisibility": 2
       },
       {
         "AssetId": "oKVtKPjuhsWHeR3eNSNJj7ubCzWrxKmexV",
         "Name": "bjkEUR",
-        "PrivateKey":"xxx",
-        "DefinitionUrl":"https://www.cpr.sm/xVMAMwAYvv"
+        "PrivateKey": "xxx",
+        "DefinitionUrl": "https://www.cpr.sm/xVMAMwAYvv",
+        "Divisibility": 0
       },
       {
         "AssetId": "ocmVkVUHnrdSKASFWuHy6hxqTWFc9vdL9d",
         "Name": "TestExchangeUSD",
-        "PrivateKey":"xxx",
-        "DefinitionUrl":"https://www.cpr.sm/-KDPVKLTlL"
+        "PrivateKey": "xxx",
+        "DefinitionUrl": "https://www.cpr.sm/-KDPVKLTlL",
+        "Divisibility": 2
       },
-     {
-     "AssetId": "oZTd8ZfoyRPkYFhbeLXvordpcpND2YpqPg",
-     "Name": "TestExchangeEUR",
-     "PrivateKey":"xxx",
-     "DefinitionUrl":"https://www.cpr.sm/SBi9SeNlyB"
-     }
+      {
+        "AssetId": "oZTd8ZfoyRPkYFhbeLXvordpcpND2YpqPg",
+        "Name": "TestExchangeEUR",
+        "PrivateKey": "xxx",
+        "DefinitionUrl": "https://www.cpr.sm/SBi9SeNlyB",
+        "Divisibility": 2
+      }
     ],
     "WalletDefinitions": 
     [

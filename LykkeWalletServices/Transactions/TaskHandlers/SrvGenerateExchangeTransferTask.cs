@@ -9,9 +9,11 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvGenerateExchangeTransferTask
     {
         Network network;
-        public SrvGenerateExchangeTransferTask(Network network)
+        long multiplicationFactor = 1;
+        public SrvGenerateExchangeTransferTask(Network network, long multiplicationFactor)
         {
             this.network = network;
+            this.multiplicationFactor = multiplicationFactor;
         }
         public async Task<TaskResultGenerateExchangeTransfer> ExecuteTask(TaskToDoGenerateExchangeTransfer data)
         {
@@ -26,7 +28,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             // Checking the asset amounts
             // ToDo - Alert Unbalanced output is also included
-            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress01, data.Asset01, data.Amount01, network, true))
+            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress01, data.Asset01, data.Amount01, network,
+                multiplicationFactor, true))
             {
                 result.HasErrorOccurred = true;
                 result.ErrorMessage = "Wallet Address " + data.WalletAddress01 + " has not enough of asset " + data.Asset01 + " .";
@@ -34,7 +37,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 return result;
             }
             // ToDo - Alert Unbalanced output is also included
-            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress02, data.Asset02, data.Amount02, network, true))
+            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress02, data.Asset02, data.Amount02, network, multiplicationFactor, true))
             {
                 result.HasErrorOccurred = true;
                 result.ErrorMessage = "Wallet Address " + data.WalletAddress02 + " has not enough of asset " + data.Asset02 + " .";

@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     // Sample Input: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":""}
-    // Sample output: {"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
+    // Sample output: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
     public class SrvCashOutTask : SrvNetworkInvolvingExchangeBase
     {
         public SrvCashOutTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
@@ -38,6 +38,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     string assetId = null;
                     string assetPrivateKey = null;
                     BitcoinAddress assetAddress = null;
+                    long assetMultiplicationFactor = 1;
 
                     // Getting the assetid from asset name
                     foreach (var item in Assets)
@@ -48,6 +49,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             assetPrivateKey = item.PrivateKey;
                             assetAddress = (new BitcoinSecret(assetPrivateKey, Network)).PubKey.
                                 GetAddress(Network);
+                            assetMultiplicationFactor = item.MultiplyFactor;
                             break;
                         }
                     }
@@ -74,7 +76,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         else
                         {
                             var assetOutputs = OpenAssetsHelper.GetWalletOutputsForAsset(walletOutputs.Item1, assetId);
-                            if (!OpenAssetsHelper.IsAssetsEnough(assetOutputs, assetId, data.Amount))
+                            if (!OpenAssetsHelper.IsAssetsEnough(assetOutputs, assetId, data.Amount, assetMultiplicationFactor))
                             {
                                 error = new Error();
                                 error.Code = ErrorCode.NotEnoughBitcoinInTransaction;
@@ -107,7 +109,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     .AddCoins(scriptCoins)
                                     .AddCoins(assetScriptCoins)
                                     .AddKeys(new BitcoinSecret(matchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                                    .SendAsset(assetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(assetId, Network)), data.Amount))
+                                    .SendAsset(assetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(assetId, Network)), Convert.ToInt64(data.Amount * assetMultiplicationFactor)))
                                     .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
                                     .SetChange(new Script(matchingAddress.MultiSigScript).GetScriptAddress(Network))
                                     .BuildTransaction(true);

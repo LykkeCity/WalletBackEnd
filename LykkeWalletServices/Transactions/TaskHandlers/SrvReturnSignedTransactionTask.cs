@@ -14,9 +14,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvReturnSignedTransactionTask
     {
         Network network;
-        public SrvReturnSignedTransactionTask(Network network)
+
+        long multiplicationFactor = 1;
+        public SrvReturnSignedTransactionTask(Network network, long multiplicationFactor)
         {
             this.network = network;
+            this.multiplicationFactor = multiplicationFactor;
         }
         public async Task<TaskResultReturnSignedTransaction> ExecuteTask(TaskToDoReturnSignedTransaction data)
         {
@@ -69,7 +72,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                     if (exchangeTransaction.FirstClientSigned == 1 && exchangeTransaction.SecondClientSigned == 1)
                     {
-                        var tx = await GenerateTransactionHex(data.ExchangeId, entitiesContext, network);
+                        var tx = await GenerateTransactionHex(data.ExchangeId, entitiesContext, 
+                            network, multiplicationFactor);
 
 
                         var transactions = await (from t in entitiesContext.TransactionsToBeSigneds
@@ -102,7 +106,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         /// <param name="exchangeId">Id of the exchange transaction to be built.</param>
         /// <param name="entitiesContext">The database context to read the transaction data from.</param>
         /// <returns>The transaction hex made for the exchange transaction.</returns>
-        private static async Task<string> GenerateTransactionHex(string exchangeId, SqliteLykkeServicesEntities entitiesContext, Network network)
+        private static async Task<string> GenerateTransactionHex(string exchangeId, SqliteLykkeServicesEntities entitiesContext, 
+            Network network, long multiplicationFactor)
         {
             var transaction = await (from tx in entitiesContext.ExchangeRequests
                                      where tx.ExchangeId == exchangeId
@@ -119,14 +124,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             // ToDo - Alert Unbalanced output is also included
             if (!(await OpenAssetsHelper.IsAssetsEnough(transaction.WalletAddress01,
-                transaction.Asset01, (int)transaction.Amount01, network, true)))
+                transaction.Asset01, (int)transaction.Amount01, network, multiplicationFactor, true)))
             {
                 throw new Exception("Not sufficient funds for asset: " + transaction.Asset01 +
                     " in wallet: " + transaction.WalletAddress01);
             }
             // ToDo - Alert Unbalanced output is also included
             if (!(await OpenAssetsHelper.IsAssetsEnough(transaction.WalletAddress02,
-                transaction.Asset02, (int)transaction.Amount02, network, true)))
+                transaction.Asset02, (int)transaction.Amount02, network, multiplicationFactor, true)))
             {
                 throw new Exception("Not sufficient funds for asset: " + transaction.Asset02 +
                     " in wallet: " + transaction.WalletAddress02);

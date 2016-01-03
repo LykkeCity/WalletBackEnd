@@ -36,7 +36,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 {
                     foreach (var item in Assets)
                     {
-                        float tempValue = OpenAssetsHelper.GetAssetBalance(walletOuputs.Item1, item.AssetId);
+                        float tempValue = OpenAssetsHelper.GetAssetBalance(walletOuputs.Item1, item.AssetId, item.MultiplyFactor);
                         GetCurrentBalanceTaskResultElement element = new GetCurrentBalanceTaskResultElement();
                         element.Asset = item.Name;
                         element.Amount = tempValue;
