@@ -24,21 +24,22 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             try
             {
-                var wallet1Coins = await GetScriptCoinsForWallet(data.MultisigCustomer1, data.Amount1, data.Asset1);
+                var wallet1Coins = await OpenAssetsHelper.GetScriptCoinsForWallet(data.MultisigCustomer1, data.Amount1, data.Asset1,
+                    Assets, Network, Username, Password, IpAddress);
                 if (wallet1Coins.Error != null)
                 {
                     error = wallet1Coins.Error;
                 }
                 else
                 {
-                    var wallet2Coins = await GetScriptCoinsForWallet(data.MultisigCustomer2, data.Amount2, data.Asset2);
+                    var wallet2Coins = await OpenAssetsHelper.GetScriptCoinsForWallet(data.MultisigCustomer2, data.Amount2, data.Asset2,
+                        Assets, Network, Username, Password, IpAddress);
                     if (wallet2Coins.Error != null)
                     {
                         error = wallet2Coins.Error;
                     }
                     else
                     {
-                        // ToDo - float to long conversion, divisable curency
                         TransactionBuilder builder = new TransactionBuilder();
                         var tx = builder
                             .AddCoins(wallet1Coins.ScriptCoins)
@@ -56,6 +57,22 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             .SetChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
                             .BuildTransaction(true);
 
+                        Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                (tx, Username, Password, IpAddress, Network);
+
+                        if (localerror == null)
+                        {
+                            result = new SwapTaskResult
+                            {
+                                TransactionHex = tx.ToHex()
+                            };
+                        }
+                        else
+                        {
+                            error = localerror;
+                        }
+
+                        /*
                         using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
                         {
                             // Checking if the inputs has been already spent
@@ -115,6 +132,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 };
                             }
                         }
+                        */
                     }
                 }
             }
@@ -126,154 +144,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             }
             return new Tuple<SwapTaskResult, Error>(result, error);
         }
-
-        public class GetScriptCoinsForWalletReturnType
-        {
-            public Error Error
-            {
-                get;
-                set;
-            }
-
-            public ColoredCoin[] AssetScriptCoins
-            {
-                get;
-                set;
-            }
-
-            public ScriptCoin[] ScriptCoins
-            {
-                get;
-                set;
-            }
-
-            public KeyStorage MatchingAddress
-            {
-                get;
-                set;
-            }
-
-            public string AssetId
-            {
-                get;
-                set;
-            }
-
-            public long AssetMultiplicationFactor
-            {
-                get;
-                set;
-            }
-        }
-
-        private async Task<GetScriptCoinsForWalletReturnType> GetScriptCoinsForWallet
-            (String multiSigAddress,
-            float amount, string asset)
-        {
-
-
-            GetScriptCoinsForWalletReturnType ret = new GetScriptCoinsForWalletReturnType();
-
-            try
-            {
-                using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
-                {
-                    ret.MatchingAddress = await (from item in entitiesContext.KeyStorages
-                                                 where item.MultiSigAddress.Equals(multiSigAddress)
-                                                 select item).SingleOrDefaultAsync();
-                }
-
-                if (ret.MatchingAddress == null)
-                {
-                    throw new Exception("Could not find a matching record for MultiSigAddress: "
-                        + multiSigAddress);
-                }
-
-                string assetPrivateKey = null;
-                BitcoinAddress assetAddress = null;
-
-                // Getting the assetid from asset name
-                foreach (var item in Assets)
-                {
-                    if (item.Name == asset)
-                    {
-                        ret.AssetId = item.AssetId;
-                        assetPrivateKey = item.PrivateKey;
-                        assetAddress = (new BitcoinSecret(assetPrivateKey, Network)).PubKey.
-                            GetAddress(Network);
-                        ret.AssetMultiplicationFactor = item.MultiplyFactor;
-                        break;
-                    }
-                }
-
-                // Getting wallet outputs
-                var walletOutputs = await OpenAssetsHelper.GetWalletOutputs
-                    (ret.MatchingAddress.MultiSigAddress, Network);
-                if (walletOutputs.Item2)
-                {
-                    ret.Error = new Error();
-                    ret.Error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
-                    ret.Error.Message = walletOutputs.Item3;
-
-                }
-                else
-                {
-                    // Getting bitcoin outputs to provide the transaction fee
-                    var bitcoinOutputs = OpenAssetsHelper.GetWalletOutputsUncolored(walletOutputs.Item1);
-                    if (!OpenAssetsHelper.IsBitcoinsEnough(bitcoinOutputs, OpenAssetsHelper.MinimumRequiredSatoshi))
-                    {
-                        ret.Error = new Error();
-                        ret.Error.Code = ErrorCode.NotEnoughBitcoinInTransaction;
-                        ret.Error.Message = "The required amount of satoshis to send transaction is " + OpenAssetsHelper.MinimumRequiredSatoshi +
-                            " . The address is: " + ret.MatchingAddress.MultiSigAddress;
-                    }
-                    else
-                    {
-                        // Getting the asset output to provide the assets
-                        var assetOutputs = OpenAssetsHelper.GetWalletOutputsForAsset(walletOutputs.Item1, ret.AssetId);
-                        if (!OpenAssetsHelper.IsAssetsEnough(assetOutputs, ret.AssetId, amount, ret.AssetMultiplicationFactor))
-                        {
-                            ret.Error = new Error();
-                            ret.Error.Code = ErrorCode.NotEnoughBitcoinInTransaction;
-                            ret.Error.Message = "The required amount of assets with id:" + ret.AssetId + " to send transaction is " + amount +
-                                " . The address is: " + ret.MatchingAddress.MultiSigAddress;
-                        }
-                        else
-                        {
-                            // Converting bitcoins to script coins so that we could sign the transaction
-                            var coins = (await OpenAssetsHelper.GetColoredUnColoredCoins(bitcoinOutputs, null, Network,
-                                Username, Password, IpAddress)).Item2;
-                            ret.ScriptCoins = new ScriptCoin[coins.Length];
-                            for (int i = 0; i < coins.Length; i++)
-                            {
-                                ret.ScriptCoins[i] = new ScriptCoin(coins[i], new Script(ret.MatchingAddress.MultiSigScript));
-                            }
-
-                            // Converting assets to script coins so that we could sign the transaction
-                            var assetCoins = (await OpenAssetsHelper.GetColoredUnColoredCoins(assetOutputs, ret.AssetId, Network,
-                            Username, Password, IpAddress)).Item1;
-
-                            ret.AssetScriptCoins = new ColoredCoin[assetCoins.Length];
-                            for (int i = 0; i < assetCoins.Length; i++)
-                            {
-                                ret.AssetScriptCoins[i] = new ColoredCoin(assetCoins[i].Amount,
-                                    new ScriptCoin(assetCoins[i].Bearer, new Script(ret.MatchingAddress.MultiSigScript)));
-                            }
-                        }
-                    }
-                }
-
-            }
-            catch (Exception e)
-            {
-                ret.Error = new Error();
-                ret.Error.Code = ErrorCode.Exception;
-                ret.Error.Message = e.ToString();
-            }
-
-            return ret;
-        }
-
 
         public void Execute(TaskToDoSwap data, Func<Tuple<SwapTaskResult, Error>, Task> invokeResult)
         {

@@ -25,6 +25,11 @@ All service are queue based
         Sample input: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx"}
         Sample output: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
 
+*   Orinary Cash Out
+
+        Sample Input: OrdinaryCashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
+        Sample Output: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+
 *   GetCurrentBalance
 
         Sample input: GetCurrentBalance:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B" }

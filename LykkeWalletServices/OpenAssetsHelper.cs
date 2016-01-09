@@ -1,8 +1,10 @@
-﻿using NBitcoin;
+﻿using Core;
+using NBitcoin;
 using NBitcoin.OpenAsset;
 using NBitcoin.RPC;
 using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -84,8 +86,6 @@ namespace LykkeWalletServices
             }
             return walletTransactions;
         }
-
-        // public static GetSumOfUncoloredCoins()
 
         public static CoinprismUnspentOutput[] GetWalletOutputsUncolored(CoinprismUnspentOutput[] input)
         {
@@ -221,7 +221,6 @@ namespace LykkeWalletServices
             return new Tuple<float, float, bool, string>(balance, unconfirmedBalance, errorOccured, errorMessage);
         }
 
-        // ToDo - Clear fractional currencies case
         // ToDo - Clear confirmation number
         public static float GetAssetBalance(CoinprismUnspentOutput[] outputs,
             string assetId, long multiplyFactor, bool includeUnconfirmed = false)
@@ -254,26 +253,6 @@ namespace LykkeWalletServices
         public static bool IsAssetsEnough(CoinprismUnspentOutput[] outputs,
             string assetId, float assetAmount, long multiplyFactor, bool includeUnconfirmed = false)
         {
-            /*
-            float total = 0;
-            foreach (var item in outputs)
-            {
-                if (item.asset_id.Equals(assetId))
-                {
-                    if (item.confirmations == 0)
-                    {
-                        if (includeUnconfirmed)
-                        {
-                            total += (float)item.asset_quantity;
-                        }
-                    }
-                    else
-                    {
-                        total += (float)item.asset_quantity;
-                    }
-                }
-            }
-            */
             float total = GetAssetBalance(outputs, assetId, multiplyFactor, includeUnconfirmed);
             if (total >= assetAmount)
             {
@@ -380,6 +359,218 @@ namespace LykkeWalletServices
             return new Tuple<bool, string, string>(errorOccured, errorMessage, transactionHex);
         }
 
+        // ToDo - Performance should be revisted by possible join operation
+        public static async Task<Error> CheckTransactionForDoubleSpentThenSendIt(Transaction tx,
+            string username, string password, string ipAddress, Network network)
+        {
+            Error error = null;
+            using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
+            {
+                // Checking if the inputs has been already spent
+                // ToDo - Performance should be revisted by possible join operation
+                foreach (var item in tx.Inputs)
+                {
+                    string prevOut = item.PrevOut.Hash.ToString();
+                    var spentTx = await (from uxto in entitiesContext.SpentOutputs
+                                         join dbTx in entitiesContext.SentTransactions on uxto.SentTransactionId equals dbTx.id
+                                         where uxto.PrevHash.Equals(prevOut) && uxto.OutputNumber.Equals(item.PrevOut.N)
+                                         select dbTx.TransactionHex).FirstOrDefaultAsync();
+
+                    if (spentTx != null)
+                    {
+                        error = new Error();
+                        error.Code = ErrorCode.PossibleDoubleSpend;
+                        error.Message = "The output number " + item.PrevOut.N + " from transaction " + item.PrevOut.Hash +
+                            " has been already spent in transcation " + spentTx;
+                        break;
+                    }
+                }
+
+                if (error == null)
+                {
+                    // First broadcating the transaction
+                    RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
+                        ipAddress, network);
+                    await client.SendRawTransactionAsync(tx);
+
+                    // Then marking the inputs as spent
+                    using (var dbTransaction = entitiesContext.Database.BeginTransaction())
+                    {
+                        SentTransaction dbSentTransaction = new SentTransaction
+                        {
+                            TransactionHex = tx.ToHex()
+                        };
+                        entitiesContext.SentTransactions.Add(dbSentTransaction);
+                        await entitiesContext.SaveChangesAsync();
+
+                        foreach (var item in tx.Inputs)
+                        {
+                            entitiesContext.SpentOutputs.Add(new SpentOutput
+                            {
+                                OutputNumber = item.PrevOut.N,
+                                PrevHash = item.PrevOut.Hash.ToString(),
+                                SentTransactionId = dbSentTransaction.id
+                            });
+                        }
+                        await entitiesContext.SaveChangesAsync();
+
+                        dbTransaction.Commit();
+                    }
+                }
+            }
+
+            return error;
+        }
+
+        public class GetScriptCoinsForWalletReturnType
+        {
+            public Error Error
+            {
+                get;
+                set;
+            }
+
+            public ColoredCoin[] AssetScriptCoins
+            {
+                get;
+                set;
+            }
+
+            public ScriptCoin[] ScriptCoins
+            {
+                get;
+                set;
+            }
+
+            public KeyStorage MatchingAddress
+            {
+                get;
+                set;
+            }
+
+            public string AssetId
+            {
+                get;
+                set;
+            }
+
+            public BitcoinAddress AssetAddress
+            {
+                get;
+                set;
+            }
+
+            public long AssetMultiplicationFactor
+            {
+                get;
+                set;
+            }
+        }
+
+        public static async Task<GetScriptCoinsForWalletReturnType> GetScriptCoinsForWallet
+            (String multiSigAddress, float amount, string asset, OpenAssetsHelper.AssetDefinition[] assets,
+            Network network, string username, string password, string ipAddress)
+        {
+            GetScriptCoinsForWalletReturnType ret = new GetScriptCoinsForWalletReturnType();
+
+            try
+            {
+                using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
+                {
+                    ret.MatchingAddress = await (from item in entitiesContext.KeyStorages
+                                                 where item.MultiSigAddress.Equals(multiSigAddress)
+                                                 select item).SingleOrDefaultAsync();
+                }
+
+                if (ret.MatchingAddress == null)
+                {
+                    throw new Exception("Could not find a matching record for MultiSigAddress: "
+                        + multiSigAddress);
+                }
+
+                string assetPrivateKey = null;
+
+                // Getting the assetid from asset name
+                foreach (var item in assets)
+                {
+                    if (item.Name == asset)
+                    {
+                        ret.AssetId = item.AssetId;
+                        assetPrivateKey = item.PrivateKey;
+                        ret.AssetAddress = (new BitcoinSecret(assetPrivateKey, network)).PubKey.
+                            GetAddress(network);
+                        ret.AssetMultiplicationFactor = item.MultiplyFactor;
+                        break;
+                    }
+                }
+
+                // Getting wallet outputs
+                var walletOutputs = await OpenAssetsHelper.GetWalletOutputs
+                    (ret.MatchingAddress.MultiSigAddress, network);
+                if (walletOutputs.Item2)
+                {
+                    ret.Error = new Error();
+                    ret.Error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
+                    ret.Error.Message = walletOutputs.Item3;
+
+                }
+                else
+                {
+                    // Getting bitcoin outputs to provide the transaction fee
+                    var bitcoinOutputs = OpenAssetsHelper.GetWalletOutputsUncolored(walletOutputs.Item1);
+                    if (!OpenAssetsHelper.IsBitcoinsEnough(bitcoinOutputs, OpenAssetsHelper.MinimumRequiredSatoshi))
+                    {
+                        ret.Error = new Error();
+                        ret.Error.Code = ErrorCode.NotEnoughBitcoinInTransaction;
+                        ret.Error.Message = "The required amount of satoshis to send transaction is " + OpenAssetsHelper.MinimumRequiredSatoshi +
+                            " . The address is: " + ret.MatchingAddress.MultiSigAddress;
+                    }
+                    else
+                    {
+                        // Getting the asset output to provide the assets
+                        var assetOutputs = OpenAssetsHelper.GetWalletOutputsForAsset(walletOutputs.Item1, ret.AssetId);
+                        if (!OpenAssetsHelper.IsAssetsEnough(assetOutputs, ret.AssetId, amount, ret.AssetMultiplicationFactor))
+                        {
+                            ret.Error = new Error();
+                            ret.Error.Code = ErrorCode.NotEnoughBitcoinInTransaction;
+                            ret.Error.Message = "The required amount of assets with id:" + ret.AssetId + " to send transaction is " + amount +
+                                " . The address is: " + ret.MatchingAddress.MultiSigAddress;
+                        }
+                        else
+                        {
+                            // Converting bitcoins to script coins so that we could sign the transaction
+                            var coins = (await OpenAssetsHelper.GetColoredUnColoredCoins(bitcoinOutputs, null, network,
+                                username, password, ipAddress)).Item2;
+                            ret.ScriptCoins = new ScriptCoin[coins.Length];
+                            for (int i = 0; i < coins.Length; i++)
+                            {
+                                ret.ScriptCoins[i] = new ScriptCoin(coins[i], new Script(ret.MatchingAddress.MultiSigScript));
+                            }
+
+                            // Converting assets to script coins so that we could sign the transaction
+                            var assetCoins = (await OpenAssetsHelper.GetColoredUnColoredCoins(assetOutputs, ret.AssetId, network,
+                            username, password, ipAddress)).Item1;
+
+                            ret.AssetScriptCoins = new ColoredCoin[assetCoins.Length];
+                            for (int i = 0; i < assetCoins.Length; i++)
+                            {
+                                ret.AssetScriptCoins[i] = new ColoredCoin(assetCoins[i].Amount,
+                                    new ScriptCoin(assetCoins[i].Bearer, new Script(ret.MatchingAddress.MultiSigScript)));
+                            }
+                        }
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                ret.Error = new Error();
+                ret.Error.Code = ErrorCode.Exception;
+                ret.Error.Message = e.ToString();
+            }
+
+            return ret;
+        }
 
         // Sqlite dll is not copied to output folder, this method creates the reference, never called
         // http://stackoverflow.com/questions/14033193/entity-framework-provider-type-could-not-be-loaded

@@ -29,20 +29,6 @@ namespace Core
 
     }
 
-    public class Error
-    {
-        public ErrorCode Code { get; set; }
-        public string Message { get; set; }
-    }
-
-    public enum ErrorCode
-    {
-        Exception,
-        ProblemInRetrivingWalletOutput,
-        NotEnoughBitcoinInTransaction,
-        PossibleDoubleSpend
-    }
-
     public class GenerateNewWalletTaskResult : ITaskResult
     {
         public string WalletAddress { get; set; }
@@ -50,19 +36,25 @@ namespace Core
         public string MultiSigAddress { get; set; }
     }
 
-    public class CashInTaskResult : ITaskResult
+    public class TransactionSenderTaskResult : ITaskResult
     {
         public string TransactionHex { get; set; }
     }
 
-    public class CashOutTaskResult : ITaskResult
+    public class CashInTaskResult : TransactionSenderTaskResult
     {
-        public string TransactionHex { get; set; }
     }
 
-    public class SwapTaskResult : ITaskResult
+    public class CashOutTaskResult : TransactionSenderTaskResult
     {
-        public string TransactionHex { get; set; }
+    }
+
+    public class SwapTaskResult : TransactionSenderTaskResult
+    {
+    }
+
+    public class OrdinaryCashOutTaskResult : TransactionSenderTaskResult
+    {
     }
 
     public class GetCurrentBalanceTaskResult : ITaskResult
