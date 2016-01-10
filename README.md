@@ -20,12 +20,17 @@ All service are queue based
         Sample input: CashIn:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B","Amount":5000,"Currency":"bjkUSD"}
         Sample output: CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
 
+*   Ordinary Cash In
+
+        Sample Input: OrdinaryCashIn:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
+        Sample Output: OrdinaryCashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+
 *   Cash Out
 
         Sample input: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx"}
         Sample output: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
 
-*   Orinary Cash Out
+*   Ordinary Cash Out
 
         Sample Input: OrdinaryCashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
         Sample Output: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}

@@ -43,6 +43,16 @@ namespace Core
         public string PublicWallet { get; set; }
     }
 
+    public class TaskToDoOrdinaryCashIn : TransactionToDoBase
+    {
+        public string MultisigAddress { get; set; }
+        // ToDo - At first we assume the currency is not divisable
+        public float Amount { get; set; }
+        public string Currency { get; set; }
+        public string PrivateKey { get; set; }
+        public string PublicWallet { get; set; }
+    }
+
     public class TaskToDoSwap : TransactionToDoBase
     {
         public string MultisigCustomer1 { get; set; }

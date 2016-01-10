@@ -422,7 +422,7 @@ namespace LykkeWalletServices
             return error;
         }
 
-        public class GetScriptCoinsForWalletReturnType
+        public class GetCoinsForWalletReturnType
         {
             public Error Error
             {
@@ -430,17 +430,7 @@ namespace LykkeWalletServices
                 set;
             }
 
-            public ColoredCoin[] AssetScriptCoins
-            {
-                get;
-                set;
-            }
 
-            public ScriptCoin[] ScriptCoins
-            {
-                get;
-                set;
-            }
 
             public KeyStorage MatchingAddress
             {
@@ -465,6 +455,128 @@ namespace LykkeWalletServices
                 get;
                 set;
             }
+        }
+
+        public class GetScriptCoinsForWalletReturnType : GetCoinsForWalletReturnType
+        {
+            public ColoredCoin[] AssetScriptCoins
+            {
+                get;
+                set;
+            }
+
+            public ScriptCoin[] ScriptCoins
+            {
+                get;
+                set;
+            }
+        }
+
+        public class GetOrdinaryCoinsForWalletReturnType : GetCoinsForWalletReturnType
+        {
+            public ColoredCoin[] AssetCoins
+            {
+                get;
+                set;
+            }
+
+            public Coin[] Coins
+            {
+                get;
+                set;
+            }
+        }
+
+        public static async Task<GetOrdinaryCoinsForWalletReturnType> GetOrdinaryCoinsForWallet
+            (String multiSigAddress, float amount, string asset, AssetDefinition[] assets,
+            Network network, string username, string password, string ipAddress)
+        {
+            GetOrdinaryCoinsForWalletReturnType ret = new GetOrdinaryCoinsForWalletReturnType();
+
+            try
+            {
+                using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
+                {
+                    ret.MatchingAddress = await (from item in entitiesContext.KeyStorages
+                                                 where item.MultiSigAddress.Equals(multiSigAddress)
+                                                 select item).SingleOrDefaultAsync();
+                }
+
+                if (ret.MatchingAddress == null)
+                {
+                    throw new Exception("Could not find a matching record for MultiSigAddress: "
+                        + multiSigAddress);
+                }
+
+                string assetPrivateKey = null;
+
+                // Getting the assetid from asset name
+                foreach (var item in assets)
+                {
+                    if (item.Name == asset)
+                    {
+                        ret.AssetId = item.AssetId;
+                        assetPrivateKey = item.PrivateKey;
+                        ret.AssetAddress = (new BitcoinSecret(assetPrivateKey, network)).PubKey.
+                            GetAddress(network);
+                        ret.AssetMultiplicationFactor = item.MultiplyFactor;
+                        break;
+                    }
+                }
+
+                // Getting wallet outputs
+                var walletOutputs = await GetWalletOutputs
+                    (ret.MatchingAddress.WalletAddress, network);
+                if (walletOutputs.Item2)
+                {
+                    ret.Error = new Error();
+                    ret.Error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
+                    ret.Error.Message = walletOutputs.Item3;
+
+                }
+                else
+                {
+                    // Getting bitcoin outputs to provide the transaction fee
+                    var bitcoinOutputs = GetWalletOutputsUncolored(walletOutputs.Item1);
+                    if (!IsBitcoinsEnough(bitcoinOutputs, MinimumRequiredSatoshi))
+                    {
+                        ret.Error = new Error();
+                        ret.Error.Code = ErrorCode.NotEnoughBitcoinInTransaction;
+                        ret.Error.Message = "The required amount of satoshis to send transaction is " + MinimumRequiredSatoshi +
+                            " . The address is: " + ret.MatchingAddress.MultiSigAddress;
+                    }
+                    else
+                    {
+                        // Getting the asset output to provide the assets
+                        var assetOutputs = GetWalletOutputsForAsset(walletOutputs.Item1, ret.AssetId);
+                        if (!IsAssetsEnough(assetOutputs, ret.AssetId, amount, ret.AssetMultiplicationFactor))
+                        {
+                            ret.Error = new Error();
+                            ret.Error.Code = ErrorCode.NotEnoughBitcoinInTransaction;
+                            ret.Error.Message = "The required amount of assets with id:" + ret.AssetId + " to send transaction is " + amount +
+                                " . The address is: " + ret.MatchingAddress.MultiSigAddress;
+                        }
+                        else
+                        {
+                            ret.Coins = (await GetColoredUnColoredCoins(bitcoinOutputs, null, network,
+                                username, password, ipAddress)).Item2;
+                            
+
+                            ret.AssetCoins = (await GetColoredUnColoredCoins(assetOutputs, ret.AssetId, network,
+                            username, password, ipAddress)).Item1;
+                        }
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                ret.Error = new Error();
+                ret.Error.Code = ErrorCode.Exception;
+                ret.Error.Message = e.ToString();
+            }
+
+            return ret;
         }
 
         public static async Task<GetScriptCoinsForWalletReturnType> GetScriptCoinsForWallet

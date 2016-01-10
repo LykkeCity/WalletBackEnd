@@ -56,6 +56,9 @@ namespace Core
     public class OrdinaryCashOutTaskResult : TransactionSenderTaskResult
     {
     }
+    public class OrdinaryCashInTaskResult : TransactionSenderTaskResult
+    {
+    }
 
     public class GetCurrentBalanceTaskResult : ITaskResult
     {

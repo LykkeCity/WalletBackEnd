@@ -1,10 +1,9 @@
-﻿using System.Threading.Tasks;
-using Common;
+﻿using Common;
 using Common.Log;
 using Core;
 using LykkeWalletServices.Transactions.TaskHandlers;
-using System;
 using NBitcoin;
+using System.Threading.Tasks;
 
 namespace LykkeWalletServices
 {
@@ -67,6 +66,18 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("CashIn", @event.TransactionId, result.Item1, result.Item2));
+                });
+                knownTaskType = true;
+            }
+
+            var transactionOrdinaryCashIn = @event as TaskToDoOrdinaryCashIn;
+            if (transactionOrdinaryCashIn != null)
+            {
+                var service = new SrvOrdinaryCashInTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer);
+                service.Execute(transactionOrdinaryCashIn, async result =>
+                {
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        ("OrdinaryCashIn", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
