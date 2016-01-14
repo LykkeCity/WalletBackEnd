@@ -80,6 +80,33 @@ foreach (var entitySet in container.BaseEntitySets.OfType<EntitySet>())
 #>
     }
 
+	// Added by developper
+	public <#=code.Escape(container)#>(string connectionString)
+        : base(connectionString)
+    {
+<#
+if (!loader.IsLazyLoadingEnabled(container))
+{
+#>
+        this.Configuration.LazyLoadingEnabled = false;
+<#
+}
+
+foreach (var entitySet in container.BaseEntitySets.OfType<EntitySet>())
+{
+    // Note: the DbSet members are defined below such that the getter and
+    // setter always have the same accessibility as the DbSet definition
+    if (Accessibility.ForReadOnlyProperty(entitySet) != "public")
+    {
+#>
+        <#=codeStringGenerator.DbSetInitializer(entitySet)#>
+<#
+    }
+}
+#>
+    }
+	// End of added by developper
+
     protected override void OnModelCreating(DbModelBuilder modelBuilder)
     {
         throw new UnintentionalCodeFirstException();

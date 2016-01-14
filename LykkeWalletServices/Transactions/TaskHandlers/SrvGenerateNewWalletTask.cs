@@ -11,10 +11,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     {
         private Network network = null;
         private string exchangePrivateKey = null;
-        public SrvGenerateNewWalletTask(Network network, string exchangePrivateKey)
+        private string connectionString = null;
+        public SrvGenerateNewWalletTask(Network network, string exchangePrivateKey, string connectionString)
         {
             this.network = network;
             this.exchangePrivateKey = exchangePrivateKey;
+            this.connectionString = connectionString;
         }
 
         public async Task<Tuple<GenerateNewWalletTaskResult, Error>> ExecuteTask()
@@ -36,7 +38,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 (new BitcoinSecret(exchangePrivateKey, network)).PubKey });
                 multiSigAddressStorage = multiSigAddress.GetScriptAddress(network).ToString();
 
-                using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
+                using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities(connectionString))
                 {
                     KeyStorage item = new KeyStorage
                     {

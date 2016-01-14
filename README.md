@@ -18,22 +18,22 @@ All service are queue based
 *   Cash In
 
         Sample input: CashIn:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B","Amount":5000,"Currency":"bjkUSD"}
-        Sample output: CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+        Sample output: CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   Ordinary Cash In
 
         Sample Input: OrdinaryCashIn:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
-        Sample Output: OrdinaryCashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+        Sample Output: OrdinaryCashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   Cash Out
 
         Sample input: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx"}
-        Sample output: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
+        Sample output: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   Ordinary Cash Out
 
         Sample Input: OrdinaryCashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
-        Sample Output: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+        Sample Output: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   GetCurrentBalance
 
@@ -43,7 +43,7 @@ All service are queue based
 *   Swap
 
         Sample request: Swap:{"TransactionId":"10", MultisigCustomer1:"2N8zbehwdz2wcCd2JwZktnt6uKZ8fFMZVPp", "Amount1":200, "Asset1":"TestExchangeUSD", MultisigCustomer2:"2N8Z7FLao3qWc8h8mveDXaAA9q1Q53xMsyL", "Amount2":300, "Asset2":"TestExchangeEUR"}
-        Sample response: Swap:{"TransactionId":"10","Result":{"TransactionHex":"xxxxx"},"Error":null}
+        Sample response: Swap:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 ## Some notes
 *   In file Program.cs in line `var json = await ReadTextAsync("F:\\Lykkex\\settings.json");` correct path to json file, this is only for the debug; the release version uses the settings.json in the solution path.
@@ -54,6 +54,7 @@ All service are queue based
 |------|--------------|-------------|
 |InQueueConnectionString|UseDevelopmentStorage=true|The connection string for the input queue, the default is for the emulator|
 |OutQueueConnectionString|UseDevelopmentStorage=true|The connection string for the output queue, the default is for the emulator|
+|ConnectionString|Nothing|The connection string to sqlite database|
 |NetworkType|TestNet|Network type, can be Main and TestNet (TestNet is included for testing)|
 |exchangePrivateKey|Nothing|The private key of the exchange used for creating multi sig wallets|
 |RPCUsername|Nothing|The username for the server running the bitcoind, this is the rpc username|
@@ -77,5 +78,4 @@ The AssetDefinitions is an array of json, with the following fields:
 *   For debug install latest [Microsoft Azure Storage Emulator](http://download.microsoft.com/download/0/F/E/0FE64840-9806-4D3C-9C11-84B743162618/MicrosoftAzureStorageEmulator.msi)
 
 *   WalletDefinitions are not required by now.
-*   In the application .config file in the `connectionStrings` section one should configure the `SqliteLykkeServicesEntities`  to point to the correct location of Sqlite database file.
 

@@ -20,6 +20,13 @@ namespace LykkeWalletServices
         {
         }
     
+    	// Added by developper
+    	public SqliteLykkeServicesEntities(string connectionString)
+            : base(connectionString)
+        {
+        }
+    	// End of added by developper
+    
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             throw new UnintentionalCodeFirstException();

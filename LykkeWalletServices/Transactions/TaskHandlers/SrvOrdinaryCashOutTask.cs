@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     // Sample Input: OrdinaryCashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
-    // Sample Output: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+    // Sample Output: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvOrdinaryCashOutTask : SrvNetworkInvolvingExchangeBase
     {
         public SrvOrdinaryCashOutTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
-            string password, string ipAddress, string exchangePrivateKey) : base(network, assets, username, password, ipAddress, exchangePrivateKey)
+            string password, string ipAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, exchangePrivateKey, connectionString)
         {
         }
 
@@ -21,8 +21,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             try
             {
-                var walletCoins = await OpenAssetsHelper.GetScriptCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
-                    Assets, Network, Username, Password, IpAddress);
+                //var walletCoins = await OpenAssetsHelper.GetScriptCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
+                //  Assets, Network, Username, Password, IpAddress);
+                OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType) await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
+                    Assets, Network, Username, Password, IpAddress, ConnectionString, false);
                 if (walletCoins.Error != null)
                 {
                     error = walletCoins.Error;
@@ -34,19 +36,20 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         .AddCoins(walletCoins.ScriptCoins)
                         .AddCoins(walletCoins.AssetScriptCoins)
                         .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                        .SendAsset(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.AssetMultiplicationFactor))))
+                        .SendAsset(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
                         .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
                         .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
                         .BuildTransaction(true);
 
                     Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                        (tx, Username, Password, IpAddress, Network);
+                        (tx, Username, Password, IpAddress, Network, ConnectionString);
 
                     if (localerror == null)
                     {
                         result = new OrdinaryCashOutTaskResult
                         {
-                            TransactionHex = tx.ToHex()
+                            TransactionHex = tx.ToHex(),
+                            TransactionHash = tx.GetHash().ToString()
                         };
                     }
                     else

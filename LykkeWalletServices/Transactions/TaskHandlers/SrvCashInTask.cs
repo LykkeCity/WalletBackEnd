@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     // Sample request: CashIn:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B","Amount":5000,"Currency":"bjkUSD"}
-    // Sample response CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+    // Sample response CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvCashInTask : SrvNetworkBase
     {
         public SrvCashInTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
-            string password, string ipAddress) : base(network, assets, username, password, ipAddress)
+            string password, string ipAddress, string connectionString) : base(network, assets, username, password, ipAddress, connectionString)
         {
         }
 
@@ -23,6 +23,54 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             try
             {
+                var asset = OpenAssetsHelper.GetAssetFromName(Assets, data.Currency, Network);
+                OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(asset.AssetAddress.ToString(), 0, data.Currency,
+                    Assets, Network, Username, Password, IpAddress, ConnectionString, true, false);
+                if (walletCoins.Error != null)
+                {
+                    error = walletCoins.Error;
+                }
+
+                else
+                {
+                    var coins = walletCoins.Coins;
+                    IssuanceCoin issueCoin = new IssuanceCoin(coins.Last());
+                    issueCoin.DefinitionUrl = new Uri(walletCoins.Asset.AssetDefinitionUrl);
+                    var txCoins = coins.Take(coins.Length - 1);
+
+                    var multiSigScript = new Script((await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, ConnectionString)).MultiSigScript);
+                    // Issuing the asset
+                    TransactionBuilder builder = new TransactionBuilder();
+                    var tx = builder
+                        .AddKeys(new BitcoinSecret(walletCoins.Asset.AssetPrivateKey))
+                        .AddCoins(issueCoin)
+                        .AddCoins(txCoins)
+                        .IssueAsset(multiSigScript.GetScriptAddress(Network), new NBitcoin.OpenAsset.AssetMoney(
+                            new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(walletCoins.Asset.AssetId, Network)),
+                            //   (long) (data.Amount * assetMultiplicationFactor))) // if data.Amount * assetMultiplicationFactor is 43 the (long)() returns 43
+                            Convert.ToInt64(data.Amount * walletCoins.Asset.AssetMultiplicationFactor)))
+                        .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
+                        .SetChange(walletCoins.Asset.AssetAddress)
+                        .BuildTransaction(true);
+
+                    Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                        (tx, Username, Password, IpAddress, Network, ConnectionString);
+
+                    if (localerror == null)
+                    {
+                        result = new CashInTaskResult
+                        {
+                            TransactionHex = tx.ToHex(),
+                            TransactionHash = tx.GetHash().ToString()
+                        };
+                    }
+                    else
+                    {
+                        error = localerror;
+                    }
+                }
+
+                /*
                 using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
                 {
                     var matchingAddress = await (from item in entitiesContext.KeyStorages
@@ -96,6 +144,23 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 .SetChange(assetAddress)
                                 .BuildTransaction(true);
 
+                            Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                (tx, Username, Password, IpAddress, Network);
+
+                            if (localerror == null)
+                            {
+                                result = new CashInTaskResult
+                                {
+                                    TransactionHex = tx.ToHex(),
+                                    TransactionHash = tx.GetHash().ToString()
+                                };
+                            }
+                            else
+                            {
+                                error = localerror;
+                            }
+
+                            
                             // Checking if the inputs has been already spent
                             // ToDo - Performance should be revisted by possible join operation
                             foreach (var item in tx.Inputs)
@@ -149,12 +214,16 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                                 result = new CashInTaskResult
                                 {
-                                    TransactionHex = tx.ToHex()
+                                    TransactionHex = tx.ToHex(),
+                                    TransactionHash = tx.GetHash().ToString()
                                 };
                             }
+                            
                         }
+
                     }
                 }
+                */
             }
             catch (Exception e)
             {

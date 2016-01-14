@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     // Sample Input: OrdinaryCashIn:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
-    // Sample Output: OrdinaryCashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx"},"Error":null}
+    // Sample Output: OrdinaryCashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvOrdinaryCashInTask : SrvNetworkBase
     {
         public SrvOrdinaryCashInTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
-            string password, string ipAddress) : base(network, assets, username, password, ipAddress)
+            string password, string ipAddress, string connectionString) : base(network, assets, username, password, ipAddress, connectionString)
         {
         }
 
@@ -21,8 +21,9 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             try
             {
-                var walletCoins = await OpenAssetsHelper.GetOrdinaryCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
-                    Assets, Network, Username, Password, IpAddress);
+                var MultisigAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, ConnectionString);
+                OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(MultisigAddress.WalletAddress, data.Amount, data.Currency,
+                     Assets, Network, Username, Password, IpAddress, ConnectionString, true, false);
                 if (walletCoins.Error != null)
                 {
                     error = walletCoins.Error;
@@ -33,20 +34,21 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     var tx = builder
                         .AddCoins(walletCoins.Coins)
                         .AddCoins(walletCoins.AssetCoins)
-                        .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey))
-                        .SendAsset(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.AssetMultiplicationFactor))))
+                        .AddKeys(new BitcoinSecret(MultisigAddress.WalletPrivateKey))
+                        .SendAsset(new Script(MultisigAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
                         .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                        .SetChange(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress))
+                        .SetChange(new BitcoinAddress(MultisigAddress.WalletAddress))
                         .BuildTransaction(true);
 
                     Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                        (tx, Username, Password, IpAddress, Network);
+                        (tx, Username, Password, IpAddress, Network, ConnectionString);
 
                     if (localerror == null)
                     {
                         result = new OrdinaryCashInTaskResult
                         {
-                            TransactionHex = tx.ToHex()
+                            TransactionHex = tx.ToHex(),
+                            TransactionHash = tx.GetHash().ToString()
                         };
                     }
                     else

@@ -33,7 +33,7 @@ namespace ServiceLykkeWallet
             var srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
                 settings.exchangePrivateKey, settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
-                settings.RPCServerIpAddress);
+                settings.RPCServerIpAddress, settings.ConnectionString);
 
             srvQueueReader.Start();
 
@@ -66,6 +66,8 @@ namespace ServiceLykkeWallet
             public string RestEndPoint { get; set; }
             public string InQueueConnectionString { get; set; }
             public string OutQueueConnectionString { get; set; }
+
+            public string ConnectionString { get; set; }
 
             public LykkeCredentials LykkeCredentials { get; set; }
 

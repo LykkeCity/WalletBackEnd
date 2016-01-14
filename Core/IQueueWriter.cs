@@ -39,6 +39,7 @@ namespace Core
     public class TransactionSenderTaskResult : ITaskResult
     {
         public string TransactionHex { get; set; }
+        public string TransactionHash { get; set; }
     }
 
     public class CashInTaskResult : TransactionSenderTaskResult
