@@ -79,3 +79,6 @@ The AssetDefinitions is an array of json, with the following fields:
 
 *   WalletDefinitions are not required by now.
 
+## Mixing signatures
+
+*   To check the method of how to mix signatures from different devices on a single transactions, please check the class LykkeWalletServices.Transactions.TaskHandlers.SrvCashOutSeparateSignaturesTask

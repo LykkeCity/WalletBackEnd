@@ -50,6 +50,10 @@ namespace Core
     {
     }
 
+    public class CashOutSeparateSignaturesTaskResult : TransactionSenderTaskResult
+    {
+    }
+
     public class SwapTaskResult : TransactionSenderTaskResult
     {
     }

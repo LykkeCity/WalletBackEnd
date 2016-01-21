@@ -19,6 +19,7 @@ namespace Core
         NotEnoughBitcoinAvailable,
         NotEnoughAssetAvailable,
         PossibleDoubleSpend,
-        AssetNotFound
+        AssetNotFound,
+        TransactionNotSignedProperly
     }
 }
