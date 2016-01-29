@@ -12,6 +12,7 @@
         <EntityTypeShape EntityType="LykkeServicesModel.SentTransaction" Width="1.5" PointX="3.375" PointY="5" />
         <EntityTypeShape EntityType="LykkeServicesModel.SpentOutput" Width="1.5" PointX="5.625" PointY="4.875" />
         <AssociationConnector Association="LykkeServicesModel.FK_SpentOutputs_0_0" />
+        <EntityTypeShape EntityType="LykkeServicesModel.FeeOutput" Width="1.5" PointX="5.375" PointY="0.75" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

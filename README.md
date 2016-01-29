@@ -45,6 +45,11 @@ All service are queue based
         Sample request: Swap:{"TransactionId":"10", MultisigCustomer1:"2N8zbehwdz2wcCd2JwZktnt6uKZ8fFMZVPp", "Amount1":200, "Asset1":"TestExchangeUSD", MultisigCustomer2:"2N8Z7FLao3qWc8h8mveDXaAA9q1Q53xMsyL", "Amount2":300, "Asset2":"TestExchangeEUR"}
         Sample response: Swap:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
+*   RechargeFeesWallet
+
+        Sample request: RechargeFeesWallet:{"WalletAddress":"mtgbKeNYngWvjmUaSfqhnKD3s2niC3tsCx","PrivateKey":"???","FeeAmount":0.00015,"Count":1000}
+        Sample response: RechargeFeesWallet:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
+
 ## Some notes
 *   In file Program.cs in line `var json = await ReadTextAsync("F:\\Lykkex\\settings.json");` correct path to json file, this is only for the debug; the release version uses the settings.json in the solution path.
 
@@ -61,6 +66,8 @@ All service are queue based
 |RPCPassword|Nothing|The password for the server running the bitcoind, this is the rpc password|
 |RPCServerIpAddress|Nothing|This is the server address for the bitcoind rpc server|
 |AssetDefinitions|Nothing|The array of assets used by the exchange,consisting of various fields described in the following table.|
+|FeeAddress|Nothing|The address which is used to send the outputs for fee generation to, this outputs will later be used to pay transaction fee.|
+|FeeAddressPrivateKey|Nothing|The private key of the above address|
 
 The AssetDefinitions is an array of json, with the following fields:
 

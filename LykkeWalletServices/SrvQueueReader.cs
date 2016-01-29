@@ -20,10 +20,12 @@ namespace LykkeWalletServices
         private readonly string _rpcPassword = null;
         private readonly string _rpcServer = null;
         private readonly string _connectionString = null;
+        private readonly string _feeAddress;
+        private readonly string _feeAddressPrivateKey;
 
         public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log,
             Network network, string exchangePrivateKey, OpenAssetsHelper.AssetDefinition[] assets, string rpcUsername,
-            string rpcPassword, string rpcServer, string connectionString)
+            string rpcPassword, string rpcServer, string connectionString, string feeAddress, string feeAddressPrivateKey)
             : base("SrvQueueReader", 5000, log)
         {
             _lykkeAccountReader = lykkeAccountReader;
@@ -37,6 +39,8 @@ namespace LykkeWalletServices
             _rpcPassword = rpcPassword;
             _rpcServer = rpcServer;
             _connectionString = connectionString;
+            _feeAddress = feeAddress;
+            _feeAddressPrivateKey = feeAddressPrivateKey;
         }
 
         protected override async Task Execute()
@@ -142,6 +146,19 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("Swap", @event.TransactionId, result.Item1, result.Item2));
+                });
+                knownTaskType = true;
+            }
+
+            var transactionRechargeFeeWallet = @event as TaskToDoRechargeFeesWallet;
+            if (transactionRechargeFeeWallet != null)
+            {
+                var service = new SrvRechargeFeesWalletTask(_network, _assets, _rpcUsername,
+                    _rpcPassword, _rpcServer, _connectionString, _feeAddress);
+                service.Execute(transactionRechargeFeeWallet, async result =>
+                {
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        ("RechargeFeesWallet", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }

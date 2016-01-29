@@ -11,6 +11,33 @@ namespace Core
     {
     }
 
+    public class TaskToDoRechargeFeesWallet : TransactionToDoBase
+    {
+        public string WalletAddress
+        {
+            get;
+            set;
+        }
+
+        public string PrivateKey
+        {
+            get;
+            set;
+        }
+
+        public float FeeAmount
+        {
+            get;
+            set;
+        }
+
+        public uint Count
+        {
+            get;
+            set;
+        } 
+    }
+
     public class TaskToDoCashIn : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }

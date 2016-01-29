@@ -20,6 +20,18 @@
           <Property Name="FirstClientSigned" Type="integer" />
           <Property Name="SecondClientSigned" Type="integer" />
         </EntityType>
+        <EntityType Name="FeeOutput">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="TransactionId" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+          <Property Name="OutputNumber" Type="integer" Nullable="false" />
+          <Property Name="Amount" Type="integer" Nullable="false" />
+          <Property Name="PrivateKey" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+          <Property Name="Consumed" Type="integer" Nullable="false" />
+          <Property Name="Script" Type="nvarchar" MaxLength="2147483647" Nullable="false" />
+        </EntityType>
         <EntityType Name="KeyStorage">
           <Key>
             <PropertyRef Name="WalletAddress" />
@@ -71,6 +83,7 @@
         </Association>
         <EntityContainer Name="LykkeServicesModelStoreContainer">
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" store:Type="Tables" />
+          <EntitySet Name="FeeOutput" EntityType="Self.FeeOutput" store:Type="Tables" />
           <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" store:Type="Tables" />
           <EntitySet Name="SentTransactions" EntityType="Self.SentTransactions" store:Type="Tables" />
           <EntitySet Name="SpentOutputs" EntityType="Self.SpentOutputs" store:Type="Tables" />
@@ -114,6 +127,7 @@
             <End Role="SentTransaction" EntitySet="SentTransactions" />
             <End Role="SpentOutput" EntitySet="SpentOutputs" />
           </AssociationSet>
+          <EntitySet Name="FeeOutputs" EntityType="LykkeServicesModel.FeeOutput" />
         </EntityContainer>
         <EntityType Name="TransactionsToBeSigned">
           <Key>
@@ -179,6 +193,18 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <EntityType Name="FeeOutput">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+          <Property Name="OutputNumber" Type="Int64" Nullable="false" />
+          <Property Name="Amount" Type="Int64" Nullable="false" />
+          <Property Name="PrivateKey" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+          <Property Name="Consumed" Type="Int64" Nullable="false" />
+          <Property Name="Script" Type="String" Nullable="false" MaxLength="2147483647" FixedLength="false" Unicode="true" />
+        </EntityType>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -237,6 +263,18 @@
                 <ScalarProperty Name="SentTransactionId" ColumnName="SentTransactionId" />
                 <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
                 <ScalarProperty Name="PrevHash" ColumnName="PrevHash" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="FeeOutputs">
+            <EntityTypeMapping TypeName="LykkeServicesModel.FeeOutput">
+              <MappingFragment StoreEntitySet="FeeOutput">
+                <ScalarProperty Name="Script" ColumnName="Script" />
+                <ScalarProperty Name="Consumed" ColumnName="Consumed" />
+                <ScalarProperty Name="PrivateKey" ColumnName="PrivateKey" />
+                <ScalarProperty Name="Amount" ColumnName="Amount" />
+                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

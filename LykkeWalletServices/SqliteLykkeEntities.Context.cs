@@ -37,5 +37,6 @@ namespace LykkeWalletServices
         public virtual DbSet<KeyStorage> KeyStorages { get; set; }
         public virtual DbSet<SentTransaction> SentTransactions { get; set; }
         public virtual DbSet<SpentOutput> SpentOutputs { get; set; }
+        public virtual DbSet<FeeOutput> FeeOutputs { get; set; }
     }
 }

@@ -82,6 +82,9 @@
     <Compile Include="ExchangeRequest.cs">
       <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="FeeOutput.cs">
+      <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="KeyStorage.cs">
       <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
     </Compile>
@@ -117,6 +120,7 @@
     <Compile Include="Transactions\Responses\TaskResultGetTransactionToSign.cs" />
     <Compile Include="Transactions\Responses\TaskResultGenerateExchangeTransfer.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetBalance.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvRechargeFeesWalletTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvCashOutSeparateSignaturesTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvOrdinaryCashInTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvOrdinaryCashOutTask.cs" />

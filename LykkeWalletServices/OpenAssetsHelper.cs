@@ -17,6 +17,7 @@ namespace LykkeWalletServices
         const string testnetBaseUrl = "https://testnet.api.coinprism.com/v1/addresses/";
         public const uint MinimumRequiredSatoshi = 50000; // 100000000 satoshi is one BTC
         public const uint TransactionSendFeesInSatoshi = 15000;
+        public const ulong BTCToSathoshiMultiplicationFactor = 100000000;
 
         public class AssetDefinition
         {
@@ -368,7 +369,8 @@ namespace LykkeWalletServices
 
         // ToDo - Performance should be revisted by possible join operation
         public static async Task<Error> CheckTransactionForDoubleSpentThenSendIt(Transaction tx,
-            string username, string password, string ipAddress, Network network, string connectionString)
+            string username, string password, string ipAddress, Network network, string connectionString,
+            Action outsideTransactionBeforeBroadcast = null, Action<SqliteLykkeServicesEntities> databaseCommitableAction = null)
         {
             Error error = null;
             using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities(connectionString))
@@ -395,6 +397,12 @@ namespace LykkeWalletServices
 
                 if (error == null)
                 {
+                    // Performing the required action here
+                    if (outsideTransactionBeforeBroadcast != null)
+                    {
+                        outsideTransactionBeforeBroadcast.Invoke();
+                    }
+
                     // First broadcating the transaction
                     RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
                         ipAddress, network);
@@ -403,6 +411,11 @@ namespace LykkeWalletServices
                     // Then marking the inputs as spent
                     using (var dbTransaction = entitiesContext.Database.BeginTransaction())
                     {
+                        if (databaseCommitableAction != null)
+                        {
+                            databaseCommitableAction.Invoke(entitiesContext);
+                        }
+
                         SentTransaction dbSentTransaction = new SentTransaction
                         {
                             TransactionHex = tx.ToHex()
@@ -862,6 +875,16 @@ namespace LykkeWalletServices
             }
 
             return ret;
+        }
+
+        // From: http://stackoverflow.com/questions/311165/how-do-you-convert-byte-array-to-hexadecimal-string-and-vice-versa
+        public static byte[] StringToByteArray(String hex)
+        {
+            int NumberChars = hex.Length;
+            byte[] bytes = new byte[NumberChars / 2];
+            for (int i = 0; i < NumberChars; i += 2)
+                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
+            return bytes;
         }
 
         // Sqlite dll is not copied to output folder, this method creates the reference, never called

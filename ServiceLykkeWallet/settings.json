@@ -5,6 +5,8 @@
   "ConnectionString": "metadata=res://*/SqliteLykkeEntities.csdl|res://*/SqliteLykkeEntities.ssdl|res://*/SqliteLykkeEntities.msl;provider=System.Data.SQLite.EF6;provider connection string=\"data source=F:\\Github\\WalletBackEnd\\LykkeWalletServices\\DB\\LykkeServices",
   "NetworkType": "TestNet",
   "exchangePrivateKey": "xxx",
+  "FeeAddress": "xxx",
+  "FeeAddressPrivateKey": "xxx",
   "LykkeCredentials": {
     "PublicAddress": "xxxxxxxxx",
     "PrivateKey": "xxxxxxxxx"
