@@ -15,7 +15,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             try
             {
                 // ToDo - Check if the following using statement can be done asynchoronously
-                using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
+                using (SqlexpressLykkeEntities entitiesContext = new SqlexpressLykkeEntities())
                 {
                     var transactions = await (from transaction in entitiesContext.TransactionsToBeSigneds
                                               where transaction.WalletAddress == data.WalletAddress && (transaction.SignedTransaction == null || transaction.SignedTransaction == string.Empty)

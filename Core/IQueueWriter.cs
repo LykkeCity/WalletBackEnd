@@ -42,7 +42,7 @@ namespace Core
         public string TransactionHash { get; set; }
     }
 
-    public class RechargeFeesWalletTaskResult : ITaskResult
+    public class GenerateMassOutputsTaskResult : ITaskResult
     {
         public string TransactionHash { get; set; }
     }

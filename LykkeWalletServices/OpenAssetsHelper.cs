@@ -18,10 +18,12 @@ namespace LykkeWalletServices
         public const uint MinimumRequiredSatoshi = 50000; // 100000000 satoshi is one BTC
         public const uint TransactionSendFeesInSatoshi = 15000;
         public const ulong BTCToSathoshiMultiplicationFactor = 100000000;
+        public const uint ConcurrencyRetryCount = 3;
 
         public class AssetDefinition
         {
             public string AssetId { get; set; }
+            public string AssetAddress { get; set; }
             public string Name { get; set; }
             public string PrivateKey { get; set; }
             public string DefinitionUrl { get; set; }
@@ -369,74 +371,67 @@ namespace LykkeWalletServices
 
         // ToDo - Performance should be revisted by possible join operation
         public static async Task<Error> CheckTransactionForDoubleSpentThenSendIt(Transaction tx,
-            string username, string password, string ipAddress, Network network, string connectionString,
-            Action outsideTransactionBeforeBroadcast = null, Action<SqliteLykkeServicesEntities> databaseCommitableAction = null)
+            string username, string password, string ipAddress, Network network, SqlexpressLykkeEntities entitiesContext, string connectionString,
+            Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null)
         {
             Error error = null;
-            using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities(connectionString))
+            // Checking if the inputs has been already spent
+            // ToDo - Performance should be revisted by possible join operation
+            foreach (var item in tx.Inputs)
             {
-                // Checking if the inputs has been already spent
-                // ToDo - Performance should be revisted by possible join operation
+                string prevOut = item.PrevOut.Hash.ToString();
+                var spentTx = await (from uxto in entitiesContext.SpentOutputs
+                                     join dbTx in entitiesContext.SentTransactions on uxto.SentTransactionId equals dbTx.id
+                                     where uxto != null && uxto.PrevHash.Equals(prevOut.ToString()) && uxto.OutputNumber.Equals((int)item.PrevOut.N)
+                                     select dbTx.TransactionHex).FirstOrDefaultAsync();
+
+                if (spentTx != null)
+                {
+                    error = new Error();
+                    error.Code = ErrorCode.PossibleDoubleSpend;
+                    error.Message = "The output number " + item.PrevOut.N + " from transaction " + item.PrevOut.Hash +
+                        " has been already spent in transcation " + (new Transaction(spentTx)).GetHash();
+                    break;
+                }
+            }
+
+            if (error == null)
+            {
+                // Performing the required action here
+                if (outsideTransactionBeforeBroadcast != null)
+                {
+                    outsideTransactionBeforeBroadcast.Invoke();
+                }
+
+                // Then marking the inputs as spent
+                if (databaseCommitableAction != null)
+                {
+                    databaseCommitableAction.Invoke(entitiesContext);
+                }
+
+                SentTransaction dbSentTransaction = new SentTransaction
+                {
+                    TransactionHex = tx.ToHex()
+                };
+                entitiesContext.SentTransactions.Add(dbSentTransaction);
+                await entitiesContext.SaveChangesAsync();
+
                 foreach (var item in tx.Inputs)
                 {
-                    string prevOut = item.PrevOut.Hash.ToString();
-                    var spentTx = await (from uxto in entitiesContext.SpentOutputs
-                                         join dbTx in entitiesContext.SentTransactions on uxto.SentTransactionId equals dbTx.id
-                                         where uxto.PrevHash.Equals(prevOut) && uxto.OutputNumber.Equals(item.PrevOut.N)
-                                         select dbTx.TransactionHex).FirstOrDefaultAsync();
-
-                    if (spentTx != null)
+                    entitiesContext.SpentOutputs.Add(new SpentOutput
                     {
-                        error = new Error();
-                        error.Code = ErrorCode.PossibleDoubleSpend;
-                        error.Message = "The output number " + item.PrevOut.N + " from transaction " + item.PrevOut.Hash +
-                            " has been already spent in transcation " + (new Transaction(spentTx)).GetHash();
-                        break;
-                    }
+                        OutputNumber = (int)item.PrevOut.N,
+                        PrevHash = item.PrevOut.Hash.ToString(),
+                        SentTransactionId = dbSentTransaction.id
+                    });
                 }
+                await entitiesContext.SaveChangesAsync();
 
-                if (error == null)
-                {
-                    // Performing the required action here
-                    if (outsideTransactionBeforeBroadcast != null)
-                    {
-                        outsideTransactionBeforeBroadcast.Invoke();
-                    }
+                // Database is successful, only the commit has remained. Broadcating the transaction
+                RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
+                    ipAddress, network);
+                await client.SendRawTransactionAsync(tx);
 
-                    // First broadcating the transaction
-                    RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
-                        ipAddress, network);
-                    await client.SendRawTransactionAsync(tx);
-
-                    // Then marking the inputs as spent
-                    using (var dbTransaction = entitiesContext.Database.BeginTransaction())
-                    {
-                        if (databaseCommitableAction != null)
-                        {
-                            databaseCommitableAction.Invoke(entitiesContext);
-                        }
-
-                        SentTransaction dbSentTransaction = new SentTransaction
-                        {
-                            TransactionHex = tx.ToHex()
-                        };
-                        entitiesContext.SentTransactions.Add(dbSentTransaction);
-                        await entitiesContext.SaveChangesAsync();
-
-                        foreach (var item in tx.Inputs)
-                        {
-                            entitiesContext.SpentOutputs.Add(new SpentOutput
-                            {
-                                OutputNumber = item.PrevOut.N,
-                                PrevHash = item.PrevOut.Hash.ToString(),
-                                SentTransactionId = dbSentTransaction.id
-                            });
-                        }
-                        await entitiesContext.SaveChangesAsync();
-
-                        dbTransaction.Commit();
-                    }
-                }
             }
 
             return error;
@@ -722,7 +717,8 @@ namespace LykkeWalletServices
 
         public static async Task<GetCoinsForWalletReturnType> GetCoinsForWallet
             (string multiSigAddress, float amount, string asset, AssetDefinition[] assets,
-            Network network, string username, string password, string ipAddress, string connectionString, bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true)
+            Network network, string username, string password, string ipAddress, string connectionString, SqlexpressLykkeEntities entities,
+            bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true)
         {
             GetCoinsForWalletReturnType ret;
             if (isOrdinaryReturnTypeRequired)
@@ -738,7 +734,7 @@ namespace LykkeWalletServices
             {
                 if (isAddressMultiSig)
                 {
-                    ret.MatchingAddress = await GetMatchingMultisigAddress(multiSigAddress, connectionString);
+                    ret.MatchingAddress = await GetMatchingMultisigAddress(multiSigAddress, entities);
                 }
 
                 ret.Asset = GetAssetFromName(assets, asset, network);
@@ -837,15 +833,33 @@ namespace LykkeWalletServices
             return ret;
         }
 
-        public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, string connectionString)
+        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
+            string network, string assetId = null)
+        {
+            var coins = from item in entities.PreGeneratedOutputs
+                        where item.Consumed.Equals(0) && item.Network.Equals(network)  && (assetId == null ? true : item.AssetId.Equals(assetId.ToString()))
+                        select item;
+
+            int count = await coins.CountAsync();
+            if (count == 0)
+            {
+                throw new Exception("There is no coins to use for fee payment");
+            }
+            else
+            {
+                int index = new Random().Next(coins.Count());
+                PreGeneratedOutput f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
+                f.Consumed = 1;
+                return f;
+            }
+        }
+
+        public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
         {
             KeyStorage ret = null;
-            using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities(connectionString))
-            {
-                ret = await (from item in entitiesContext.KeyStorages
-                             where item.MultiSigAddress.Equals(multiSigAddress)
-                             select item).SingleOrDefaultAsync();
-            }
+            ret = await (from item in entities.KeyStorages
+                         where item.MultiSigAddress.Equals(multiSigAddress)
+                         select item).SingleOrDefaultAsync();
 
             if (ret == null)
             {

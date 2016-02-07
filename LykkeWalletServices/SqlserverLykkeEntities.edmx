@@ -1,0 +1,314 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+  <!-- EF Runtime content -->
+  <edmx:Runtime>
+    <!-- SSDL content -->
+    <edmx:StorageModels>
+      <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="ExchangeRequests">
+          <Key>
+            <PropertyRef Name="ExchangeId" />
+          </Key>
+          <Property Name="WalletAddress01" Type="varchar" MaxLength="100" />
+          <Property Name="WalletAddress02" Type="varchar" MaxLength="100" />
+          <Property Name="Asset01" Type="varchar" MaxLength="100" />
+          <Property Name="Asset02" Type="varchar" MaxLength="100" />
+          <Property Name="Amount01" Type="int" />
+          <Property Name="Amount02" Type="int" />
+          <Property Name="ServiceTransactionId" Type="varchar" MaxLength="100" />
+          <Property Name="ExchangeId" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="FirstClientSigned" Type="int" />
+          <Property Name="SecondClientSigned" Type="int" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="KeyStorage">
+          <Key>
+            <PropertyRef Name="WalletAddress" />
+          </Key>
+          <Property Name="WalletAddress" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="WalletPrivateKey" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="MultiSigAddress" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="MultiSigScript" Type="varchar" MaxLength="1000" Nullable="false" />
+          <Property Name="ExchangePrivateKey" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Network" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="PreGeneratedOutput">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="TransactionId" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="OutputNumber" Type="int" Nullable="false" />
+          <Property Name="Amount" Type="bigint" Nullable="false" />
+          <Property Name="PrivateKey" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Consumed" Type="int" Nullable="false" />
+          <Property Name="Script" Type="varchar" MaxLength="1000" Nullable="false" />
+          <Property Name="AssetId" Type="varchar" MaxLength="100" />
+          <Property Name="Address" Type="varchar" MaxLength="100" />
+          <Property Name="Network" Type="varchar" MaxLength="10" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="SentTransactions">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="TransactionHex" Type="text" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="SpentOutputs">
+          <Key>
+            <PropertyRef Name="PrevHash" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="PrevHash" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="OutputNumber" Type="int" Nullable="false" />
+          <Property Name="SentTransactionId" Type="int" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="TransactionsToBeSigned">
+          <Key>
+            <PropertyRef Name="ExchangeId" />
+            <PropertyRef Name="WalletAddress" />
+          </Key>
+          <Property Name="ExchangeId" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="WalletAddress" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="UnsignedTransaction" Type="varchar" MaxLength="100" />
+          <Property Name="SignedTransaction" Type="varchar" MaxLength="100" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <Association Name="FK_SpentOutputs_SentTransactions">
+          <End Role="SentTransactions" Type="Self.SentTransactions" Multiplicity="0..1" />
+          <End Role="SpentOutputs" Type="Self.SpentOutputs" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="SentTransactions">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="SpentOutputs">
+              <PropertyRef Name="SentTransactionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityContainer Name="SqlexpressLykkeModelStoreContainer">
+          <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="PreGeneratedOutput" EntityType="Self.PreGeneratedOutput" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="SentTransactions" EntityType="Self.SentTransactions" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="SpentOutputs" EntityType="Self.SpentOutputs" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TransactionsToBeSigned" EntityType="Self.TransactionsToBeSigned" Schema="dbo" store:Type="Tables" />
+          <AssociationSet Name="FK_SpentOutputs_SentTransactions" Association="Self.FK_SpentOutputs_SentTransactions">
+            <End Role="SentTransactions" EntitySet="SentTransactions" />
+            <End Role="SpentOutputs" EntitySet="SpentOutputs" />
+          </AssociationSet>
+        </EntityContainer>
+      </Schema>
+    </edmx:StorageModels>
+    <!-- CSDL content -->
+    <edmx:ConceptualModels>
+      <Schema Namespace="SqlexpressLykkeModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+        <EntityContainer Name="SqlexpressLykkeEntities" annotation:LazyLoadingEnabled="true">
+          <EntitySet Name="ExchangeRequests" EntityType="SqlexpressLykkeModel.ExchangeRequest" />
+          <EntitySet Name="KeyStorages" EntityType="SqlexpressLykkeModel.KeyStorage" />
+          <EntitySet Name="PreGeneratedOutputs" EntityType="SqlexpressLykkeModel.PreGeneratedOutput" />
+          <EntitySet Name="SentTransactions" EntityType="SqlexpressLykkeModel.SentTransaction" />
+          <EntitySet Name="SpentOutputs" EntityType="SqlexpressLykkeModel.SpentOutput" />
+          <EntitySet Name="TransactionsToBeSigneds" EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" />
+          <AssociationSet Name="FK_SpentOutputs_SentTransactions" Association="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions">
+            <End Role="SentTransaction" EntitySet="SentTransactions" />
+            <End Role="SpentOutput" EntitySet="SpentOutputs" />
+          </AssociationSet>
+        </EntityContainer>
+        <EntityType Name="ExchangeRequest">
+          <Key>
+            <PropertyRef Name="ExchangeId" />
+          </Key>
+          <Property Name="WalletAddress01" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="WalletAddress02" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Asset01" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Asset02" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Amount01" Type="Int32" />
+          <Property Name="Amount02" Type="Int32" />
+          <Property Name="ServiceTransactionId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="ExchangeId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="FirstClientSigned" Type="Int32" />
+          <Property Name="SecondClientSigned" Type="Int32" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+        </EntityType>
+        <EntityType Name="KeyStorage">
+          <Key>
+            <PropertyRef Name="WalletAddress" />
+          </Key>
+          <Property Name="WalletAddress" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="WalletPrivateKey" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="MultiSigAddress" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="MultiSigScript" Type="String" Nullable="false" MaxLength="1000" FixedLength="false" Unicode="false" />
+          <Property Name="ExchangePrivateKey" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Network" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+        </EntityType>
+        <EntityType Name="PreGeneratedOutput">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="OutputNumber" Type="Int32" Nullable="false" />
+          <Property Name="Amount" Type="Int64" Nullable="false" />
+          <Property Name="PrivateKey" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Consumed" Type="Int32" Nullable="false" />
+          <Property Name="Script" Type="String" Nullable="false" MaxLength="1000" FixedLength="false" Unicode="false" />
+          <Property Name="AssetId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Address" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Network" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+        </EntityType>
+        <EntityType Name="SentTransaction">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="TransactionHex" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <NavigationProperty Name="SpentOutputs" Relationship="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions" FromRole="SentTransaction" ToRole="SpentOutput" />
+        </EntityType>
+        <EntityType Name="SpentOutput">
+          <Key>
+            <PropertyRef Name="PrevHash" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="PrevHash" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="OutputNumber" Type="Int32" Nullable="false" />
+          <Property Name="SentTransactionId" Type="Int32" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <NavigationProperty Name="SentTransaction" Relationship="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions" FromRole="SpentOutput" ToRole="SentTransaction" />
+        </EntityType>
+        <EntityType Name="TransactionsToBeSigned">
+          <Key>
+            <PropertyRef Name="ExchangeId" />
+            <PropertyRef Name="WalletAddress" />
+          </Key>
+          <Property Name="ExchangeId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="WalletAddress" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="UnsignedTransaction" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="SignedTransaction" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+        </EntityType>
+        <Association Name="FK_SpentOutputs_SentTransactions">
+          <End Type="SqlexpressLykkeModel.SentTransaction" Role="SentTransaction" Multiplicity="0..1" />
+          <End Type="SqlexpressLykkeModel.SpentOutput" Role="SpentOutput" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="SentTransaction">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="SpentOutput">
+              <PropertyRef Name="SentTransactionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+      </Schema>
+    </edmx:ConceptualModels>
+    <!-- C-S mapping content -->
+    <edmx:Mappings>
+      <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
+        <EntityContainerMapping StorageEntityContainer="SqlexpressLykkeModelStoreContainer" CdmEntityContainer="SqlexpressLykkeEntities">
+          <EntitySetMapping Name="ExchangeRequests">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.ExchangeRequest">
+              <MappingFragment StoreEntitySet="ExchangeRequests">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="SecondClientSigned" ColumnName="SecondClientSigned" />
+                <ScalarProperty Name="FirstClientSigned" ColumnName="FirstClientSigned" />
+                <ScalarProperty Name="ExchangeId" ColumnName="ExchangeId" />
+                <ScalarProperty Name="ServiceTransactionId" ColumnName="ServiceTransactionId" />
+                <ScalarProperty Name="Amount02" ColumnName="Amount02" />
+                <ScalarProperty Name="Amount01" ColumnName="Amount01" />
+                <ScalarProperty Name="Asset02" ColumnName="Asset02" />
+                <ScalarProperty Name="Asset01" ColumnName="Asset01" />
+                <ScalarProperty Name="WalletAddress02" ColumnName="WalletAddress02" />
+                <ScalarProperty Name="WalletAddress01" ColumnName="WalletAddress01" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="KeyStorages">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.KeyStorage">
+              <MappingFragment StoreEntitySet="KeyStorage">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="Network" ColumnName="Network" />
+                <ScalarProperty Name="ExchangePrivateKey" ColumnName="ExchangePrivateKey" />
+                <ScalarProperty Name="MultiSigScript" ColumnName="MultiSigScript" />
+                <ScalarProperty Name="MultiSigAddress" ColumnName="MultiSigAddress" />
+                <ScalarProperty Name="WalletPrivateKey" ColumnName="WalletPrivateKey" />
+                <ScalarProperty Name="WalletAddress" ColumnName="WalletAddress" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="PreGeneratedOutputs">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.PreGeneratedOutput">
+              <MappingFragment StoreEntitySet="PreGeneratedOutput">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="Network" ColumnName="Network" />
+                <ScalarProperty Name="Address" ColumnName="Address" />
+                <ScalarProperty Name="AssetId" ColumnName="AssetId" />
+                <ScalarProperty Name="Script" ColumnName="Script" />
+                <ScalarProperty Name="Consumed" ColumnName="Consumed" />
+                <ScalarProperty Name="PrivateKey" ColumnName="PrivateKey" />
+                <ScalarProperty Name="Amount" ColumnName="Amount" />
+                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="SentTransactions">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.SentTransaction">
+              <MappingFragment StoreEntitySet="SentTransactions">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="SpentOutputs">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.SpentOutput">
+              <MappingFragment StoreEntitySet="SpentOutputs">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="SentTransactionId" ColumnName="SentTransactionId" />
+                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="PrevHash" ColumnName="PrevHash" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TransactionsToBeSigneds">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.TransactionsToBeSigned">
+              <MappingFragment StoreEntitySet="TransactionsToBeSigned">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="SignedTransaction" ColumnName="SignedTransaction" />
+                <ScalarProperty Name="UnsignedTransaction" ColumnName="UnsignedTransaction" />
+                <ScalarProperty Name="WalletAddress" ColumnName="WalletAddress" />
+                <ScalarProperty Name="ExchangeId" ColumnName="ExchangeId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+        </EntityContainerMapping>
+      </Mapping>
+    </edmx:Mappings>
+  </edmx:Runtime>
+  <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <Connection>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="MetadataArtifactProcessing" Value="EmbedInOutputAssembly" />
+      </DesignerInfoPropertySet>
+    </Connection>
+    <Options>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="ValidateOnBuild" Value="true" />
+        <DesignerProperty Name="EnablePluralization" Value="true" />
+        <DesignerProperty Name="IncludeForeignKeysInModel" Value="true" />
+        <DesignerProperty Name="UseLegacyProvider" Value="false" />
+        <DesignerProperty Name="CodeGenerationStrategy" Value="None" />
+      </DesignerInfoPropertySet>
+    </Options>
+    <!-- Diagram content (shape and connector positions) -->
+    <Diagrams></Diagrams>
+  </Designer>
+</edmx:Edmx>

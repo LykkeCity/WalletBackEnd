@@ -150,15 +150,15 @@ namespace LykkeWalletServices
                 knownTaskType = true;
             }
 
-            var transactionRechargeFeeWallet = @event as TaskToDoRechargeFeesWallet;
+            var transactionRechargeFeeWallet = @event as TaskToDoGenerateMassOutputs;
             if (transactionRechargeFeeWallet != null)
             {
-                var service = new SrvRechargeFeesWalletTask(_network, _assets, _rpcUsername,
-                    _rpcPassword, _rpcServer, _connectionString, _feeAddress);
+                var service = new SrvGenerateMassOutputsTask(_network, _assets, _rpcUsername,
+                    _rpcPassword, _rpcServer, _connectionString, _feeAddress, _feeAddressPrivateKey);
                 service.Execute(transactionRechargeFeeWallet, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
-                        ("RechargeFeesWallet", @event.TransactionId, result.Item1, result.Item2));
+                        ("GenerateMassOutputs", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }

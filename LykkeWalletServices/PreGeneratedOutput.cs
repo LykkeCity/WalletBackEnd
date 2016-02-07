@@ -12,13 +12,17 @@ namespace LykkeWalletServices
     using System;
     using System.Collections.Generic;
     
-    public partial class FeeOutput
+    public partial class PreGeneratedOutput
     {
         public string TransactionId { get; set; }
-        public long OutputNumber { get; set; }
+        public int OutputNumber { get; set; }
         public long Amount { get; set; }
         public string PrivateKey { get; set; }
-        public long Consumed { get; set; }
+        public int Consumed { get; set; }
         public string Script { get; set; }
+        public string AssetId { get; set; }
+        public string Address { get; set; }
+        public string Network { get; set; }
+        public byte[] Version { get; set; }
     }
 }

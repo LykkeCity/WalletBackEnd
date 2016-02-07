@@ -13,19 +13,17 @@ namespace LykkeWalletServices
     using System.Data.Entity;
     using System.Data.Entity.Infrastructure;
     
-    public partial class SqliteLykkeServicesEntities : DbContext
+    public partial class SqlexpressLykkeEntities : DbContext
     {
-        public SqliteLykkeServicesEntities()
-            : base("name=SqliteLykkeServicesEntities")
+        public SqlexpressLykkeEntities()
+            : base("name=SqlexpressLykkeEntities")
         {
         }
     
-    	// Added by developper
-    	public SqliteLykkeServicesEntities(string connectionString)
+    	public SqlexpressLykkeEntities(string connectionString)
             : base(connectionString)
         {
         }
-    	// End of added by developper
     
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
@@ -33,10 +31,10 @@ namespace LykkeWalletServices
         }
     
         public virtual DbSet<ExchangeRequest> ExchangeRequests { get; set; }
-        public virtual DbSet<TransactionsToBeSigned> TransactionsToBeSigneds { get; set; }
         public virtual DbSet<KeyStorage> KeyStorages { get; set; }
+        public virtual DbSet<PreGeneratedOutput> PreGeneratedOutputs { get; set; }
         public virtual DbSet<SentTransaction> SentTransactions { get; set; }
         public virtual DbSet<SpentOutput> SpentOutputs { get; set; }
-        public virtual DbSet<FeeOutput> FeeOutputs { get; set; }
+        public virtual DbSet<TransactionsToBeSigned> TransactionsToBeSigneds { get; set; }
     }
 }

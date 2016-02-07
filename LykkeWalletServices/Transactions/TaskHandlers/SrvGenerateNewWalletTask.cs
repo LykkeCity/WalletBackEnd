@@ -38,7 +38,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 (new BitcoinSecret(exchangePrivateKey, network)).PubKey });
                 multiSigAddressStorage = multiSigAddress.GetScriptAddress(network).ToString();
 
-                using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities(connectionString))
+                using (SqlexpressLykkeEntities entitiesContext = new SqlexpressLykkeEntities(connectionString))
                 {
                     KeyStorage item = new KeyStorage
                     {

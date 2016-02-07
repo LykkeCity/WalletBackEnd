@@ -15,8 +15,9 @@ namespace LykkeWalletServices
     public partial class SpentOutput
     {
         public string PrevHash { get; set; }
-        public long OutputNumber { get; set; }
-        public Nullable<long> SentTransactionId { get; set; }
+        public int OutputNumber { get; set; }
+        public Nullable<int> SentTransactionId { get; set; }
+        public byte[] Version { get; set; }
     
         public virtual SentTransaction SentTransaction { get; set; }
     }

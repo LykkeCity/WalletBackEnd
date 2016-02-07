@@ -20,8 +20,9 @@ namespace LykkeWalletServices
             this.SpentOutputs = new HashSet<SpentOutput>();
         }
     
-        public long id { get; set; }
+        public int id { get; set; }
         public string TransactionHex { get; set; }
+        public byte[] Version { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<SpentOutput> SpentOutputs { get; set; }

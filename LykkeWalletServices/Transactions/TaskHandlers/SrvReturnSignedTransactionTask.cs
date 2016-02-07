@@ -27,7 +27,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             try
             {
                 // ToDo - Check if the following using statement can be done asynchoronously
-                using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
+                using (SqlexpressLykkeEntities entitiesContext = new SqlexpressLykkeEntities())
                 {
                     var transaction = await (from t in entitiesContext.TransactionsToBeSigneds
                                              where t.WalletAddress == data.WalletAddress && t.ExchangeId == data.ExchangeId
@@ -106,7 +106,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         /// <param name="exchangeId">Id of the exchange transaction to be built.</param>
         /// <param name="entitiesContext">The database context to read the transaction data from.</param>
         /// <returns>The transaction hex made for the exchange transaction.</returns>
-        private static async Task<string> GenerateTransactionHex(string exchangeId, SqliteLykkeServicesEntities entitiesContext, 
+        private static async Task<string> GenerateTransactionHex(string exchangeId, SqlexpressLykkeEntities entitiesContext, 
             Network network, long multiplicationFactor)
         {
             var transaction = await (from tx in entitiesContext.ExchangeRequests

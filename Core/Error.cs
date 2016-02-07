@@ -20,6 +20,8 @@ namespace Core
         NotEnoughAssetAvailable,
         PossibleDoubleSpend,
         AssetNotFound,
-        TransactionNotSignedProperly
+        TransactionNotSignedProperly,
+        BadInputParameter,
+        PersistantConcurrencyProblem
     }
 }

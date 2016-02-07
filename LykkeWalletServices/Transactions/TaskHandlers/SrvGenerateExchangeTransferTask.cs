@@ -48,7 +48,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             try
             {
                 // ToDo - Check if the following using statement can be done asynchoronously
-                using (SqliteLykkeServicesEntities entitiesContext = new SqliteLykkeServicesEntities())
+                using (SqlexpressLykkeEntities entitiesContext = new SqlexpressLykkeEntities())
                 {
                     ExchangeRequest req = new ExchangeRequest();
                     req.WalletAddress01 = data.WalletAddress01;

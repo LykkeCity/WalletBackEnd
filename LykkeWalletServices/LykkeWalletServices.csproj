@@ -80,47 +80,47 @@
     <Compile Include="Accounts\SrvAccountBalanceAccess.cs" />
     <Compile Include="Accounts\SrvAccountGenerator.cs" />
     <Compile Include="ExchangeRequest.cs">
-      <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
-    </Compile>
-    <Compile Include="FeeOutput.cs">
-      <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="KeyStorage.cs">
-      <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="OpenAssetsHelper.cs" />
+    <Compile Include="PreGeneratedOutput.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SentTransaction.cs">
-      <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="SpentOutput.cs">
-      <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
-    <Compile Include="SqliteLykkeEntities.Context.cs">
+    <Compile Include="SqlServerLykkeEntities.Context.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>SqliteLykkeEntities.Context.tt</DependentUpon>
+      <DependentUpon>SqlServerLykkeEntities.Context.tt</DependentUpon>
     </Compile>
-    <Compile Include="SqliteLykkeEntities.cs">
+    <Compile Include="SqlServerLykkeEntities.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
-    <Compile Include="SqliteLykkeEntities.Designer.cs">
+    <Compile Include="SqlserverLykkeEntities.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>SqliteLykkeEntities.edmx</DependentUpon>
+      <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
     </Compile>
     <Compile Include="SrvQueueReader.cs" />
     <Compile Include="TransactionsToBeSigned.cs">
-      <DependentUpon>SqliteLykkeEntities.tt</DependentUpon>
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="Transactions\Responses\TaskResultBase.cs" />
     <Compile Include="Transactions\Responses\TaskResultReturnSignedTransaction.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetTransactionToSign.cs" />
     <Compile Include="Transactions\Responses\TaskResultGenerateExchangeTransfer.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetBalance.cs" />
-    <Compile Include="Transactions\TaskHandlers\SrvRechargeFeesWalletTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvGenerateMassOutputsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvCashOutSeparateSignaturesTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvOrdinaryCashInTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvOrdinaryCashOutTask.cs" />
@@ -154,24 +154,24 @@
     </None>
     <None Include="DB\LykkeServices" />
     <None Include="packages.config" />
-    <EntityDeploy Include="SqliteLykkeEntities.edmx">
+    <EntityDeploy Include="SqlserverLykkeEntities.edmx">
       <Generator>EntityModelCodeGenerator</Generator>
-      <LastGenOutput>SqliteLykkeEntities.Designer.cs</LastGenOutput>
+      <LastGenOutput>SqlserverLykkeEntities.Designer.cs</LastGenOutput>
     </EntityDeploy>
-    <None Include="SqliteLykkeEntities.edmx.diagram">
-      <DependentUpon>SqliteLykkeEntities.edmx</DependentUpon>
+    <None Include="SqlserverLykkeEntities.edmx.diagram">
+      <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="SqliteLykkeEntities.Context.tt">
+    <Content Include="SqlServerLykkeEntities.Context.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <DependentUpon>SqliteLykkeEntities.edmx</DependentUpon>
-      <LastGenOutput>SqliteLykkeEntities.Context.cs</LastGenOutput>
+      <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
+      <LastGenOutput>SqlServerLykkeEntities.Context.cs</LastGenOutput>
     </Content>
-    <Content Include="SqliteLykkeEntities.tt">
+    <Content Include="SqlServerLykkeEntities.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <DependentUpon>SqliteLykkeEntities.edmx</DependentUpon>
-      <LastGenOutput>SqliteLykkeEntities.cs</LastGenOutput>
+      <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
+      <LastGenOutput>SqlServerLykkeEntities.cs</LastGenOutput>
     </Content>
   </ItemGroup>
   <ItemGroup>

@@ -21,57 +21,69 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             try
             {
-                //var wallet1Coins = await OpenAssetsHelper.GetScriptCoinsForWallet(data.MultisigCustomer1, data.Amount1, data.Asset1,
-                //Assets, Network, Username, Password, IpAddress);
-                OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet1Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer1, data.Amount1, data.Asset1,
-                Assets, Network, Username, Password, IpAddress, ConnectionString, false);
-                if (wallet1Coins.Error != null)
+                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
-                    error = wallet1Coins.Error;
-                }
-                else
-                {
-                    // var wallet2Coins = await OpenAssetsHelper.GetScriptCoinsForWallet(data.MultisigCustomer2, data.Amount2, data.Asset2,
-                    // Assets, Network, Username, Password, IpAddress);
-                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet2Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType) await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer2, data.Amount2, data.Asset2,
-                     Assets, Network, Username, Password, IpAddress, ConnectionString, false);
-                    if (wallet2Coins.Error != null)
+                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet1Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer1, data.Amount1, data.Asset1,
+                    Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
+                    if (wallet1Coins.Error != null)
                     {
-                        error = wallet2Coins.Error;
+                        error = wallet1Coins.Error;
                     }
                     else
                     {
-                        TransactionBuilder builder = new TransactionBuilder();
-                        var tx = builder
-                            .AddCoins(wallet1Coins.ScriptCoins)
-                            .AddCoins(wallet1Coins.AssetScriptCoins)
-                            .AddKeys(new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                            .SendAsset(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet1Coins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount1 * wallet1Coins.Asset.AssetMultiplicationFactor))))
-                            .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
-                            .SetChange(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                            .Then()
-                            .AddCoins(wallet2Coins.ScriptCoins)
-                            .AddCoins(wallet2Coins.AssetScriptCoins)
-                            .AddKeys(new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                            .SendAsset(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet2Coins.Asset.AssetId, Network)), Convert.ToInt64(data.Amount2 * wallet2Coins.Asset.AssetMultiplicationFactor)))
-                            .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
-                            .SetChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                            .BuildTransaction(true);
-
-                        Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                (tx, Username, Password, IpAddress, Network, ConnectionString);
-
-                        if (localerror == null)
+                        OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet2Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer2, data.Amount2, data.Asset2,
+                         Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
+                        if (wallet2Coins.Error != null)
                         {
-                            result = new SwapTaskResult
-                            {
-                                TransactionHex = tx.ToHex(),
-                                TransactionHash = tx.GetHash().ToString()
-                            };
+                            error = wallet2Coins.Error;
                         }
                         else
                         {
-                            error = localerror;
+                            TransactionBuilder builder = new TransactionBuilder();
+                            var tx = builder
+                                .AddCoins(wallet1Coins.ScriptCoins)
+                                .AddCoins(wallet1Coins.AssetScriptCoins)
+                                .AddKeys(new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
+                                .SendAsset(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet1Coins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount1 * wallet1Coins.Asset.AssetMultiplicationFactor))))
+                                .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
+                                .SetChange(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                .Then()
+                                .AddCoins(wallet2Coins.ScriptCoins)
+                                .AddCoins(wallet2Coins.AssetScriptCoins)
+                                .AddKeys(new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
+                                .SendAsset(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet2Coins.Asset.AssetId, Network)), Convert.ToInt64(data.Amount2 * wallet2Coins.Asset.AssetMultiplicationFactor)))
+                                .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
+                                .SetChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                .BuildTransaction(true);
+
+
+                            using (var transaction = entities.Database.BeginTransaction())
+                            {
+                                Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
+
+                                if (localerror == null)
+                                {
+                                    result = new SwapTaskResult
+                                    {
+                                        TransactionHex = tx.ToHex(),
+                                        TransactionHash = tx.GetHash().ToString()
+                                    };
+                                }
+                                else
+                                {
+                                    error = localerror;
+                                }
+
+                                if (error == null)
+                                {
+                                    transaction.Commit();
+                                }
+                                else
+                                {
+                                    transaction.Rollback();
+                                }
+                            }
                         }
                     }
                 }

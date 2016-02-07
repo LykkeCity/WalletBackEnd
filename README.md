@@ -89,3 +89,11 @@ The AssetDefinitions is an array of json, with the following fields:
 ## Mixing signatures
 
 *   To check the method of how to mix signatures from different devices on a single transactions, please check the class LykkeWalletServices.Transactions.TaskHandlers.SrvCashOutSeparateSignaturesTask
+
+## Development
+
+*   If the database has changed and the edmx was regenerated, special attention should be made to rowversion columns, please check here http://stackoverflow.com/questions/12732161/how-to-automate-setting-concurrencymode-fixed-on-all-rowversion-columns and run the tool FixVersionColumnConcurrencyMode.exe (the source is available in folder WalletBackEnd\LykkeWalletServices and should be compiled with csc)
+
+## Database
+
+*   Database for the applicaion is currently sql server (developped with express version) and from DB folder the DDL.sql should be run to create the database

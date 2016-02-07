@@ -14,24 +14,16 @@ namespace LykkeWalletServices
     
     public partial class ExchangeRequest
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public ExchangeRequest()
-        {
-            this.TransactionsToBeSigneds = new HashSet<TransactionsToBeSigned>();
-        }
-    
         public string WalletAddress01 { get; set; }
         public string WalletAddress02 { get; set; }
         public string Asset01 { get; set; }
         public string Asset02 { get; set; }
-        public Nullable<long> Amount01 { get; set; }
-        public Nullable<long> Amount02 { get; set; }
+        public Nullable<int> Amount01 { get; set; }
+        public Nullable<int> Amount02 { get; set; }
         public string ServiceTransactionId { get; set; }
         public string ExchangeId { get; set; }
-        public Nullable<long> FirstClientSigned { get; set; }
-        public Nullable<long> SecondClientSigned { get; set; }
-    
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<TransactionsToBeSigned> TransactionsToBeSigneds { get; set; }
+        public Nullable<int> FirstClientSigned { get; set; }
+        public Nullable<int> SecondClientSigned { get; set; }
+        public byte[] Version { get; set; }
     }
 }

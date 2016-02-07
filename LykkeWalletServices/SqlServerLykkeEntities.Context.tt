@@ -2,7 +2,7 @@
 <#@ include file="EF6.Utility.CS.ttinclude"#><#@
  output extension=".cs"#><#
 
-const string inputFile = @"SqliteLykkeEntities.edmx";
+const string inputFile = @"SqlserverLykkeEntities.edmx";
 var textTransform = DynamicTextTransformation.Create(this);
 var code = new CodeGenerationTools(this);
 var ef = new MetadataTools(this);
@@ -80,7 +80,6 @@ foreach (var entitySet in container.BaseEntitySets.OfType<EntitySet>())
 #>
     }
 
-	// Added by developper
 	public <#=code.Escape(container)#>(string connectionString)
         : base(connectionString)
     {
@@ -105,7 +104,6 @@ foreach (var entitySet in container.BaseEntitySets.OfType<EntitySet>())
 }
 #>
     }
-	// End of added by developper
 
     protected override void OnModelCreating(DbModelBuilder modelBuilder)
     {

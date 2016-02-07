@@ -21,39 +21,54 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             try
             {
-                var MultisigAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, ConnectionString);
-                OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(MultisigAddress.WalletAddress, data.Amount, data.Currency,
-                     Assets, Network, Username, Password, IpAddress, ConnectionString, true, false);
-                if (walletCoins.Error != null)
+                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
-                    error = walletCoins.Error;
-                }
-                else
-                {
-                    TransactionBuilder builder = new TransactionBuilder();
-                    var tx = builder
-                        .AddCoins(walletCoins.Coins)
-                        .AddCoins(walletCoins.AssetCoins)
-                        .AddKeys(new BitcoinSecret(MultisigAddress.WalletPrivateKey))
-                        .SendAsset(new Script(MultisigAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                        .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                        .SetChange(new BitcoinAddress(MultisigAddress.WalletAddress))
-                        .BuildTransaction(true);
-
-                    Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                        (tx, Username, Password, IpAddress, Network, ConnectionString);
-
-                    if (localerror == null)
+                    var MultisigAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities);
+                    OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(MultisigAddress.WalletAddress, data.Amount, data.Currency,
+                         Assets, Network, Username, Password, IpAddress, ConnectionString, entities, true, false);
+                    if (walletCoins.Error != null)
                     {
-                        result = new OrdinaryCashInTaskResult
-                        {
-                            TransactionHex = tx.ToHex(),
-                            TransactionHash = tx.GetHash().ToString()
-                        };
+                        error = walletCoins.Error;
                     }
                     else
                     {
-                        error = localerror;
+                        TransactionBuilder builder = new TransactionBuilder();
+                        var tx = builder
+                            .AddCoins(walletCoins.Coins)
+                            .AddCoins(walletCoins.AssetCoins)
+                            .AddKeys(new BitcoinSecret(MultisigAddress.WalletPrivateKey))
+                            .SendAsset(new Script(MultisigAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
+                            .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
+                            .SetChange(new BitcoinAddress(MultisigAddress.WalletAddress))
+                            .BuildTransaction(true);
+
+                        using (var transaction = entities.Database.BeginTransaction())
+                        {
+                            Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
+
+                            if (localerror == null)
+                            {
+                                result = new OrdinaryCashInTaskResult
+                                {
+                                    TransactionHex = tx.ToHex(),
+                                    TransactionHash = tx.GetHash().ToString()
+                                };
+                            }
+                            else
+                            {
+                                error = localerror;
+                            }
+
+                            if (error == null)
+                            {
+                                transaction.Commit();
+                            }
+                            else
+                            {
+                                transaction.Rollback();
+                            }
+                        }
                     }
                 }
             }

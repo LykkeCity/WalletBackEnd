@@ -18,7 +18,6 @@ namespace LykkeWalletServices
         public string WalletAddress { get; set; }
         public string UnsignedTransaction { get; set; }
         public string SignedTransaction { get; set; }
-    
-        public virtual ExchangeRequest ExchangeRequest { get; set; }
+        public byte[] Version { get; set; }
     }
 }

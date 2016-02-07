@@ -20,5 +20,6 @@ namespace LykkeWalletServices
         public string MultiSigScript { get; set; }
         public string ExchangePrivateKey { get; set; }
         public string Network { get; set; }
+        public byte[] Version { get; set; }
     }
 }

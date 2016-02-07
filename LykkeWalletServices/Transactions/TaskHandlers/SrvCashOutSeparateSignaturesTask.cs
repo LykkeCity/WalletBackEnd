@@ -30,87 +30,108 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             OpenAssetsHelper.AssetDefinition[] assets, Network network, string username, string password, string ipAddress, string connectionString,
             BitcoinSecret secret)
         {
-            OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(multisigAddress, amount, currency,
-                    assets, network, username, password, ipAddress, connectionString, false);
-            if (walletCoins.Error != null)
+            using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
             {
-                return new Tuple<string, Error>(null, walletCoins.Error);
-            }
+                OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(multisigAddress, amount, currency,
+                        assets, network, username, password, ipAddress, connectionString, entities, false);
+                if (walletCoins.Error != null)
+                {
+                    return new Tuple<string, Error>(null, walletCoins.Error);
+                }
 
-            TransactionBuilder builder = new TransactionBuilder();
-            var tx = builder
-            .AddCoins(walletCoins.ScriptCoins)
-            .AddCoins(walletCoins.AssetScriptCoins)
-            .AddKeys(secret)
-            .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, network)), Convert.ToInt64((amount * walletCoins.Asset.AssetMultiplicationFactor))))
-            .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-            .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(network))
-            .BuildTransaction(true);
-            return new Tuple<string, Error>(tx.ToHex(), null);
+                TransactionBuilder builder = new TransactionBuilder();
+                var tx = builder
+                .AddCoins(walletCoins.ScriptCoins)
+                .AddCoins(walletCoins.AssetScriptCoins)
+                .AddKeys(secret)
+                .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, network)), Convert.ToInt64((amount * walletCoins.Asset.AssetMultiplicationFactor))))
+                .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
+                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(network))
+                .BuildTransaction(true);
+                return new Tuple<string, Error>(tx.ToHex(), null);
+            }
         }
 
         public async Task<Tuple<CashOutSeparateSignaturesTaskResult, Error>> ExecuteTask(TaskToDoCashOutSeparateSignatures data)
         {
             CashOutSeparateSignaturesTaskResult result = null;
             Error error = null;
-            
+
             try
             {
-                var clientAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, ConnectionString);
-                var txSignedByClient = await GenerateUncompleteTransactionWithOnlyOneSignature(data.MultisigAddress, data.Amount, data.Currency,
-                    Assets, Network, Username, Password, IpAddress, ConnectionString, new BitcoinSecret(clientAddress.WalletPrivateKey));
-                if (txSignedByClient.Item2 != null)
+                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
-                    error = txSignedByClient.Item2;
-                }
-                else
-                {
-                    var txSignedByExchange = await GenerateUncompleteTransactionWithOnlyOneSignature(data.MultisigAddress, data.Amount, data.Currency,
-                        Assets, Network, Username, Password, IpAddress, ConnectionString, new BitcoinSecret(ExchangePrivateKey));
-                    if (txSignedByExchange.Item2 != null)
+                    var clientAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities);
+                    var txSignedByClient = await GenerateUncompleteTransactionWithOnlyOneSignature(data.MultisigAddress, data.Amount, data.Currency,
+                        Assets, Network, Username, Password, IpAddress, ConnectionString, new BitcoinSecret(clientAddress.WalletPrivateKey));
+                    if (txSignedByClient.Item2 != null)
                     {
-                        error = txSignedByExchange.Item2;
-                    }
-
-                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
-                        Assets, Network, Username, Password, IpAddress, ConnectionString, false);
-                    if (walletCoins.Error != null)
-                    {
-                        error = walletCoins.Error;
+                        error = txSignedByClient.Item2;
                     }
                     else
                     {
-                        TransactionBuilder builder = new TransactionBuilder();
-                        var txCommon = builder
-                            .AddCoins(walletCoins.ScriptCoins)
-                            .AddCoins(walletCoins.AssetScriptCoins)
-                            .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                            .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                            .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                            .BuildTransaction(true);
-                        Transaction tx = builder.CombineSignatures(new Transaction[] { txCommon, new Transaction(txSignedByClient.Item1), new Transaction(txSignedByExchange.Item1) });
-                        if (!builder.Verify(tx))
+                        var txSignedByExchange = await GenerateUncompleteTransactionWithOnlyOneSignature(data.MultisigAddress, data.Amount, data.Currency,
+                            Assets, Network, Username, Password, IpAddress, ConnectionString, new BitcoinSecret(ExchangePrivateKey));
+                        if (txSignedByExchange.Item2 != null)
                         {
-                            error = new Error();
-                            error.Code = ErrorCode.TransactionNotSignedProperly;
-                            error.Message = "Two bodies have signed the transaction (exchange and the client), their signature could not be mixed properly.";
+                            error = txSignedByExchange.Item2;
+                        }
+
+                        OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = 
+                            (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
+                            Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
+                        if (walletCoins.Error != null)
+                        {
+                            error = walletCoins.Error;
                         }
                         else
                         {
-                            Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                (tx, Username, Password, IpAddress, Network, ConnectionString);
-
-                            if (localerror == null)
+                            TransactionBuilder builder = new TransactionBuilder();
+                            var txCommon = builder
+                                .AddCoins(walletCoins.ScriptCoins)
+                                .AddCoins(walletCoins.AssetScriptCoins)
+                                .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
+                                .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
+                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                .BuildTransaction(true);
+                            Transaction tx = builder.CombineSignatures(new Transaction[] { txCommon, new Transaction(txSignedByClient.Item1), new Transaction(txSignedByExchange.Item1) });
+                            if (!builder.Verify(tx))
                             {
-                                result = new CashOutSeparateSignaturesTaskResult
-                                {
-                                    TransactionHex = tx.ToHex(),
-                                    TransactionHash = tx.GetHash().ToString()
-                                };
+                                error = new Error();
+                                error.Code = ErrorCode.TransactionNotSignedProperly;
+                                error.Message = "Two bodies have signed the transaction (exchange and the client), their signature could not be mixed properly.";
                             }
                             else
                             {
-                                error = localerror;
+                                Error localerror = null;
+                                using (var transaction = entities.Database.BeginTransaction())
+                                {
+                                    localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
+
+
+                                    if (localerror == null)
+                                    {
+                                        result = new CashOutSeparateSignaturesTaskResult
+                                        {
+                                            TransactionHex = tx.ToHex(),
+                                            TransactionHash = tx.GetHash().ToString()
+                                        };
+                                    }
+                                    else
+                                    {
+                                        error = localerror;
+                                    }
+
+                                    if (error == null)
+                                    {
+                                        transaction.Commit();
+                                    }
+                                    else
+                                    {
+                                        transaction.Rollback();
+                                    }
+                                }
                             }
                         }
                     }
@@ -122,78 +143,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 error.Code = ErrorCode.Exception;
                 error.Message = e.ToString();
             }
-            
-            /*
-            try
-            {
-                //var walletCoins = await OpenAssetsHelper.GetScriptCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
-                //    Assets, Network, Username, Password, IpAddress);
-                OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
-                    Assets, Network, Username, Password, IpAddress, ConnectionString, false);
-                if (walletCoins.Error != null)
-                {
-                    error = walletCoins.Error;
-                }
-                else
-                {
-                    TransactionBuilder builder = new TransactionBuilder(0);
-                    var txClient = builder
-                        .AddCoins(walletCoins.ScriptCoins)
-                        .AddCoins(walletCoins.AssetScriptCoins)
-                        .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey))
-                        .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                        .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                        .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                        .BuildTransaction(true);
 
-                    builder = new TransactionBuilder(0);
-                    var txExchange = builder
-                        .AddCoins(walletCoins.ScriptCoins)
-                        .AddCoins(walletCoins.AssetScriptCoins)
-                        .AddKeys(new BitcoinSecret(ExchangePrivateKey))
-                        .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                        .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                        .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                        .BuildTransaction(true);
-
-                    builder = new TransactionBuilder(0);
-                    var txCommon = builder
-                        .AddCoins(walletCoins.ScriptCoins)
-                        .AddCoins(walletCoins.AssetScriptCoins)
-                        .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                        .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                        .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                        .BuildTransaction(true);
-
-                    // builder = new TransactionBuilder(0);
-                    Transaction tx = builder.CombineSignatures(new Transaction[] { txCommon, txClient, txExchange });
-                    bool isVerify = builder.Verify(tx);
-
-                    Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                       (tx, Username, Password, IpAddress, Network, ConnectionString);
-                    // Error localerror = null;
-
-                    if (localerror == null)
-                    {
-                        result = new CashOutSeparateSignaturesTaskResult
-                        {
-                            TransactionHex = tx.ToHex(),
-                            TransactionHash = tx.GetHash().ToString()
-                        };
-                    }
-                    else
-                    {
-                        error = localerror;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                error = new Error();
-                error.Code = ErrorCode.Exception;
-                error.Message = e.ToString();
-            }
-            */
             return new Tuple<CashOutSeparateSignaturesTaskResult, Error>(result, error);
         }
 

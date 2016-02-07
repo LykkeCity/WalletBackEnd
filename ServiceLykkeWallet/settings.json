@@ -2,10 +2,10 @@
   "RestEndPoint": "http://+:8085",
   "InQueueConnectionString": "UseDevelopmentStorage=true",
   "OutQueueConnectionString": "UseDevelopmentStorage=true;",
-  "ConnectionString": "metadata=res://*/SqliteLykkeEntities.csdl|res://*/SqliteLykkeEntities.ssdl|res://*/SqliteLykkeEntities.msl;provider=System.Data.SQLite.EF6;provider connection string=\"data source=F:\\Github\\WalletBackEnd\\LykkeWalletServices\\DB\\LykkeServices",
+  "ConnectionString": "metadata=res://*/SqlserverLykkeEntities.csdl|res://*/SqlserverLykkeEntities.ssdl|res://*/SqlserverLykkeEntities.msl;provider=System.Data.SqlClient;provider connection string=\"data source=.\\SQLEXPRESS;initial catalog=Lykke;integrated security=True;MultipleActiveResultSets=True;App=EntityFramework",
   "NetworkType": "TestNet",
   "exchangePrivateKey": "xxx",
-  "FeeAddress": "xxx",
+  "FeeAddress": "moTLjH5p8hxgEm7a7pKh2BsjqDWABRCHBm",
   "FeeAddressPrivateKey": "xxx",
   "LykkeCredentials": {
     "PublicAddress": "xxxxxxxxx",
@@ -17,6 +17,7 @@
   "AssetDefinitions": [
     {
       "AssetId": "oXjVb4XRo23tp53QFgVUxLhctPKPt6Q127",
+      "AssetAddress": "mi4VV7LsXcEg41gy2tUEE81diyPayhyRQD",
       "Name": "bjkUSD",
       "PrivateKey": "xxx",
       "DefinitionUrl": "https://www.cpr.sm/XxASx1ojFD",
@@ -24,6 +25,7 @@
     },
     {
       "AssetId": "oKVtKPjuhsWHeR3eNSNJj7ubCzWrxKmexV",
+      "AssetAddress": "n4mFeShiepGwB5dhnWZNySrejnkWQLwfgD",
       "Name": "bjkEUR",
       "PrivateKey": "xxx",
       "DefinitionUrl": "https://www.cpr.sm/xVMAMwAYvv",
@@ -31,6 +33,7 @@
     },
     {
       "AssetId": "ocmVkVUHnrdSKASFWuHy6hxqTWFc9vdL9d",
+      "AssetAddress": "n2JMZcG3dKuRN4c8K89TBwwwDpHshppQUr",
       "Name": "TestExchangeUSD",
       "PrivateKey": "xxx",
       "DefinitionUrl": "https://www.cpr.sm/-KDPVKLTlL",
@@ -38,6 +41,7 @@
     },
     {
       "AssetId": "oZTd8ZfoyRPkYFhbeLXvordpcpND2YpqPg",
+      "AssetAddress": "n4XdhcAWoRBesY2gy5hnF6ht31rLG19kqy",
       "Name": "TestExchangeEUR",
       "PrivateKey": "xxx",
       "DefinitionUrl": "https://www.cpr.sm/SBi9SeNlyB",
