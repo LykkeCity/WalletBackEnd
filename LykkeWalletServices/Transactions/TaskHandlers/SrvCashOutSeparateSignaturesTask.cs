@@ -15,7 +15,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvCashOutSeparateSignaturesTask : SrvNetworkInvolvingExchangeBase
     {
         public SrvCashOutSeparateSignaturesTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
-            string password, string ipAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
         }
 

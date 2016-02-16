@@ -25,9 +25,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             get; set;
         }
 
+        protected string FeeAddress
+        {
+            get; set;
+        }
+
         protected string ConnectionString { get; set; }
         public SrvNetworkBase(Network network, OpenAssetsHelper.AssetDefinition[] assets,
-            string username, string password, string ipAddress, string connectionString)
+            string username, string password, string ipAddress, string connectionString, string feeAddress)
         {
             this.Network = network;
             this.Assets = assets;
@@ -35,6 +40,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             this.Password = password;
             this.IpAddress = ipAddress;
             this.ConnectionString = connectionString;
+            this.FeeAddress = feeAddress;
         }
     }
 }

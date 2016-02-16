@@ -11,7 +11,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvOrdinaryCashOutTask : SrvNetworkInvolvingExchangeBase
     {
         public SrvOrdinaryCashOutTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
-            string password, string ipAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
         }
 
@@ -32,18 +32,18 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     }
                     else
                     {
-                        TransactionBuilder builder = new TransactionBuilder();
-                        var tx = builder
-                            .AddCoins(walletCoins.ScriptCoins)
-                            .AddCoins(walletCoins.AssetScriptCoins)
-                            .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                            .SendAsset(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                            .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                            .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                            .BuildTransaction(true);
-
                         using (var transaction = entities.Database.BeginTransaction())
                         {
+                            TransactionBuilder builder = new TransactionBuilder();
+                            var tx = (await builder
+                                .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
+                                .AddCoins(walletCoins.AssetScriptCoins)
+                                .AddEnoughPaymentFee(entities, Network.ToString()))
+                                .SendAsset(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
+                                .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi - OpenAssetsHelper.NBitcoinColoredCoinOutputInSatoshi))
+                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                .BuildTransaction(true);
+
                             Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
                                 (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
 

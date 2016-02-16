@@ -51,6 +51,8 @@ All service are queue based
         Sample response: RechargeFeesWallet:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
 
 ## Some notes
+*   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.
+
 *   In file Program.cs in line `var json = await ReadTextAsync("F:\\Lykkex\\settings.json");` correct path to json file, this is only for the debug; the release version uses the settings.json in the solution path.
 
 *   In the settings.json, please correct the following
@@ -83,8 +85,6 @@ The AssetDefinitions is an array of json, with the following fields:
 *   The exchange private key could be generated using TestConsole project, Program.cs, function TestBitcoinScripts, for the configured Main or TestNet.
 
 *   For debug install latest [Microsoft Azure Storage Emulator](http://download.microsoft.com/download/0/F/E/0FE64840-9806-4D3C-9C11-84B743162618/MicrosoftAzureStorageEmulator.msi)
-
-*   WalletDefinitions are not required by now.
 
 ## Mixing signatures
 

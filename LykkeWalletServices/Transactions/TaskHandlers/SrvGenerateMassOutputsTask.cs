@@ -21,7 +21,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         private string feeAddressPrivateKey = null;
         public SrvGenerateMassOutputsTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
             string password, string ipAddress, string connectionString, string feeAddress, string feeAddressPrivateKey) :
-            base(network, assets, username, password, ipAddress, connectionString)
+            base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
             this.feeAddress = feeAddress;
             this.feeAddressPrivateKey = feeAddressPrivateKey;
@@ -77,7 +77,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         var uncoloredOutputs = OpenAssetsHelper.GetWalletOutputsUncolored(outputs.Item1);
                         float totalRequiredAmount = data.Count * data.FeeAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor; // Convert to satoshi
                         float minimumRequiredAmountForParticipation = (ulong)(0.001 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
-                        var output = uncoloredOutputs.Where(o => (o.value > minimumRequiredAmountForParticipation)).ToList();
+                        var output = uncoloredOutputs.Where(o => (o.GetValue() > minimumRequiredAmountForParticipation)).ToList();
                         if (output.Count == 0)
                         {
                             error = new Error();
@@ -86,7 +86,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         }
                         else
                         {
-                            if (output.Select(o => o.value).Sum() < totalRequiredAmount)
+                            if (output.Select(o => o.GetValue()).Sum() < totalRequiredAmount)
                             {
                                 error = new Error();
                                 error.Code = ErrorCode.NotEnoughBitcoinAvailable;
@@ -94,8 +94,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             }
                             else
                             {
-                                var sourceCoins = output.Select(o => new Coin(new uint256(o.transaction_hash), (uint)o.output_index,
-                                    o.value, new Script(OpenAssetsHelper.StringToByteArray(o.script_hex))));
+                                var sourceCoins = output.Select(o => new Coin(new uint256(o.GetTransactionHash()), (uint)o.GetOutputIndex(),
+                                    o.GetValue(), new Script(OpenAssetsHelper.StringToByteArray(o.GetScriptHex()))));
                                 TransactionBuilder builder = new TransactionBuilder();
                                 //builder.DustPrevention = false;
                                 builder

@@ -1,4 +1,5 @@
 ﻿using Core;
+using LykkeWalletServices;
 using NBitcoin;
 using NBitcoin.RPC;
 using System;
@@ -14,7 +15,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvCashInTask : SrvNetworkBase
     {
         public SrvCashInTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
-            string password, string ipAddress, string connectionString) : base(network, assets, username, password, ipAddress, connectionString)
+            string password, string ipAddress, string connectionString, string feeAddress) : base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
         }
 
@@ -35,28 +36,22 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             using (var transaction = entities.Database.BeginTransaction())
                             {
                                 PreGeneratedOutput issuancePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, Network.ToString(), asset.AssetId);
-                                Coin issuancePayerCoin = new Coin(new uint256(issuancePayer.TransactionId), (uint)issuancePayer.OutputNumber,
-                                    issuancePayer.Amount, new PayToPubkeyHashTemplate().GenerateScriptPubKey(new BitcoinAddress(issuancePayer.Address, Network)));
+                                Coin issuancePayerCoin = issuancePayer.GetCoin();
                                 IssuanceCoin issueCoin = new IssuanceCoin(issuancePayerCoin);
                                 issueCoin.DefinitionUrl = new Uri(asset.AssetDefinitionUrl);
-
-                                PreGeneratedOutput feePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, Network.ToString());
-                                Coin feePayerCoin = new Coin(new uint256(feePayer.TransactionId), (uint)feePayer.OutputNumber,
-                                    feePayer.Amount, new PayToPubkeyHashTemplate().GenerateScriptPubKey(new BitcoinAddress(feePayer.Address, Network)));
 
                                 var multiSigScript = new Script((await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities)).MultiSigScript);
                                 // Issuing the asset
                                 TransactionBuilder builder = new TransactionBuilder();
-                                var tx = builder
+                                var tx = (await builder
                                     .AddKeys(new BitcoinSecret(issuancePayer.PrivateKey, Network))
                                     .AddCoins(issueCoin)
-                                    .AddKeys(new BitcoinSecret(feePayer.PrivateKey, Network))
-                                    .AddCoins(feePayerCoin)
+                                    .AddEnoughPaymentFee(entities, Network.ToString()))
                                     .IssueAsset(multiSigScript.GetScriptAddress(Network), new NBitcoin.OpenAsset.AssetMoney(
                                         new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, Network)),
                                         Convert.ToInt64(data.Amount * asset.AssetMultiplicationFactor)))
                                     .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                                    .SetChange((new BitcoinSecret(feePayer.PrivateKey)).PubKey) // Paying the rest to fee payer address
+                                    .SetChange(new BitcoinAddress(FeeAddress, Network)) // Paying the rest to fee payer address
                                     .BuildTransaction(true);
 
                                 Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt

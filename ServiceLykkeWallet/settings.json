@@ -11,7 +11,7 @@
     "PublicAddress": "xxxxxxxxx",
     "PrivateKey": "xxxxxxxxx"
   },
-  "RPCUsername": "xxx",
+  "RPCUsername": "bitcoinrpc",
   "RPCPassword": "xxx",
   "RPCServerIpAddress": "xxx",
   "AssetDefinitions": [
@@ -46,12 +46,6 @@
       "PrivateKey": "xxx",
       "DefinitionUrl": "https://www.cpr.sm/SBi9SeNlyB",
       "Divisibility": 2
-    }
-  ],
-  "WalletDefinitions": [
-    {
-      "Address": "1Ls5Xa9GAoUJ33L9USjgs8F1yZt4noFuzq",
-      "PrivateKey": "xxx"
     }
   ]
 }

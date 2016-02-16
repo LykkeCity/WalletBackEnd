@@ -10,10 +10,11 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         }
 
         public SrvNetworkInvolvingExchangeBase(Network network, OpenAssetsHelper.AssetDefinition[] assets,
-            string username, string password, string ipAddress, string exchangePrivateKey, string connectionString)
-            : base(network, assets, username, password, ipAddress, connectionString)
+            string username, string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString)
+            : base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
-            this.ExchangePrivateKey = exchangePrivateKey;
+            ExchangePrivateKey = exchangePrivateKey;
+            FeeAddress = feeAddress;
         }
     }
 }

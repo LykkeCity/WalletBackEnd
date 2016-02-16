@@ -12,7 +12,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvGetCurrentBalanceTask : SrvNetworkBase
     {
         public SrvGetCurrentBalanceTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
-            string password, string ipAddress, string connectionString) : base(network, assets, username, password, ipAddress, connectionString)
+            string password, string ipAddress, string connectionString, string feeAddress) : base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
         }
 

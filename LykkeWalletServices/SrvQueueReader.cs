@@ -67,7 +67,7 @@ namespace LykkeWalletServices
             var transactionCashIn = @event as TaskToDoCashIn;
             if (transactionCashIn != null)
             {
-                var service = new SrvCashInTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _connectionString);
+                var service = new SrvCashInTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _connectionString, _feeAddress);
                 service.Execute(transactionCashIn, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
@@ -79,7 +79,7 @@ namespace LykkeWalletServices
             var transactionOrdinaryCashIn = @event as TaskToDoOrdinaryCashIn;
             if (transactionOrdinaryCashIn != null)
             {
-                var service = new SrvOrdinaryCashInTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _connectionString);
+                var service = new SrvOrdinaryCashInTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _connectionString, _feeAddress);
                 service.Execute(transactionOrdinaryCashIn, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
@@ -91,7 +91,7 @@ namespace LykkeWalletServices
             var transactionCashOut = @event as TaskToDoCashOut;
             if (transactionCashOut != null)
             {
-                var service = new SrvCashOutTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _exchangePrivateKey, _connectionString);
+                var service = new SrvCashOutTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionCashOut, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
@@ -103,7 +103,7 @@ namespace LykkeWalletServices
             var transactionCashOutSeparateSignatures = @event as TaskToDoCashOutSeparateSignatures;
             if (transactionCashOutSeparateSignatures != null)
             {
-                var service = new SrvCashOutSeparateSignaturesTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _exchangePrivateKey, _connectionString);
+                var service = new SrvCashOutSeparateSignaturesTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionCashOutSeparateSignatures, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
@@ -115,7 +115,7 @@ namespace LykkeWalletServices
             var transactionOrdinaryCashOut = @event as TaskToDoOrdinaryCashOut;
             if (transactionOrdinaryCashOut != null)
             {
-                var service = new SrvOrdinaryCashOutTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _exchangePrivateKey, _connectionString);
+                var service = new SrvOrdinaryCashOutTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionOrdinaryCashOut, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
@@ -128,7 +128,7 @@ namespace LykkeWalletServices
             if (transactionGetCurrentBalance != null)
             {
                 var service = new SrvGetCurrentBalanceTask(_network, _assets, _rpcUsername,
-                    _rpcPassword, _rpcServer, _connectionString);
+                    _rpcPassword, _rpcServer, _connectionString, _feeAddress);
                 service.Execute(transactionGetCurrentBalance, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
@@ -141,7 +141,7 @@ namespace LykkeWalletServices
             if (transactionSwap != null)
             {
                 var service = new SrvSwapTask(_network, _assets, _rpcUsername,
-                    _rpcPassword, _rpcServer, _exchangePrivateKey, _connectionString);
+                    _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionSwap, async result =>
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create

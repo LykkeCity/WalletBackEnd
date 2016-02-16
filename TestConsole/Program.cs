@@ -45,10 +45,6 @@ namespace TestConsole
         {
             var settings = SettingsReader.ReadAppSettins();
             // var accGenerator = new SrvAccountGenerator();
-            string WalletAddress01 = settings.WalletDefinitions[2].Address;
-            string WalletAddress02 = settings.WalletDefinitions[3].Address;
-            string WalletAddress01PrivateKey = settings.WalletDefinitions[2].PrivateKey;
-            string WalletAddress02PrivateKey = settings.WalletDefinitions[3].PrivateKey;
 
             string Asset01 = settings.AssetDefinitions[0].AssetId;
             string Asset02 = settings.AssetDefinitions[1].AssetId;
