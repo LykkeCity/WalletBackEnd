@@ -95,6 +95,17 @@ namespace Core
         public string PublicWallet { get; set; }
     }
 
+    public class TaskToDoTransfer : TransactionToDoBase
+    {
+        public string SourceMultisigAddress { get; set; }
+        public string SourcePrivateKey { get; set; }
+        public string DestinationMultisigAddress { get; set; }
+        public string DestinationPrivakeKey { get; set; }
+        // ToDo - At first we assume the currency is not divisable
+        public float Amount { get; set; }
+        public string Asset { get; set; }
+    }
+
     public class TaskToDoSwap : TransactionToDoBase
     {
         public string MultisigCustomer1 { get; set; }

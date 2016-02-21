@@ -70,6 +70,10 @@ namespace Core
     {
     }
 
+    public class TransferTaskResult : TransactionSenderTaskResult
+    {
+    }
+
     public class GetCurrentBalanceTaskResult : ITaskResult
     {
         public GetCurrentBalanceTaskResultElement[] ResultArray;

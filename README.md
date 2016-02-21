@@ -45,10 +45,16 @@ All service are queue based
         Sample request: Swap:{"TransactionId":"10", MultisigCustomer1:"2N8zbehwdz2wcCd2JwZktnt6uKZ8fFMZVPp", "Amount1":200, "Asset1":"TestExchangeUSD", MultisigCustomer2:"2N8Z7FLao3qWc8h8mveDXaAA9q1Q53xMsyL", "Amount2":300, "Asset2":"TestExchangeEUR"}
         Sample response: Swap:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
-*   RechargeFeesWallet
+*   Transfer
 
-        Sample request: RechargeFeesWallet:{"WalletAddress":"mtgbKeNYngWvjmUaSfqhnKD3s2niC3tsCx","PrivateKey":"???","FeeAmount":0.00015,"Count":1000}
-        Sample response: RechargeFeesWallet:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
+        Sample request: Transfer:{"SourceMultisigAddress":"2N5H4VU7R4s5CBsyq77HQ7Gu8ZXKDz3ZHVD","SourcePrivateKey":"???","DestinationMultisigAddress":"2N3e9ZNg6uFbVg7EwnSsaWPr6VAbnDfjkTo","DestinationPrivakeKey":"???", "Amount":100, "Asset":"bjkUSD"}
+        Sample response: Transfer:{"TransactionId":null,"Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
+
+*   GenerateMassOutputs
+
+        Sample request: GenerateMassOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.00015,"Count":1000, "Purpose":"fee"}
+        Sample request: GenerateMassOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.0000273,"Count":10, "Purpose":"asset:bjkUSD"}
+        Sample response: GenerateMassOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
 
 ## Some notes
 *   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.
