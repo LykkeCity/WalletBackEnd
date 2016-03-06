@@ -30,6 +30,8 @@ namespace ServiceLykkeWallet
             var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, "outdata"));
             var lykkeAccountReader = new LykkeAccountReader(settings.LykkeCredentials);
 
+            OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
+
             var srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
                 settings.exchangePrivateKey, settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
@@ -79,6 +81,8 @@ namespace ServiceLykkeWallet
             public string RPCServerIpAddress { get; set; }
             public string FeeAddress { get; set; }
             public string FeeAddressPrivateKey { get; set; }
+
+            public string QBitNinjaBaseUrl { get; set; }
         }
 
         public static async Task<TheSettings> ReadAppSettins()

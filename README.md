@@ -76,6 +76,7 @@ All service are queue based
 |AssetDefinitions|Nothing|The array of assets used by the exchange,consisting of various fields described in the following table.|
 |FeeAddress|Nothing|The address which is used to send the outputs for fee generation to, this outputs will later be used to pay transaction fee.|
 |FeeAddressPrivateKey|Nothing|The private key of the above address|
+|QBitNinjaBaseUrl|Nothing|The qbit ninja url used for querying bitcoin network|
 
 The AssetDefinitions is an array of json, with the following fields:
 

@@ -21,14 +21,23 @@ namespace LykkeWalletServices
 
         const string coinprismBaseUrl = "https://api.coinprism.com/v1/addresses/";
         const string coinprismTestnetBaseUrl = "https://testnet.api.coinprism.com/v1/addresses/";
+        /*
         const string qbitNinjaBaseUrl = "http://localhost:85/balances/";
         const string qbitNinjaTestnetBaseUrl = "http://localhost:85/balances/";
+        */
+
         public const uint MinimumRequiredSatoshi = 50000; // 100000000 satoshi is one BTC
         public const uint TransactionSendFeesInSatoshi = 10000;
         public const ulong BTCToSathoshiMultiplicationFactor = 100000000;
         public const uint ConcurrencyRetryCount = 3;
         public const uint NBitcoinColoredCoinOutputInSatoshi = 2730;
         private const APIProvider apiProvider = APIProvider.QBitNinja;
+
+        public static string QBitNinjaBaseUrl
+        {
+            get;
+            set;
+        }
 
 
         public class AssetDefinition
@@ -303,11 +312,11 @@ namespace LykkeWalletServices
                     string url = null;
                     if (network == Network.Main)
                     {
-                        url = qbitNinjaBaseUrl + walletAddress;
+                        url = QBitNinjaBaseUrl + walletAddress;
                     }
                     else
                     {
-                        url = qbitNinjaTestnetBaseUrl + walletAddress;
+                        url = QBitNinjaBaseUrl + walletAddress;
                     }
                     HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
                     if (!result.IsSuccessStatusCode)
@@ -430,11 +439,11 @@ namespace LykkeWalletServices
                 {
                     if (network == Network.Main)
                     {
-                        url = qbitNinjaBaseUrl + walletAddress;
+                        url = QBitNinjaBaseUrl + walletAddress;
                     }
                     else
                     {
-                        url = qbitNinjaTestnetBaseUrl + walletAddress;
+                        url = QBitNinjaBaseUrl + walletAddress;
                     }
                     HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
                     if (!result.IsSuccessStatusCode)

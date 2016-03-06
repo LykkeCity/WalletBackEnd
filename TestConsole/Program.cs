@@ -9,7 +9,6 @@ namespace TestConsole
 {
     class Program
     {
-
         private static void TestRPC()
         {
             /*
