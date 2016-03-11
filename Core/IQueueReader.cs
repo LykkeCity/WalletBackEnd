@@ -57,6 +57,14 @@ namespace Core
         public string MultisigAddress { get; set; }
     }
 
+    public class TaskToDoGetFeeOutputsStatus : TransactionToDoBase
+    {
+    }
+
+    public class TaskToDoGetIssuersOutputStatus : TransactionToDoBase
+    {
+    }
+
     public class TaskToDoCashOut : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }

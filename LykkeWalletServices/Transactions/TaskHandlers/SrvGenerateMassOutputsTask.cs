@@ -105,12 +105,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 for (int i = 0; i < data.Count; i++)
                                 {
                                     builder.Send(new BitcoinAddress(destinationAddress, Network),
-                                        new Money((ulong)(data.FeeAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor)))
+                                        new Money(Convert.ToInt64(data.FeeAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor)))
                                         .BuildTransaction(false);
                                 }
 
-                                var fee = ((ulong)builder.EstimateSize(builder.BuildTransaction(false))
-                                    * OpenAssetsHelper.TransactionSendFeesInSatoshi) / 1000;
+                                var fee = (Convert.ToInt64(builder.EstimateSize(builder.BuildTransaction(false))
+                                    * OpenAssetsHelper.TransactionSendFeesInSatoshi)) / 1000;
                                 Transaction tx = builder.SendFees(Math.Max(fee, OpenAssetsHelper.TransactionSendFeesInSatoshi)).
                                     BuildTransaction(true);
                                 IList<PreGeneratedOutput> preGeneratedOutputs = null;
@@ -127,7 +127,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                                         for (int i = 0; i < tx.Outputs.Count; i++)
                                                         {
                                                             var item = tx.Outputs[i];
-                                                            if (item.Value.Satoshi != (long)(data.FeeAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
+                                                            if (item.Value.Satoshi != Convert.ToInt64(data.FeeAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
                                                             {
                                                                 continue;
                                                             }

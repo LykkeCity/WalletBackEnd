@@ -56,6 +56,16 @@ All service are queue based
         Sample request: GenerateMassOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.0000273,"Count":10, "Purpose":"asset:bjkUSD"}
         Sample response: GenerateMassOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
 
+*   Getting fee outputs count
+
+        Sample request: GetFeeOutputsStatus:{"TransactionId":"10"}
+        Sample response: GetFeeOutputsStatus:{"TransactionId":"10","Result":{"ResultArray":[{"Amount":9999.0,"Count":30},{"Amount":15000.0,"Count":1000},{"Amount":10000.0,"Count":90}]},"Error":null}
+
+*   Getting asset issuance coins
+
+        Sample request: GetIssuersOutputStatus:{"TransactionId":"10"}
+        Sample response: GetIssuersOutputStatus:{"TransactionId":"10","Result":{"ResultArray":[{"Asset":"bjkEUR","Amount":15000.0,"Count":1000},{"Asset":"bjkUSD","Amount":2730.0,"Count":30},{"Asset":"bjkUSD","Amount":15000.0,"Count":1000}]},"Error":null}
+
 ## Some notes
 *   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.
 

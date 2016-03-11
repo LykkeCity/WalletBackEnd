@@ -176,6 +176,32 @@ namespace LykkeWalletServices
                 knownTaskType = true;
             }
 
+            var transactionGetIssuerOutputStatus = @event as TaskToDoGetIssuersOutputStatus;
+            if (transactionGetIssuerOutputStatus != null)
+            {
+                var service = new SrvGetIssuersOutputStatusTask(_network, _assets, _rpcUsername,
+                    _rpcPassword, _rpcServer, _connectionString, _feeAddress);
+                service.Execute(transactionGetIssuerOutputStatus, async result =>
+                {
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        ("GetIssuersOutputStatus", @event.TransactionId, result.Item1, result.Item2));
+                });
+                knownTaskType = true;
+            }
+
+            var transactionGetFeeOutputsStatus = @event as TaskToDoGetFeeOutputsStatus;
+            if (transactionGetFeeOutputsStatus != null)
+            {
+                var service = new SrvGetFeeOutputsStatusTask(_network, _assets, _rpcUsername,
+                    _rpcPassword, _rpcServer, _connectionString, _feeAddress);
+                service.Execute(transactionGetFeeOutputsStatus, async result =>
+                {
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        ("GetFeeOutputsStatus", @event.TransactionId, result.Item1, result.Item2));
+                });
+                knownTaskType = true;
+            }
+
             if (knownTaskType)
             {
                 await _log.WriteWarning("SrvQueueReader", "Execute", "", $"{@event.GetType()}");

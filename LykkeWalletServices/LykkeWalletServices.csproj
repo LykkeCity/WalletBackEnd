@@ -122,6 +122,8 @@
     <Compile Include="Transactions\Responses\TaskResultGetBalance.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateMassOutputsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvCashOutSeparateSignaturesTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvGetIssuersOutputStatusTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvGetFeeOutputsStatusTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvTransfer.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvOrdinaryCashInTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvOrdinaryCashOutTask.cs" />

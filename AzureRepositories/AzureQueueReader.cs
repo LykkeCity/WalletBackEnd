@@ -25,7 +25,9 @@ namespace AzureRepositories
                 QueueType.Create("DepositWithdraw", typeof(TaskToDoDepositWithdraw)),
                 QueueType.Create("Exchange", typeof(TaskToDoSendAsset)),
                 QueueType.Create("GenerateMassOutputs", typeof(TaskToDoGenerateMassOutputs)),
-                QueueType.Create("Transfer", typeof(TaskToDoTransfer))
+                QueueType.Create("Transfer", typeof(TaskToDoTransfer)),
+                QueueType.Create("GetIssuersOutputStatus", typeof(TaskToDoGetIssuersOutputStatus)),
+                QueueType.Create("GetFeeOutputsStatus", typeof(TaskToDoGetFeeOutputsStatus))
                 );
         }
 

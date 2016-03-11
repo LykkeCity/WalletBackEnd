@@ -85,6 +85,30 @@ namespace Core
         public float Amount { get; set; }
     }
 
+    public class GetFeeOutputsStatusTaskResult : ITaskResult
+    {
+        public GetFeeOutputsStatusTaskResultElement[] ResultArray;
+    }
+
+    public class GetIssuersOutputStatusTaskResult : ITaskResult
+    {
+        public GetIssuersOutputStatusTaskResultElement[] ResultArray;
+    }
+    
+    public class GetIssuersOutputStatusTaskResultElement
+    {
+        public string Asset { get; set; }
+        public float Amount { get; set; }
+        public int Count { get; set; }
+        
+    }
+
+    public class GetFeeOutputsStatusTaskResultElement
+    {
+        public float Amount { get; set; }
+        public int Count { get; set; }
+    }
+
     /// <summary>
     /// Interface, which gives access to output queue
     /// </summary>
