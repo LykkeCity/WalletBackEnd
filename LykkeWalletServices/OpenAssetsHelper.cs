@@ -1125,6 +1125,160 @@ namespace LykkeWalletServices
             return ret;
         }
 
+        public static async Task<Tuple<GenerateMassOutputsTaskResult, Error>> GenerateMassOutputs(TaskToDoGenerateMassOutputs data, string purpose,
+            string username, string password, string ipAddress, Network network, string connectionString,
+            AssetDefinition[] assets, string feeAddress, string feeAddressPrivateKey)
+        {
+            GenerateMassOutputsTaskResult result = null;
+            Error error = null;
+            string destinationAddress = null;
+            string destinationAddressPrivateKey = null;
+            string assetId = null;
+            if (purpose.Trim().ToLower().Equals("fee"))
+            {
+                destinationAddress = feeAddress;
+                destinationAddressPrivateKey = feeAddressPrivateKey;
+            }
+            else
+            {
+                var split = purpose.Trim().Split(new char[] { ':' });
+                if (split[0].ToLower().Equals("asset"))
+                {
+                    var asset = assets.Where(a => a.Name.Equals(split[1])).Select(a => a).FirstOrDefault();
+                    if (asset != null)
+                    {
+                        destinationAddress = asset.AssetAddress;
+                        destinationAddressPrivateKey = asset.PrivateKey;
+                        assetId = asset.AssetId;
+                    }
+                }
+            }
+            if (destinationAddress == null)
+            {
+                error = new Error();
+                error.Code = ErrorCode.BadInputParameter;
+                error.Message = "The specified purpose is invalid.";
+            }
+            else
+            {
+                try
+                {
+                    var outputs = await GetWalletOutputs(data.WalletAddress, network);
+                    if (outputs.Item2)
+                    {
+                        error = new Error();
+                        error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
+                        error.Message = outputs.Item3;
+                    }
+                    else
+                    {
+                        var uncoloredOutputs = GetWalletOutputsUncolored(outputs.Item1);
+                        float totalRequiredAmount = data.Count * data.FeeAmount * BTCToSathoshiMultiplicationFactor; // Convert to satoshi
+                        float minimumRequiredAmountForParticipation = Convert.ToInt64(0.001 * BTCToSathoshiMultiplicationFactor);
+                        var output = uncoloredOutputs.Where(o => (o.GetValue() > minimumRequiredAmountForParticipation)).ToList();
+                        if (output.Count == 0)
+                        {
+                            error = new Error();
+                            error.Code = ErrorCode.NotEnoughBitcoinAvailable;
+                            error.Message = "There is no output available with the minimum amount of: " + minimumRequiredAmountForParticipation.ToString("n") + " satoshis.";
+                        }
+                        else
+                        {
+                            if (output.Select(o => o.GetValue()).Sum() < totalRequiredAmount)
+                            {
+                                error = new Error();
+                                error.Code = ErrorCode.NotEnoughBitcoinAvailable;
+                                error.Message = "The sum of total applicable outputs is less than the required: " + totalRequiredAmount.ToString("n") + " satoshis.";
+                            }
+                            else
+                            {
+                                var sourceCoins = output.Select(o => new Coin(new uint256(o.GetTransactionHash()), (uint)o.GetOutputIndex(),
+                                    o.GetValue(), new Script(StringToByteArray(o.GetScriptHex()))));
+                                TransactionBuilder builder = new TransactionBuilder();
+                                //builder.DustPrevention = false;
+                                builder
+                                    .AddKeys(new BitcoinSecret(data.PrivateKey))
+                                    .AddCoins(sourceCoins);
+                                builder.SetChange(new BitcoinAddress(data.WalletAddress, network));
+                                for (int i = 0; i < data.Count; i++)
+                                {
+                                    builder.Send(new BitcoinAddress(destinationAddress, network),
+                                        new Money(Convert.ToInt64(data.FeeAmount * BTCToSathoshiMultiplicationFactor)))
+                                        .BuildTransaction(false);
+                                }
+
+                                var fee = (Convert.ToInt64(builder.EstimateSize(builder.BuildTransaction(false))
+                                    * TransactionSendFeesInSatoshi)) / 1000;
+                                Transaction tx = builder.SendFees(Math.Max(fee, TransactionSendFeesInSatoshi)).
+                                    BuildTransaction(true);
+                                IList<PreGeneratedOutput> preGeneratedOutputs = null;
+                                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
+                                {
+                                    using (var transaction = entities.Database.BeginTransaction())
+                                    {
+                                        Error localerror = await CheckTransactionForDoubleSpentThenSendIt
+                                                    (tx, username, password, ipAddress, network, entities, connectionString,
+                                                    null, (entitiesContext) =>
+                                                    {
+                                                        var tId = tx.GetHash().ToString();
+                                                        preGeneratedOutputs = new List<PreGeneratedOutput>();
+                                                        for (int i = 0; i < tx.Outputs.Count; i++)
+                                                        {
+                                                            var item = tx.Outputs[i];
+                                                            if (item.Value.Satoshi != Convert.ToInt64(data.FeeAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
+                                                            {
+                                                                continue;
+                                                            }
+                                                            PreGeneratedOutput f = new PreGeneratedOutput();
+                                                            f.TransactionId = tId;
+                                                            f.OutputNumber = i;
+                                                            f.Script = item.ScriptPubKey.ToHex();
+                                                            f.PrivateKey = destinationAddressPrivateKey;
+                                                            f.Amount = item.Value.Satoshi;
+                                                            f.AssetId = assetId;
+                                                            f.Address = destinationAddress;
+                                                            f.Network = network.ToString();
+                                                            preGeneratedOutputs.Add(f);
+                                                        }
+
+                                                        entitiesContext.PreGeneratedOutputs.AddRange(preGeneratedOutputs);
+                                                    });
+                                        if (localerror == null)
+                                        {
+                                            result = new GenerateMassOutputsTaskResult
+                                            {
+                                                TransactionHash = tx.GetHash().ToString()
+                                            };
+                                        }
+                                        else
+                                        {
+                                            error = localerror;
+                                        }
+
+                                        if (error == null)
+                                        {
+                                            transaction.Commit();
+                                        }
+                                        else
+                                        {
+                                            transaction.Rollback();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    error = new Error();
+                    error.Code = ErrorCode.Exception;
+                    error.Message = e.ToString();
+                }
+            }
+            return new Tuple<GenerateMassOutputsTaskResult, Error>(result, error);
+        }
+
         // From: http://stackoverflow.com/questions/311165/how-do-you-convert-byte-array-to-hexadecimal-string-and-vice-versa
         public static byte[] StringToByteArray(String hex)
         {

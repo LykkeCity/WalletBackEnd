@@ -11,6 +11,19 @@ namespace Core
     {
     }
 
+    public class TaskToDoGenerateFeeOutputs : TaskToDoGenerateMassOutputs
+    {
+    }
+
+    public class TaskToDoGenerateIssuerOutputs : TaskToDoGenerateMassOutputs
+    {
+        public string AssetName
+        {
+            get;
+            set;
+        }
+    }
+
     public class TaskToDoGenerateMassOutputs : TransactionToDoBase
     {
         public string WalletAddress
@@ -36,12 +49,6 @@ namespace Core
             get;
             set;
         } 
-
-        public string Purpose
-        {
-            get;
-            set;
-        }
     }
 
     public class TaskToDoCashIn : TransactionToDoBase

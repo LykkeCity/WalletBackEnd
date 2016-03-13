@@ -120,7 +120,8 @@
     <Compile Include="Transactions\Responses\TaskResultGetTransactionToSign.cs" />
     <Compile Include="Transactions\Responses\TaskResultGenerateExchangeTransfer.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetBalance.cs" />
-    <Compile Include="Transactions\TaskHandlers\SrvGenerateMassOutputsTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvGenerateIssuerOutputsTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvGenerateFeeOutputsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvCashOutSeparateSignaturesTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetIssuersOutputStatusTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetFeeOutputsStatusTask.cs" />

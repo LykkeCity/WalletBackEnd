@@ -50,11 +50,15 @@ All service are queue based
         Sample request: Transfer:{"SourceMultisigAddress":"2N5H4VU7R4s5CBsyq77HQ7Gu8ZXKDz3ZHVD","SourcePrivateKey":"???","DestinationMultisigAddress":"2N3e9ZNg6uFbVg7EwnSsaWPr6VAbnDfjkTo","DestinationPrivakeKey":"???", "Amount":100, "Asset":"bjkUSD"}
         Sample response: Transfer:{"TransactionId":null,"Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
 
-*   GenerateMassOutputs
+*   GenerateFeeOutputs
 
-        Sample request: GenerateMassOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.00015,"Count":1000, "Purpose":"fee"}
-        Sample request: GenerateMassOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.0000273,"Count":10, "Purpose":"asset:bjkUSD"}
-        Sample response: GenerateMassOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
+        Sample request: GenerateFeeOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.00015,"Count":1000}
+        Sample request: GenerateFeeOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
+
+*   GenerateIssuerOutputs
+
+        Sample request: GenerateIssuerOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.0000273,"Count":10, "AssetName":"bjkUSD"}
+        Sample request: GenerateIssuerOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
 
 *   Getting fee outputs count
 
