@@ -23,7 +23,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             {
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
-                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet1Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer1, data.Amount1, data.Asset1,
+                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet1Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer1, 0, data.Amount1, data.Asset1,
                     Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
                     if (wallet1Coins.Error != null)
                     {
@@ -31,7 +31,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     }
                     else
                     {
-                        OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet2Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer2, data.Amount2, data.Asset2,
+                        OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet2Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer2, 0, data.Amount2, data.Asset2,
                          Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
                         if (wallet2Coins.Error != null)
                         {

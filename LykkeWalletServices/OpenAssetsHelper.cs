@@ -541,7 +541,7 @@ namespace LykkeWalletServices
             return new Tuple<float, float, bool, string>(balance, unconfirmedBalance, errorOccured, errorMessage);
         }
 
-        public static int GetValue(this UniversalUnspentOutput output)
+        public static long GetValue(this UniversalUnspentOutput output)
         {
             switch (apiProvider)
             {
@@ -633,7 +633,7 @@ namespace LykkeWalletServices
             }
         }
 
-        private static int GetAssetAmount(this UniversalUnspentOutput item)
+        private static long GetAssetAmount(this UniversalUnspentOutput item)
         {
             switch (apiProvider)
             {
@@ -646,7 +646,7 @@ namespace LykkeWalletServices
             }
         }
 
-        private static int GetBitcoinAmount(this UniversalUnspentOutput item)
+        private static long GetBitcoinAmount(this UniversalUnspentOutput item)
         {
             switch (apiProvider)
             {
@@ -711,9 +711,9 @@ namespace LykkeWalletServices
 
         // ToDo - Clear confirmation number
         public static bool IsBitcoinsEnough(UniversalUnspentOutput[] outputs,
-            uint amountInSatoshi, bool includeUnconfirmed = false)
+            long amountInSatoshi, bool includeUnconfirmed = false)
         {
-            int total = 0;
+            long total = 0;
             foreach (var item in outputs)
             {
                 if (item.GetConfirmationNumber() == 0)
@@ -947,8 +947,20 @@ namespace LykkeWalletServices
             }
         }
 
+        public static bool IsRealAsset(string asset)
+        {
+            if (asset!= null && asset.Trim().ToUpper() != "BTC")
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public static async Task<GetCoinsForWalletReturnType> GetCoinsForWallet
-            (string multiSigAddress, float amount, string asset, AssetDefinition[] assets,
+            (string multiSigAddress, long requiredSatoshiAmount, float requiredAssetAmount, string asset, AssetDefinition[] assets,
             Network network, string username, string password, string ipAddress, string connectionString, SqlexpressLykkeEntities entities,
             bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true)
         {
@@ -969,47 +981,48 @@ namespace LykkeWalletServices
                     ret.MatchingAddress = await GetMatchingMultisigAddress(multiSigAddress, entities);
                 }
 
-                ret.Asset = GetAssetFromName(assets, asset, network);
-                if (ret.Asset == null)
+                // Getting wallet outputs
+                var walletOutputs = await GetWalletOutputs
+                    (multiSigAddress, network);
+                if (walletOutputs.Item2)
                 {
                     ret.Error = new Error();
-                    ret.Error.Code = ErrorCode.AssetNotFound;
-                    ret.Error.Message = "Could not find asset with name: " + asset;
+                    ret.Error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
+                    ret.Error.Message = walletOutputs.Item3;
                 }
                 else
                 {
-                    // Getting wallet outputs
-                    var walletOutputs = await GetWalletOutputs
-                        (multiSigAddress, network);
-                    if (walletOutputs.Item2)
+                    // Getting bitcoin outputs to provide the transaction fee
+                    var bitcoinOutputs = GetWalletOutputsUncolored(walletOutputs.Item1);
+                    if (!IsBitcoinsEnough(bitcoinOutputs, requiredSatoshiAmount))
                     {
                         ret.Error = new Error();
-                        ret.Error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
-                        ret.Error.Message = walletOutputs.Item3;
-
+                        ret.Error.Code = ErrorCode.NotEnoughBitcoinAvailable;
+                        ret.Error.Message = "The required amount of satoshis to send transaction is " + requiredSatoshiAmount +
+                            " . The address is: " + multiSigAddress;
                     }
                     else
                     {
-                        // Getting bitcoin outputs to provide the transaction fee
-                        var bitcoinOutputs = GetWalletOutputsUncolored(walletOutputs.Item1);
-                        /*
-                        if (!IsBitcoinsEnough(bitcoinOutputs, MinimumRequiredSatoshi))
+                        UniversalUnspentOutput[] assetOutputs = null;
+
+                        if (IsRealAsset(asset))
                         {
-                            ret.Error = new Error();
-                            ret.Error.Code = ErrorCode.NotEnoughBitcoinAvailable;
-                            ret.Error.Message = "The required amount of satoshis to send transaction is " + MinimumRequiredSatoshi +
-                                " . The address is: " + multiSigAddress;
+                            ret.Asset = GetAssetFromName(assets, asset, network);
+                            if (ret.Asset == null)
+                            {
+                                ret.Error = new Error();
+                                ret.Error.Code = ErrorCode.AssetNotFound;
+                                ret.Error.Message = "Could not find asset with name: " + asset;
+                            }
+
+                            // Getting the asset output to provide the assets
+                            assetOutputs = GetWalletOutputsForAsset(walletOutputs.Item1, ret.Asset.AssetId);
                         }
-                        else
-                        {
-                        */
-                        // Getting the asset output to provide the assets
-                        var assetOutputs = GetWalletOutputsForAsset(walletOutputs.Item1, ret.Asset.AssetId);
-                        if (!IsAssetsEnough(assetOutputs, ret.Asset.AssetId, amount, ret.Asset.AssetMultiplicationFactor))
+                        if (IsRealAsset(asset) && !IsAssetsEnough(assetOutputs, ret.Asset.AssetId, requiredAssetAmount, ret.Asset.AssetMultiplicationFactor))
                         {
                             ret.Error = new Error();
                             ret.Error.Code = ErrorCode.NotEnoughAssetAvailable;
-                            ret.Error.Message = "The required amount of " + asset + " to send transaction is " + amount +
+                            ret.Error.Message = "The required amount of " + asset + " to send transaction is " + requiredAssetAmount +
                                 " . The address is: " + multiSigAddress;
                         }
                         else
@@ -1032,28 +1045,31 @@ namespace LykkeWalletServices
                                     }
                                 }
                             }
-                            // Converting assets to script coins so that we could sign the transaction
-                            var assetCoins = (await GetColoredUnColoredCoins(assetOutputs, ret.Asset.AssetId, network,
-                            username, password, ipAddress)).Item1;
 
-                            if (assetCoins.Length != 0)
+                            if (IsRealAsset(asset))
                             {
-                                if (isOrdinaryReturnTypeRequired)
+                                // Converting assets to script coins so that we could sign the transaction
+                                var assetCoins = (await GetColoredUnColoredCoins(assetOutputs, ret.Asset.AssetId, network,
+                                username, password, ipAddress)).Item1;
+
+                                if (assetCoins.Length != 0)
                                 {
-                                    ((GetOrdinaryCoinsForWalletReturnType)ret).AssetCoins = assetCoins;
-                                }
-                                else
-                                {
-                                    ((GetScriptCoinsForWalletReturnType)ret).AssetScriptCoins = new ColoredCoin[assetCoins.Length];
-                                    for (int i = 0; i < assetCoins.Length; i++)
+                                    if (isOrdinaryReturnTypeRequired)
                                     {
-                                        ((GetScriptCoinsForWalletReturnType)ret).AssetScriptCoins[i] = new ColoredCoin(assetCoins[i].Amount,
-                                            new ScriptCoin(assetCoins[i].Bearer, new Script(ret.MatchingAddress.MultiSigScript)));
+                                        ((GetOrdinaryCoinsForWalletReturnType)ret).AssetCoins = assetCoins;
+                                    }
+                                    else
+                                    {
+                                        ((GetScriptCoinsForWalletReturnType)ret).AssetScriptCoins = new ColoredCoin[assetCoins.Length];
+                                        for (int i = 0; i < assetCoins.Length; i++)
+                                        {
+                                            ((GetScriptCoinsForWalletReturnType)ret).AssetScriptCoins[i] = new ColoredCoin(assetCoins[i].Amount,
+                                                new ScriptCoin(assetCoins[i].Bearer, new Script(ret.MatchingAddress.MultiSigScript)));
+                                        }
                                     }
                                 }
                             }
                         }
-                        // }
                     }
                 }
             }
@@ -1184,7 +1200,7 @@ namespace LykkeWalletServices
                         }
                         else
                         {
-                            if (output.Select(o => o.GetValue()).Sum() < totalRequiredAmount)
+                            if (output.Select(o => (long)o.GetValue()).Sum() < totalRequiredAmount)
                             {
                                 error = new Error();
                                 error.Code = ErrorCode.NotEnoughBitcoinAvailable;
@@ -1304,27 +1320,27 @@ namespace LykkeWalletServices
         {
             public string transaction_hash { get; set; }
             public int output_index { get; set; }
-            public int value { get; set; }
+            public long value { get; set; }
             public int confirmations { get; set; }
             public string script_hex { get; set; }
             public string asset_id { get; set; }
-            public int asset_quantity { get; set; }
+            public long asset_quantity { get; set; }
         }
 
         public class QBitNinjaReceivedCoin
         {
             public string transactionId { get; set; }
             public int index { get; set; }
-            public int value { get; set; }
+            public long value { get; set; }
             public string scriptPubKey { get; set; }
             public object redeemScript { get; set; }
             public string assetId { get; set; }
-            public int quantity { get; set; }
+            public long quantity { get; set; }
         }
 
         public class QBitNinjaOperation
         {
-            public int amount { get; set; }
+            public long amount { get; set; }
             public int confirmations { get; set; }
             public int height { get; set; }
             public string blockId { get; set; }
@@ -1343,7 +1359,7 @@ namespace LykkeWalletServices
         {
             public string transaction_hash { get; set; }
             public int output_index { get; set; }
-            public int value { get; set; }
+            public long value { get; set; }
             public string asset_id { get; set; }
             public int asset_quantity { get; set; }
             public string[] addresses { get; set; }

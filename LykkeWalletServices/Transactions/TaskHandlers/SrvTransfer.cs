@@ -27,7 +27,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     var SourceMultisigAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.SourceMultisigAddress, entities);
                     var DestinationMultisigAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.DestinationMultisigAddress, entities);
 
-                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(SourceMultisigAddress.MultiSigAddress, data.Amount, data.Asset,
+                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(SourceMultisigAddress.MultiSigAddress, 0, data.Amount, data.Asset,
                         Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
                     if (walletCoins.Error != null)
                     {

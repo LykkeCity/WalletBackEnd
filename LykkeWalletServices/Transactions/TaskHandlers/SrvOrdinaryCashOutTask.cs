@@ -24,7 +24,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
                     OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)
-                        await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
+                        await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, !OpenAssetsHelper.IsRealAsset(data.Currency) ? Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount, data.Currency,
                         Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
                     if (walletCoins.Error != null)
                     {
@@ -35,14 +35,26 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         using (var transaction = entities.Database.BeginTransaction())
                         {
                             TransactionBuilder builder = new TransactionBuilder();
-                            var tx = (await builder
-                                .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                                .AddCoins(walletCoins.AssetScriptCoins)
-                                .AddEnoughPaymentFee(entities, Network.ToString()))
-                                .SendAsset(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                                .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi - OpenAssetsHelper.NBitcoinColoredCoinOutputInSatoshi))
-                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                                .BuildTransaction(true);
+                            builder
+                                .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
+                            if (OpenAssetsHelper.IsRealAsset(data.Currency))
+                            {
+                                builder.AddCoins(walletCoins.AssetScriptCoins);
+                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString()))
+                                    .SendAsset(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
+                            }
+                            else
+                            {
+                                builder.AddCoins(walletCoins.ScriptCoins);
+                                builder.Send(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress),
+                                    Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
+                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network)).Then();
+                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), 0));
+                            }
+
+                            var tx = builder.SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi - OpenAssetsHelper.NBitcoinColoredCoinOutputInSatoshi))
+                            .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                            .BuildTransaction(true);
 
                             Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
                                 (tx, Username, Password, IpAddress, Network, entities, ConnectionString);

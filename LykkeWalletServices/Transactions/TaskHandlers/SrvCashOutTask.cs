@@ -23,7 +23,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             {
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
-                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, data.Amount, data.Currency,
+                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, 0, data.Amount, data.Currency,
                         Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
                     if (walletCoins.Error != null)
                     {
