@@ -25,7 +25,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
                     var resultElements = from pre in entities.PreGeneratedOutputs
-                                         where pre.AssetId.Equals(null)
+                                         where (pre.AssetId.Equals(null) && pre.Consumed.Equals(0))
                                          group pre by pre.Amount into g
                                          select new GetFeeOutputsStatusTaskResultElement { Amount = g.Key, Count = g.Count() };
                     result = new GetFeeOutputsStatusTaskResult

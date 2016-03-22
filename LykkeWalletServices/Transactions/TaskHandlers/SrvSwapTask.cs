@@ -23,7 +23,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             {
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
-                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet1Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer1, 0, data.Amount1, data.Asset1,
+                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet1Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer1, !OpenAssetsHelper.IsRealAsset(data.Asset1) ? Convert.ToInt64(data.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount1, data.Asset1,
                     Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
                     if (wallet1Coins.Error != null)
                     {
@@ -31,7 +31,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     }
                     else
                     {
-                        OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet2Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer2, 0, data.Amount2, data.Asset2,
+                        OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet2Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer2, !OpenAssetsHelper.IsRealAsset(data.Asset2) ? Convert.ToInt64(data.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount2, data.Asset2,
                          Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
                         if (wallet2Coins.Error != null)
                         {
@@ -42,21 +42,43 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             using (var transaction = entities.Database.BeginTransaction())
                             {
                                 TransactionBuilder builder = new TransactionBuilder();
-                                var tx = (await (await builder
-                                    .AddKeys(new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                                    .AddCoins(wallet1Coins.AssetScriptCoins)
-                                    .AddEnoughPaymentFee(entities, Network.ToString()))
-                                    .SendAsset(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet1Coins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount1 * wallet1Coins.Asset.AssetMultiplicationFactor))))
-                                    .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
-                                    .SetChange(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                                    .Then()
-                                    .AddKeys(new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                                    .AddCoins(wallet2Coins.AssetScriptCoins)
-                                    .AddEnoughPaymentFee(entities, Network.ToString()))
-                                    .SendAsset(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet2Coins.Asset.AssetId, Network)), Convert.ToInt64(data.Amount2 * wallet2Coins.Asset.AssetMultiplicationFactor)))
-                                    .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
-                                    .SetChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                                    .BuildTransaction(true);
+                                builder.AddKeys(new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
+                                if (OpenAssetsHelper.IsRealAsset(data.Asset1))
+                                {
+                                    builder.AddCoins(wallet1Coins.AssetScriptCoins);
+                                    builder = await builder.AddEnoughPaymentFee(entities, Network.ToString());
+                                    builder.SendAsset(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet1Coins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount1 * wallet1Coins.Asset.AssetMultiplicationFactor))));
+                                }
+                                else
+                                {
+                                    builder.AddCoins(wallet1Coins.ScriptCoins);
+                                    builder.Send(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network),
+                                    Convert.ToInt64(data.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
+                                    .SetChange(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network)).Then();
+                                    builder = await builder.AddEnoughPaymentFee(entities, Network.ToString());
+                                }
+                                builder.SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
+                                .SetChange(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                .Then();
+                                builder.AddKeys(new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
+                                if (OpenAssetsHelper.IsRealAsset(data.Asset2))
+                                {
+                                    builder.AddCoins(wallet2Coins.AssetScriptCoins);
+                                    builder = await builder.AddEnoughPaymentFee(entities, Network.ToString());
+                                    builder.SendAsset(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet2Coins.Asset.AssetId, Network)), Convert.ToInt64(data.Amount2 * wallet2Coins.Asset.AssetMultiplicationFactor)));
+                                }
+                                else
+                                {
+                                    builder.AddCoins(wallet2Coins.ScriptCoins);
+                                    builder.Send(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network),
+                                    Convert.ToInt64(data.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
+                                    .SetChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network)).Then();
+                                    builder = await builder.AddEnoughPaymentFee(entities, Network.ToString());
+                                }
+                                builder.SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
+                                .SetChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network));
+
+                                var tx = builder.BuildTransaction(true);
 
                                 Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
                                         (tx, Username, Password, IpAddress, Network, entities, ConnectionString);

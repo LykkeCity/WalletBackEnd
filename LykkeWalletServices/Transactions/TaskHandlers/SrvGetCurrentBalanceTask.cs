@@ -34,10 +34,16 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 }
                 else
                 {
+                    float tempValue = OpenAssetsHelper.GetAssetBalance(walletOuputs.Item1, "BTC", (long) OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+                    GetCurrentBalanceTaskResultElement element = new GetCurrentBalanceTaskResultElement();
+                    element.Asset = "BTC";
+                    element.Amount = tempValue;
+                    resultElements.Add(element);
+
                     foreach (var item in Assets)
                     {
-                        float tempValue = OpenAssetsHelper.GetAssetBalance(walletOuputs.Item1, item.AssetId, item.MultiplyFactor);
-                        GetCurrentBalanceTaskResultElement element = new GetCurrentBalanceTaskResultElement();
+                        tempValue = OpenAssetsHelper.GetAssetBalance(walletOuputs.Item1, item.AssetId, item.MultiplyFactor);
+                        element = new GetCurrentBalanceTaskResultElement();
                         element.Asset = item.Name;
                         element.Amount = tempValue;
                         resultElements.Add(element);

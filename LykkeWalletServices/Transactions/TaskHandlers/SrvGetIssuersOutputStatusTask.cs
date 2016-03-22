@@ -29,7 +29,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 {
                     var nestedGroups =
                         from pregeneratedOutput in entities.PreGeneratedOutputs
-                        where !pregeneratedOutput.AssetId.Equals(null)
+                        where (!pregeneratedOutput.AssetId.Equals(null) && pregeneratedOutput.Consumed.Equals(0))
                         group pregeneratedOutput by pregeneratedOutput.AssetId into newGroup1
                         from newGroup2 in
                         (from pregeneratedOutput in newGroup1

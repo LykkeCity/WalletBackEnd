@@ -666,20 +666,32 @@ namespace LykkeWalletServices
             float total = 0;
             foreach (var item in outputs)
             {
-                if (item.GetAssetId() != null)
+                if ((item.GetAssetId() != null && item.GetAssetId().Equals(assetId))
+                    || (item.GetAssetId() == null && assetId.Trim().ToUpper().Equals("BTC")))
                 {
-                    if (item.GetAssetId().Equals(assetId))
+                    if (item.GetConfirmationNumber() == 0)
                     {
-                        if (item.GetConfirmationNumber() == 0)
+                        if (includeUnconfirmed)
                         {
-                            if (includeUnconfirmed)
+                            if (item.GetAssetId() != null)
                             {
                                 total += (float)item.GetAssetAmount();
                             }
+                            else
+                            {
+                                total += item.GetBitcoinAmount();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (item.GetAssetId() != null)
+                        {
+                            total += (float)item.GetAssetAmount();
                         }
                         else
                         {
-                            total += (float)item.GetAssetAmount();
+                            total += item.GetBitcoinAmount();
                         }
                     }
                 }
@@ -949,7 +961,7 @@ namespace LykkeWalletServices
 
         public static bool IsRealAsset(string asset)
         {
-            if (asset!= null && asset.Trim().ToUpper() != "BTC")
+            if (asset != null && asset.Trim().ToUpper() != "BTC")
             {
                 return true;
             }
@@ -1087,7 +1099,7 @@ namespace LykkeWalletServices
             string network, string assetId = null)
         {
             var coins = from item in entities.PreGeneratedOutputs
-                        where item.Consumed.Equals(0) && item.Network.Equals(network) && (assetId == null ? true : item.AssetId.Equals(assetId.ToString()))
+                        where item.Consumed.Equals(0) && item.Network.Equals(network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString()))
                         select item;
 
             int count = await coins.CountAsync();
