@@ -461,8 +461,8 @@ namespace LykkeWalletServices
                             {
                                 response.operations.ForEach((o) =>
                                 {
-                                    balance += o.receivedCoins.Where(c => c.assetId.Equals(assetId) && o.confirmations > 0).Select(c => c.quantity).Sum();
-                                    unconfirmedBalance += o.receivedCoins.Where(c => c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
+                                    balance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations > 0).Select(c => c.quantity).Sum();
+                                    unconfirmedBalance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
                                 });
                             }
                         }
