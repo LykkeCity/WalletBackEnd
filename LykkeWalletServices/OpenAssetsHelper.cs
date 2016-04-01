@@ -1026,11 +1026,13 @@ namespace LykkeWalletServices
                                 ret.Error.Code = ErrorCode.AssetNotFound;
                                 ret.Error.Message = "Could not find asset with name: " + asset;
                             }
-
-                            // Getting the asset output to provide the assets
-                            assetOutputs = GetWalletOutputsForAsset(walletOutputs.Item1, ret.Asset.AssetId);
+                            else
+                            {
+                                // Getting the asset output to provide the assets
+                                assetOutputs = GetWalletOutputsForAsset(walletOutputs.Item1, ret.Asset.AssetId);
+                            }
                         }
-                        if (IsRealAsset(asset) && !IsAssetsEnough(assetOutputs, ret.Asset.AssetId, requiredAssetAmount, ret.Asset.AssetMultiplicationFactor))
+                        if (IsRealAsset(asset) && ret.Asset != null && !IsAssetsEnough(assetOutputs, ret.Asset.AssetId, requiredAssetAmount, ret.Asset.AssetMultiplicationFactor))
                         {
                             ret.Error = new Error();
                             ret.Error.Code = ErrorCode.NotEnoughAssetAvailable;
@@ -1061,8 +1063,8 @@ namespace LykkeWalletServices
                             if (IsRealAsset(asset))
                             {
                                 // Converting assets to script coins so that we could sign the transaction
-                                var assetCoins = (await GetColoredUnColoredCoins(assetOutputs, ret.Asset.AssetId, network,
-                                username, password, ipAddress)).Item1;
+                                var assetCoins = ret.Asset!= null ? (await GetColoredUnColoredCoins(assetOutputs, ret.Asset.AssetId, network,
+                                username, password, ipAddress)).Item1 : new ColoredCoin[0];
 
                                 if (assetCoins.Length != 0)
                                 {
