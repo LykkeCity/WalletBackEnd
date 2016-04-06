@@ -51,6 +51,13 @@ namespace Core
         } 
     }
 
+    public class TaskToDoGenerateRefundingTransaction : TransactionToDoBase
+    {
+        public string MultisigAddress { get; set; }
+        public string TransactionHash { get; set; }
+        public uint timeoutInMinutes { get; set; }
+    }
+
     public class TaskToDoCashIn : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }

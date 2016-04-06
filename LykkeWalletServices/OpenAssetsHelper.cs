@@ -57,6 +57,24 @@ namespace LykkeWalletServices
             }
         }
 
+        public static string GetAddressFromScriptPubKey(Script scriptPubKey, Network network)
+        {
+            string address = null;
+            if (PayToPubkeyHashTemplate.Instance.CheckScriptPubKey(scriptPubKey))
+            {
+                address = PayToPubkeyHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey).GetAddress(network).ToWif().ToString();
+            }
+            else
+            {
+                if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(scriptPubKey))
+                {
+                    address = PayToScriptHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey).GetAddress(network).ToWif().ToString();
+                }
+            }
+
+            return address;
+        }
+
         public static Coin GetCoin(this PreGeneratedOutput output)
         {
             Network network = null;
@@ -73,7 +91,7 @@ namespace LykkeWalletServices
                     throw new Exception("Not a valid network");
             }
             return new Coin(new uint256(output.TransactionId), (uint)output.OutputNumber,
-                                    output.Amount, new PayToPubkeyHashTemplate().GenerateScriptPubKey(new BitcoinAddress(output.Address, network)));
+                                    output.Amount, new PayToPubkeyHashTemplate().GenerateScriptPubKey(new BitcoinPubKeyAddress(output.Address, network)));
         }
 
         public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
@@ -461,8 +479,8 @@ namespace LykkeWalletServices
                             {
                                 response.operations.ForEach((o) =>
                                 {
-                                    balance += o.receivedCoins.Where(c => c.assetId.Equals(assetId) && o.confirmations > 0).Select(c => c.quantity).Sum();
-                                    unconfirmedBalance += o.receivedCoins.Where(c => c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
+                                    balance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations > 0).Select(c => c.quantity).Sum();
+                                    unconfirmedBalance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
                                 });
                             }
                         }
@@ -1112,6 +1130,7 @@ namespace LykkeWalletServices
                 int index = new Random().Next(coins.Count());
                 PreGeneratedOutput f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
                 f.Consumed = 1;
+                await entities.SaveChangesAsync();
                 return f;
             }
         }
@@ -1227,10 +1246,10 @@ namespace LykkeWalletServices
                                 builder
                                     .AddKeys(new BitcoinSecret(data.PrivateKey))
                                     .AddCoins(sourceCoins);
-                                builder.SetChange(new BitcoinAddress(data.WalletAddress, network));
+                                builder.SetChange(new BitcoinPubKeyAddress(data.WalletAddress, network));
                                 for (int i = 0; i < data.Count; i++)
                                 {
-                                    builder.Send(new BitcoinAddress(destinationAddress, network),
+                                    builder.Send(new BitcoinPubKeyAddress(destinationAddress, network),
                                         new Money(Convert.ToInt64(data.FeeAmount * BTCToSathoshiMultiplicationFactor)))
                                         .BuildTransaction(false);
                                 }
