@@ -70,6 +70,11 @@ All service are queue based
         Sample request: GetIssuersOutputStatus:{"TransactionId":"10"}
         Sample response: GetIssuersOutputStatus:{"TransactionId":"10","Result":{"ResultArray":[{"Asset":"bjkEUR","Amount":15000.0,"Count":1000},{"Asset":"bjkUSD","Amount":2730.0,"Count":30},{"Asset":"bjkUSD","Amount":15000.0,"Count":1000}]},"Error":null}
 
+*   Generating the refund transaction
+
+        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2MuKSMmP4iqdFj9uNpGxKs2wujmTvDotchG","TransactionHash":"b73d3ecaa546bd03fd5742b927211047e9ab508c4bfc407e8fd31f1d90cef244", "timeoutInMinutes":360}
+        Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
+
 ## Some notes
 *   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.
 
