@@ -122,7 +122,6 @@ namespace Core
         public string SourceMultisigAddress { get; set; }
         public string SourcePrivateKey { get; set; }
         public string DestinationMultisigAddress { get; set; }
-        public string DestinationPrivakeKey { get; set; }
         // ToDo - At first we assume the currency is not divisable
         public float Amount { get; set; }
         public string Asset { get; set; }
