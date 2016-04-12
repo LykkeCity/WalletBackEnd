@@ -51,6 +51,13 @@ namespace Core
         } 
     }
 
+    public class TaskToDoGenerateRefundingTransaction : TransactionToDoBase
+    {
+        public string MultisigAddress { get; set; }
+        public string TransactionHash { get; set; }
+        public uint timeoutInMinutes { get; set; }
+    }
+
     public class TaskToDoCashIn : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }
@@ -115,7 +122,6 @@ namespace Core
         public string SourceMultisigAddress { get; set; }
         public string SourcePrivateKey { get; set; }
         public string DestinationMultisigAddress { get; set; }
-        public string DestinationPrivakeKey { get; set; }
         // ToDo - At first we assume the currency is not divisable
         public float Amount { get; set; }
         public string Asset { get; set; }

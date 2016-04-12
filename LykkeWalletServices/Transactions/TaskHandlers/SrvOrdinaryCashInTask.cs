@@ -49,13 +49,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 builder.AddCoins(walletCoins.Coins);
                                 builder.Send(new Script(MultisigAddress.MultiSigScript).GetScriptAddress(Network),
                                     Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
-                                    .SetChange(new BitcoinAddress(MultisigAddress.WalletAddress, Network)).Then();
+                                    .SetChange(new BitcoinPubKeyAddress(MultisigAddress.WalletAddress, Network)).Then();
                                 builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), 0));
                             }
 
 
                             var tx = builder.SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                                .SetChange(new BitcoinAddress(MultisigAddress.WalletAddress, Network))
+                                .SetChange(new BitcoinPubKeyAddress(MultisigAddress.WalletAddress, Network))
                                 .BuildTransaction(true, SigHash.All);
 
                             Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt

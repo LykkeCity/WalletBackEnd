@@ -49,7 +49,7 @@ Currently, due to implementation decisions, in the following methods whenever pr
 
 *   Transfer
 
-        Sample request: Transfer:{"SourceMultisigAddress":"2N5H4VU7R4s5CBsyq77HQ7Gu8ZXKDz3ZHVD","SourcePrivateKey":"???","DestinationMultisigAddress":"2N3e9ZNg6uFbVg7EwnSsaWPr6VAbnDfjkTo","DestinationPrivakeKey":"???", "Amount":100, "Asset":"bjkUSD"}
+        Sample request: Transfer:{"SourceMultisigAddress":"2N5H4VU7R4s5CBsyq77HQ7Gu8ZXKDz3ZHVD","SourcePrivateKey":"???","DestinationMultisigAddress":"2N3e9ZNg6uFbVg7EwnSsaWPr6VAbnDfjkTo", "Amount":100, "Asset":"bjkUSD"}
         Sample response: Transfer:{"TransactionId":null,"Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
 
 *   GenerateFeeOutputs
