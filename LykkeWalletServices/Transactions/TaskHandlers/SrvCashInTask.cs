@@ -51,7 +51,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, Network)),
                                         Convert.ToInt64(data.Amount * asset.AssetMultiplicationFactor)))
                                     .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                                    .SetChange(new BitcoinAddress(FeeAddress, Network)) // Paying the rest to fee payer address
+                                    .SetChange(new BitcoinPubKeyAddress(FeeAddress, Network)) // Paying the rest to fee payer address
                                     .BuildTransaction(true);
 
                                 Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt

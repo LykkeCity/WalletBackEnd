@@ -178,20 +178,20 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             var wallet02UnColoredCoins = GenerateWalletUnColoredCoins(wallet02Transactions, wallet02Outputs);
             */
             // Building the exchange transaction
-            ColorMarker.Tag = ColorMarker.OATag;
+            // ColorMarker.Tag = ColorMarker.OATag;
             TransactionBuilder txBuilder = new TransactionBuilder();
             var txToBroadcast = txBuilder
                 .AddCoins(wallet01Coins.Item1)
                 .AddCoins(wallet01Coins.Item2)
                 .AddKeys(new BitcoinSecret(wallet01PrivateKey))
-                .SendAsset(new BitcoinAddress(transaction.WalletAddress02), new AssetMoney(new AssetId(new BitcoinAssetId(transaction.Asset01)), (long)transaction.Amount01))
-                .SetChange(new BitcoinAddress(transaction.WalletAddress01))
+                .SendAsset(new BitcoinPubKeyAddress(transaction.WalletAddress02), new AssetMoney(new AssetId(new BitcoinAssetId(transaction.Asset01)), (long)transaction.Amount01))
+                .SetChange(new BitcoinPubKeyAddress(transaction.WalletAddress01))
                 .Then()
                 .AddCoins(wallet02Coins.Item1)
                 .AddCoins(wallet02Coins.Item2)
                 .AddKeys(new BitcoinSecret(wallet02PrivateKey))
-                .SendAsset(new BitcoinAddress(transaction.WalletAddress01), new AssetMoney(new AssetId(new BitcoinAssetId(transaction.Asset02)), (long)transaction.Amount02))
-                .SetChange(new BitcoinAddress(transaction.WalletAddress02))
+                .SendAsset(new BitcoinPubKeyAddress(transaction.WalletAddress01), new AssetMoney(new AssetId(new BitcoinAssetId(transaction.Asset02)), (long)transaction.Amount02))
+                .SetChange(new BitcoinPubKeyAddress(transaction.WalletAddress02))
                 .BuildTransaction(true);
 
             return txToBroadcast.ToHex();

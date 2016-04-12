@@ -16,6 +16,7 @@ namespace Core
     {
         Exception,
         ProblemInRetrivingWalletOutput,
+        ProblemInRetrivingTransaction,
         NotEnoughBitcoinAvailable,
         NotEnoughAssetAvailable,
         PossibleDoubleSpend,

@@ -41,12 +41,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             {
                                 builder.AddCoins(walletCoins.AssetScriptCoins);
                                 builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString()))
-                                    .SendAsset(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
+                                    .SendAsset(new BitcoinPubKeyAddress(walletCoins.MatchingAddress.WalletAddress), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
                             }
                             else
                             {
                                 builder.AddCoins(walletCoins.ScriptCoins);
-                                builder.Send(new BitcoinAddress(walletCoins.MatchingAddress.WalletAddress),
+                                builder.Send(new BitcoinPubKeyAddress(walletCoins.MatchingAddress.WalletAddress),
                                     Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
                                 .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network)).Then();
                                 builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), 0));

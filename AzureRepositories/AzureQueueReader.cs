@@ -28,7 +28,8 @@ namespace AzureRepositories
                 QueueType.Create("GenerateIssuerOutputs", typeof(TaskToDoGenerateIssuerOutputs)),
                 QueueType.Create("Transfer", typeof(TaskToDoTransfer)),
                 QueueType.Create("GetIssuersOutputStatus", typeof(TaskToDoGetIssuersOutputStatus)),
-                QueueType.Create("GetFeeOutputsStatus", typeof(TaskToDoGetFeeOutputsStatus))
+                QueueType.Create("GetFeeOutputsStatus", typeof(TaskToDoGetFeeOutputsStatus)),
+                QueueType.Create("GenerateRefundingTransaction", typeof(TaskToDoGenerateRefundingTransaction))
                 );
         }
 
