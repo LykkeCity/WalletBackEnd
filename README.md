@@ -9,6 +9,8 @@ The main project to run is ServiceLykkeWallet of the solution file.
 ## Implemented services up to now
 
 All service are queue based
+
+Currently, due to implementation decisions, in the following methods whenever private key for the local wallet is documented in the call contract, it could be totally omitted; they are present to cover the future scenarios.
  
 *   Generate New Wallet
 
