@@ -32,6 +32,7 @@ namespace LykkeWalletServices
         public const uint ConcurrencyRetryCount = 3;
         public const uint NBitcoinColoredCoinOutputInSatoshi = 2730;
         private const APIProvider apiProvider = APIProvider.QBitNinja;
+        private const int LocktimeMinutesAllowance = 120;
 
         public static string QBitNinjaBaseUrl
         {
@@ -299,20 +300,50 @@ namespace LykkeWalletServices
         */
 
         public static async Task<Tuple<UniversalUnspentOutput[], bool, string>> GetWalletOutputs(string walletAddress,
-            Network network)
+            Network network, SqlexpressLykkeEntities entities, bool considerTimeOut = true)
         {
+            Tuple<UniversalUnspentOutput[], bool, string> ret = null;
             switch (apiProvider)
             {
                 case APIProvider.CoinPrism:
                     var coinprismResult = await GetWalletOutputsCoinPrism(walletAddress, network);
-                    return new Tuple<UniversalUnspentOutput[], bool, string>(coinprismResult.Item1 != null ? coinprismResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
+                    ret = new Tuple<UniversalUnspentOutput[], bool, string>(coinprismResult.Item1 != null ? coinprismResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
                         coinprismResult.Item2, coinprismResult.Item3);
+                    break;
                 case APIProvider.QBitNinja:
                     var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network);
-                    return new Tuple<UniversalUnspentOutput[], bool, string>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
+                    ret = new Tuple<UniversalUnspentOutput[], bool, string>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
                         qbitResult.Item2, qbitResult.Item3);
+                    break;
                 default:
                     throw new Exception("Not supported.");
+            }
+
+            IList<UniversalUnspentOutput> retList = new List<UniversalUnspentOutput>();
+            var joined = from output in ret.Item1
+                         join refunded in entities.RefundedOutputs
+                         on new { A = output.GetTransactionHash(), B = output.GetOutputIndex() } equals new { A = refunded.RefundedTxId, B = refunded.RefundedOutputNumber }
+                         into gj
+                         from item in gj.DefaultIfEmpty(new RefundedOutput { LockTime = DateTime.MaxValue })
+                         where item.HasBeenSpent.Equals(false) && item.RefundInvalid.Equals(false)
+                         select new { output, item.LockTime };
+
+            foreach (var item in joined)
+            {
+                if (item.LockTime >= DateTime.UtcNow.AddMinutes(LocktimeMinutesAllowance))
+                {
+                    retList.Add(item.output);
+                }
+            }
+
+            if (considerTimeOut)
+            {
+                return new Tuple<UniversalUnspentOutput[], bool, string>(retList.ToArray(),
+                    ret.Item2, ret.Item3);
+            }
+            else
+            {
+                return ret;
             }
         }
 
@@ -894,8 +925,8 @@ namespace LykkeWalletServices
 
                 // Database is successful, only the commit has remained. Broadcating the transaction
                 RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
-                    //ipAddress, network);
-                    ipAddress, Network.RegTest);
+                    ipAddress, network);
+
                 await client.SendRawTransactionAsync(tx);
 
             }
@@ -1013,7 +1044,7 @@ namespace LykkeWalletServices
 
                 // Getting wallet outputs
                 var walletOutputs = await GetWalletOutputs
-                    (multiSigAddress, network);
+                    (multiSigAddress, network, entities);
                 if (walletOutputs.Item2)
                 {
                     ret.Error = new Error();
@@ -1081,7 +1112,7 @@ namespace LykkeWalletServices
                             if (IsRealAsset(asset))
                             {
                                 // Converting assets to script coins so that we could sign the transaction
-                                var assetCoins = ret.Asset!= null ? (await GetColoredUnColoredCoins(assetOutputs, ret.Asset.AssetId, network,
+                                var assetCoins = ret.Asset != null ? (await GetColoredUnColoredCoins(assetOutputs, ret.Asset.AssetId, network,
                                 username, password, ipAddress)).Item1 : new ColoredCoin[0];
 
                                 if (assetCoins.Length != 0)
@@ -1212,57 +1243,58 @@ namespace LykkeWalletServices
             {
                 try
                 {
-                    var outputs = await GetWalletOutputs(data.WalletAddress, network);
-                    if (outputs.Item2)
+                    using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
                     {
-                        error = new Error();
-                        error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
-                        error.Message = outputs.Item3;
-                    }
-                    else
-                    {
-                        var uncoloredOutputs = GetWalletOutputsUncolored(outputs.Item1);
-                        float totalRequiredAmount = data.Count * data.FeeAmount * BTCToSathoshiMultiplicationFactor; // Convert to satoshi
-                        float minimumRequiredAmountForParticipation = Convert.ToInt64(0.001 * BTCToSathoshiMultiplicationFactor);
-                        var output = uncoloredOutputs.Where(o => (o.GetValue() > minimumRequiredAmountForParticipation)).ToList();
-                        if (output.Count == 0)
+                        var outputs = await GetWalletOutputs(data.WalletAddress, network, entities);
+                        if (outputs.Item2)
                         {
                             error = new Error();
-                            error.Code = ErrorCode.NotEnoughBitcoinAvailable;
-                            error.Message = "There is no output available with the minimum amount of: " + minimumRequiredAmountForParticipation.ToString("n") + " satoshis.";
+                            error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
+                            error.Message = outputs.Item3;
                         }
                         else
                         {
-                            if (output.Select(o => (long)o.GetValue()).Sum() < totalRequiredAmount)
+                            var uncoloredOutputs = GetWalletOutputsUncolored(outputs.Item1);
+                            float totalRequiredAmount = data.Count * data.FeeAmount * BTCToSathoshiMultiplicationFactor; // Convert to satoshi
+                            float minimumRequiredAmountForParticipation = Convert.ToInt64(0.001 * BTCToSathoshiMultiplicationFactor);
+                            var output = uncoloredOutputs.Where(o => (o.GetValue() > minimumRequiredAmountForParticipation)).ToList();
+                            if (output.Count == 0)
                             {
                                 error = new Error();
                                 error.Code = ErrorCode.NotEnoughBitcoinAvailable;
-                                error.Message = "The sum of total applicable outputs is less than the required: " + totalRequiredAmount.ToString("n") + " satoshis.";
+                                error.Message = "There is no output available with the minimum amount of: " + minimumRequiredAmountForParticipation.ToString("n") + " satoshis.";
                             }
                             else
                             {
-                                var sourceCoins = output.Select(o => new Coin(new uint256(o.GetTransactionHash()), (uint)o.GetOutputIndex(),
-                                    o.GetValue(), new Script(StringToByteArray(o.GetScriptHex()))));
-                                TransactionBuilder builder = new TransactionBuilder();
-                                //builder.DustPrevention = false;
-                                builder
-                                    .AddKeys(new BitcoinSecret(data.PrivateKey))
-                                    .AddCoins(sourceCoins);
-                                builder.SetChange(new BitcoinPubKeyAddress(data.WalletAddress, network));
-                                for (int i = 0; i < data.Count; i++)
+                                if (output.Select(o => (long)o.GetValue()).Sum() < totalRequiredAmount)
                                 {
-                                    builder.Send(new BitcoinPubKeyAddress(destinationAddress, network),
-                                        new Money(Convert.ToInt64(data.FeeAmount * BTCToSathoshiMultiplicationFactor)))
-                                        .BuildTransaction(false);
+                                    error = new Error();
+                                    error.Code = ErrorCode.NotEnoughBitcoinAvailable;
+                                    error.Message = "The sum of total applicable outputs is less than the required: " + totalRequiredAmount.ToString("n") + " satoshis.";
                                 }
-
-                                var fee = (Convert.ToInt64(builder.EstimateSize(builder.BuildTransaction(false))
-                                    * TransactionSendFeesInSatoshi)) / 1000;
-                                Transaction tx = builder.SendFees(Math.Max(fee, TransactionSendFeesInSatoshi)).
-                                    BuildTransaction(true);
-                                IList<PreGeneratedOutput> preGeneratedOutputs = null;
-                                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
+                                else
                                 {
+                                    var sourceCoins = output.Select(o => new Coin(new uint256(o.GetTransactionHash()), (uint)o.GetOutputIndex(),
+                                        o.GetValue(), new Script(StringToByteArray(o.GetScriptHex()))));
+                                    TransactionBuilder builder = new TransactionBuilder();
+                                    //builder.DustPrevention = false;
+                                    builder
+                                        .AddKeys(new BitcoinSecret(data.PrivateKey))
+                                        .AddCoins(sourceCoins);
+                                    builder.SetChange(new BitcoinPubKeyAddress(data.WalletAddress, network));
+                                    for (int i = 0; i < data.Count; i++)
+                                    {
+                                        builder.Send(new BitcoinPubKeyAddress(destinationAddress, network),
+                                            new Money(Convert.ToInt64(data.FeeAmount * BTCToSathoshiMultiplicationFactor)))
+                                            .BuildTransaction(false);
+                                    }
+
+                                    var fee = (Convert.ToInt64(builder.EstimateSize(builder.BuildTransaction(false))
+                                        * TransactionSendFeesInSatoshi)) / 1000;
+                                    Transaction tx = builder.SendFees(Math.Max(fee, TransactionSendFeesInSatoshi)).
+                                        BuildTransaction(true);
+                                    IList<PreGeneratedOutput> preGeneratedOutputs = null;
+
                                     using (var transaction = entities.Database.BeginTransaction())
                                     {
                                         Error localerror = await CheckTransactionForDoubleSpentThenSendIt

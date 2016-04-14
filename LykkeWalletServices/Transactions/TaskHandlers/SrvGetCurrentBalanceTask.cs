@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -25,7 +26,11 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             try
             {
-                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(data.MultisigAddress, Network);
+                Tuple<UniversalUnspentOutput[], bool, string> walletOuputs = null;
+                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
+                {
+                    walletOuputs = await GetWalletOutputs(data.MultisigAddress, Network, entities);
+                }
                 if (walletOuputs.Item2)
                 {
                     error = new Error();
@@ -34,7 +39,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 }
                 else
                 {
-                    float tempValue = OpenAssetsHelper.GetAssetBalance(walletOuputs.Item1, "BTC", (long) OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+                    float tempValue = GetAssetBalance(walletOuputs.Item1, "BTC", (long) BTCToSathoshiMultiplicationFactor);
                     GetCurrentBalanceTaskResultElement element = new GetCurrentBalanceTaskResultElement();
                     element.Asset = "BTC";
                     element.Amount = tempValue;

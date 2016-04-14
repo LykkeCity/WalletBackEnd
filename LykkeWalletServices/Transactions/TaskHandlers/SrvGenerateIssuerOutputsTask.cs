@@ -24,8 +24,11 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
         public async Task<Tuple<GenerateMassOutputsTaskResult, Error>> ExecuteTask(TaskToDoGenerateIssuerOutputs data)
         {
-            return await OpenAssetsHelper.GenerateMassOutputs(data, "asset:" + data.AssetName, Username, Password, IpAddress,
+            using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
+            {
+                return await OpenAssetsHelper.GenerateMassOutputs(data, "asset:" + data.AssetName, Username, Password, IpAddress,
                 Network, ConnectionString, Assets, null, null);
+            }
         }
 
         public void Execute(TaskToDoGenerateIssuerOutputs data, Func<Tuple<GenerateMassOutputsTaskResult, Error>, Task> invokeResult)

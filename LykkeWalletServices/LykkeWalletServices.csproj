@@ -92,6 +92,12 @@
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RefundedOutput.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="RefundTransaction.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="SentTransaction.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>

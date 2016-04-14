@@ -72,7 +72,7 @@ All service are queue based
 
 *   Generating the refund transaction
 
-        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2MuKSMmP4iqdFj9uNpGxKs2wujmTvDotchG","TransactionHash":"b73d3ecaa546bd03fd5742b927211047e9ab508c4bfc407e8fd31f1d90cef244", "timeoutInMinutes":360}
+        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2Mvny9kSaUJhbCTMWUaFQPYERCSrduKJjD4", "timeoutInMinutes":360}
         Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
 
 ## Some notes

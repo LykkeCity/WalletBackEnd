@@ -3,6 +3,7 @@ using LykkeWalletServices;
 using NBitcoin;
 using NBitcoin.RPC;
 using System;
+using System.Collections.Generic;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
 using System.Linq;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
-    // Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2MuKSMmP4iqdFj9uNpGxKs2wujmTvDotchG","TransactionHash":"b73d3ecaa546bd03fd5742b927211047e9ab508c4bfc407e8fd31f1d90cef244", "timeoutInMinutes":360}
+    // Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2Mvny9kSaUJhbCTMWUaFQPYERCSrduKJjD4", "timeoutInMinutes":360}
     // Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
     // If refund transaction is sent early, one gets "64: non-final (code -26)"
     public class SrvGenerateRefundingTransactionTask : SrvNetworkInvolvingExchangeBase
@@ -22,8 +23,11 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
         public async Task<Tuple<GenerateRefundingTransactionTaskResult, Error>> ExecuteTask(TaskToDoGenerateRefundingTransaction data)
         {
+            // The coins to be refunded are two types, a- the ones which has never been refunded (newly arrived)
+            /// b - The ones which their refunds has become invalid
             GenerateRefundingTransactionTaskResult result = null;
             Error error = null;
+            Transaction refundTx = null;
             try
             {
                 for (int retryCount = 0; retryCount < OpenAssetsHelper.ConcurrencyRetryCount; retryCount++)
@@ -38,50 +42,135 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             {
                                 var multiSig = (await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities));
                                 PubKey clientPubKey = (new BitcoinSecret(multiSig.WalletPrivateKey)).PubKey;
-                                LockTime lockTime = new LockTime(new DateTimeOffset(DateTime.UtcNow) + new TimeSpan(0, (int)data.timeoutInMinutes, 0));
+                                DateTimeOffset lockTimeValue = new DateTimeOffset(DateTime.UtcNow) + new TimeSpan(0, (int)data.timeoutInMinutes, 0);
+                                LockTime lockTime = new LockTime(lockTimeValue);
 
-                                var transactionResult = await OpenAssetsHelper.GetTransactionHex(data.TransactionHash, Network, Username, Password, IpAddress);
-                                if (transactionResult.Item1)
+                                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(multiSig.MultiSigAddress, Network, entities, false);
+                                if (walletOuputs.Item2)
                                 {
-                                    error = new Error
-                                    {
-                                        Code = ErrorCode.ProblemInRetrivingTransaction,
-                                        Message = transactionResult.Item2
-                                    };
+                                    error = new Error();
+                                    error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
+                                    error.Message = walletOuputs.Item3;
                                 }
                                 else
                                 {
-                                    Coin sourceCoin = null;
-                                    Transaction tx = new Transaction(transactionResult.Item3);
-                                    foreach (var item in tx.Outputs)
+                                    var toBeRefundedCoins = new List<Coin>();
+
+                                    var coins = await OpenAssetsHelper.GetColoredUnColoredCoins(walletOuputs.Item1, null,
+                                        Network, Username, Password, IpAddress);
+
+                                    var previousUnspentCoins = from c in entities.RefundedOutputs
+                                                               where c.RefundedAddress.Equals(multiSig.MultiSigAddress) && c.HasBeenSpent.Equals(false)
+                                                               select c;
+
+                                    // Finding the coins which has never been refunded
+                                    foreach (var item in coins.Item2)
                                     {
-                                        if (OpenAssetsHelper.GetAddressFromScriptPubKey(item.ScriptPubKey, Network)
-                                            == multiSig.MultiSigAddress)
+                                        string transactionHash = item.Outpoint.Hash.ToString();
+                                        int outputNumber = (int)item.Outpoint.N;
+                                        var foundInDB = previousUnspentCoins.Where(uc => uc.RefundedTxId.Equals(transactionHash) && uc.RefundedOutputNumber.Equals(outputNumber)).Any();
+                                        if (!foundInDB)
                                         {
-                                            sourceCoin = new Coin(tx, item);
-                                            break;
+                                            toBeRefundedCoins.Add(item);
                                         }
                                     }
 
-                                    ScriptCoin sourceScriptCoin = new ScriptCoin(sourceCoin, new Script(multiSig.MultiSigScript));
-                                    TransactionBuilder builder = new TransactionBuilder();
-                                    var refundTx = builder
-                                        .SetLockTime(lockTime)
-                                        .AddKeys(new BitcoinSecret(multiSig.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                                        .AddCoins(sourceScriptCoin)
-                                        .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi)) // We have 2 colored coin outputs
-                                        .SetChange(BitcoinAddress.Create(multiSig.WalletAddress, Network))                                       .BuildTransaction(false);
-
-                                    refundTx.Inputs[0].Sequence = Sequence.SEQUENCE_FINAL - 1;
-
-                                    refundTx = builder.SignTransactionInPlace(refundTx);
-
-                                    bool verify = builder.Verify(refundTx);
-
-                                    result = new GenerateRefundingTransactionTaskResult
+                                    // Finding the coins which refund transaction has become invalid
+                                    IList<string> refunfTxIdRepeated = new List<string>();
+                                    foreach (var item in previousUnspentCoins)
                                     {
-                                        RefundTransaction = refundTx.ToHex()
-                                    };
+                                        var stillUnspent = (from c in coins.Item2
+                                                            where c.Outpoint.Hash.ToString().Equals(item.RefundedTxId) && c.Outpoint.N.Equals((uint)item.RefundedOutputNumber)
+                                                            select c).Any();
+
+                                        if (!stillUnspent)
+                                        {
+                                            item.HasBeenSpent = true;
+                                            refunfTxIdRepeated.Add(item.RefundTransaction.RefundTxId);
+                                        }
+                                    }
+                                    entities.SaveChanges();
+
+                                    // Marking the coins with the specific refunds as having invalid refunds
+                                    var refunfTxIdNonRepeated = refunfTxIdRepeated.Distinct();
+                                    Transaction tempTr = new Transaction();
+                                    foreach (var item in refunfTxIdNonRepeated)
+                                    {
+                                        var refundCorrespondents = from c in entities.RefundedOutputs
+                                                                   where c.HasBeenSpent == false && c.RefundTransaction.RefundTxId.Equals(item)
+                                                                   select c;
+
+                                        foreach (var cr in refundCorrespondents)
+                                        {
+                                            cr.RefundInvalid = true;
+                                            var getTransactionRetValue = await OpenAssetsHelper.GetTransactionHex
+                                                (cr.RefundedTxId, Network, Username, Password, IpAddress);
+                                            if (getTransactionRetValue.Item1)
+                                            {
+                                                error = new Error();
+                                                error.Code = ErrorCode.ProblemInRetrivingTransaction;
+                                                error.Message = getTransactionRetValue.Item2;
+                                                break;
+                                            }
+
+                                            toBeRefundedCoins.Add(new Coin(new Transaction(getTransactionRetValue.Item3),
+                                                (uint)cr.RefundedOutputNumber));
+                                        }
+                                    }
+                                    entities.SaveChanges();
+
+                                    if(toBeRefundedCoins.Count == 0)
+                                    {
+                                        error = new Error();
+                                        error.Code = ErrorCode.NoCoinsToRefund;
+                                        error.Message = "There are no coins to be refunded.";
+                                    }
+
+                                    if (error == null)
+                                    {
+                                        IList<ScriptCoin> scriptCoinsToBeRefunded = new List<ScriptCoin>();
+                                        foreach (var item in toBeRefundedCoins)
+                                        {
+                                            scriptCoinsToBeRefunded.Add(new ScriptCoin(item, new Script(multiSig.MultiSigScript)));
+                                        }
+
+                                        TransactionBuilder builder = new TransactionBuilder();
+                                        refundTx = builder
+                                            .SetLockTime(lockTime)
+                                            .AddKeys(new BitcoinSecret(multiSig.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
+                                            .AddCoins(scriptCoinsToBeRefunded)
+                                            .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi)) // We have 2 colored coin outputs
+                                            .SetChange(BitcoinAddress.Create(multiSig.WalletAddress, Network)).BuildTransaction(false);
+
+                                        refundTx.Inputs[0].Sequence = Sequence.SEQUENCE_FINAL - 1;
+
+                                        refundTx = builder.SignTransactionInPlace(refundTx);
+
+                                        bool verify = builder.Verify(refundTx);
+
+                                        // Adding the refunded outputs to DB
+                                        var refund = new RefundTransaction();
+                                        refund.RefundTxId = refundTx.GetHash().ToString();
+                                        entities.RefundTransactions.Add(refund);
+                                        entities.SaveChanges();
+
+                                        foreach (var item in toBeRefundedCoins)
+                                        {
+                                            var refunded = new RefundedOutput();
+                                            refunded.LockTime = lockTimeValue.UtcDateTime;
+                                            refunded.RefundedAddress = multiSig.MultiSigAddress;
+                                            refunded.RefundedOutputNumber = (int)item.Outpoint.N;
+                                            refunded.RefundTransaction = refund;
+                                            refunded.RefundedTxId = item.Outpoint.Hash.ToString();
+                                            entities.RefundedOutputs.Add(refunded);
+                                        }
+                                        entities.SaveChanges();
+
+                                        result = new GenerateRefundingTransactionTaskResult
+                                        {
+                                            RefundTransaction = refundTx.ToHex()
+                                        };
+                                    }
 
                                     if (error == null)
                                     {
@@ -91,6 +180,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     else
                                     {
                                         transaction.Rollback();
+                                        if(error.Code == ErrorCode.NoCoinsToRefund)
+                                        {
+                                            break;
+                                        }
                                     }
                                 }
                             }
