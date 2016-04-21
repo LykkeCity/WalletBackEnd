@@ -228,6 +228,19 @@ namespace LykkeWalletServices
                 knownTaskType = true;
             }
 
+            var transactionGetInputWalletAddresses = @event as TaskToDoGetInputWalletAddresses;
+            if (transactionGetInputWalletAddresses != null)
+            {
+                var service = new SrvGetInputWalletAddressesTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer,
+                    _connectionString, _feeAddress);
+                service.Execute(transactionGetInputWalletAddresses, async result =>
+                {
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        ("GetInputWalletAddresses", @event.TransactionId, result.Item1, result.Item2));
+                });
+                knownTaskType = true;
+            }
+
             if (knownTaskType)
             {
                 await _log.WriteWarning("SrvQueueReader", "Execute", "", $"{@event.GetType()}");

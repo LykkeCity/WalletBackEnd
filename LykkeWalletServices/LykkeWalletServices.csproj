@@ -132,6 +132,7 @@
     <Compile Include="Transactions\TaskHandlers\SrvGenerateIssuerOutputsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateFeeOutputsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvCashOutSeparateSignaturesTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvGetInputWalletAddresses.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetIssuersOutputStatusTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetFeeOutputsStatusTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvTransfer.cs" />

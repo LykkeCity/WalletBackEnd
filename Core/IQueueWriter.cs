@@ -47,6 +47,11 @@ namespace Core
         public string RefundTransaction { get; set; }
     }
 
+    public class GetInputWalletAddressesTaskResult : ITaskResult
+    {
+        public string[] Addresses { get; set; }
+    }
+
     public class GenerateMassOutputsTaskResult : ITaskResult
     {
         public string TransactionHash { get; set; }

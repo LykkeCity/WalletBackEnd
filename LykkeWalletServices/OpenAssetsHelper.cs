@@ -34,6 +34,22 @@ namespace LykkeWalletServices
         private const APIProvider apiProvider = APIProvider.QBitNinja;
         private const int LocktimeMinutesAllowance = 120;
 
+        public static string QBitNinjaBalanceUrl
+        {
+            get
+            {
+                return QBitNinjaBaseUrl + "balances/";
+            }
+        }
+
+        public static string QBitNinjaTransactionUrl
+        {
+            get
+            {
+                return QBitNinjaBaseUrl + "transactions/";
+            }
+        }
+
         public static string QBitNinjaBaseUrl
         {
             get;
@@ -359,14 +375,7 @@ namespace LykkeWalletServices
                 using (HttpClient client = new HttpClient())
                 {
                     string url = null;
-                    if (network == Network.Main)
-                    {
-                        url = QBitNinjaBaseUrl + walletAddress;
-                    }
-                    else
-                    {
-                        url = QBitNinjaBaseUrl + walletAddress;
-                    }
+                    url = QBitNinjaBalanceUrl + walletAddress;
                     HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
                     if (!result.IsSuccessStatusCode)
                     {
@@ -376,7 +385,7 @@ namespace LykkeWalletServices
                     else
                     {
                         var webResponse = await result.Content.ReadAsStringAsync();
-                        var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaUnspentOutputResponse>
+                        var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
                             (webResponse);
                         if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
                         {
@@ -486,14 +495,7 @@ namespace LykkeWalletServices
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    if (network == Network.Main)
-                    {
-                        url = QBitNinjaBaseUrl + walletAddress;
-                    }
-                    else
-                    {
-                        url = QBitNinjaBaseUrl + walletAddress;
-                    }
+                    url = QBitNinjaBalanceUrl + walletAddress;
                     HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
                     if (!result.IsSuccessStatusCode)
                     {
@@ -502,7 +504,7 @@ namespace LykkeWalletServices
                     else
                     {
                         var webResponse = await result.Content.ReadAsStringAsync();
-                        QBitNinjaUnspentOutputResponse response = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaUnspentOutputResponse>
+                        QBitNinjaOutputResponse response = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
                             (webResponse);
                         if (response.operations != null && response.operations.Count > 0)
                         {
@@ -1370,6 +1372,8 @@ namespace LykkeWalletServices
             return bytes;
         }
 
+        
+
         // Sqlite dll is not copied to output folder, this method creates the reference, never called
         // http://stackoverflow.com/questions/14033193/entity-framework-provider-type-could-not-be-loaded
         public static void FixEfProviderServicesProblem()
@@ -1403,6 +1407,18 @@ namespace LykkeWalletServices
             public long quantity { get; set; }
         }
 
+        public class QBitNinjaSpentCoin
+        {
+            public string address { get; set; }
+            public string transactionId { get; set; }
+            public int index { get; set; }
+            public long value { get; set; }
+            public string scriptPubKey { get; set; }
+            public object redeemScript { get; set; }
+            public string assetId { get; set; }
+            public long quantity { get; set; }
+        }
+
         public class QBitNinjaOperation
         {
             public long amount { get; set; }
@@ -1411,13 +1427,37 @@ namespace LykkeWalletServices
             public string blockId { get; set; }
             public string transactionId { get; set; }
             public List<QBitNinjaReceivedCoin> receivedCoins { get; set; }
-            public List<object> spentCoins { get; set; }
+            public List<QBitNinjaSpentCoin> spentCoins { get; set; }
         }
 
-        public class QBitNinjaUnspentOutputResponse
+        
+
+        public class QBitNinjaOutputResponse
         {
             public object continuation { get; set; }
             public List<QBitNinjaOperation> operations { get; set; }
+        }
+
+        public class QBitNinjaBlock
+        {
+            public string blockId { get; set; }
+            public string blockHeader { get; set; }
+            public int height { get; set; }
+            public int confirmations { get; set; }
+            public string medianTimePast { get; set; }
+            public string blockTime { get; set; }
+        }
+
+        public class QBitNinjaTransactionResponse
+        {
+            public string transaction { get; set; }
+            public string transactionId { get; set; }
+            public bool isCoinbase { get; set; }
+            public QBitNinjaBlock block { get; set; }
+            public List<QBitNinjaSpentCoin> spentCoins { get; set; }
+            public List<QBitNinjaReceivedCoin> receivedCoins { get; set; }
+            public string firstSeen { get; set; }
+            public int fees { get; set; }
         }
 
         public class CoinprismUnspentOutput : UniversalUnspentOutput

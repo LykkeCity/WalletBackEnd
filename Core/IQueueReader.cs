@@ -57,6 +57,12 @@ namespace Core
         public uint timeoutInMinutes { get; set; }
     }
 
+    public class TaskToDoGetInputWalletAddresses : TransactionToDoBase
+    {
+        public string Asset { get; set;}
+        public string MultisigAddress { get; set; }
+    }
+
     public class TaskToDoCashIn : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }

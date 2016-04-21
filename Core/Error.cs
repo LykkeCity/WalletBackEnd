@@ -24,6 +24,8 @@ namespace Core
         TransactionNotSignedProperly,
         BadInputParameter,
         PersistantConcurrencyProblem,
-        NoCoinsToRefund
+        NoCoinsToRefund,
+        NoCoinsFound,
+        InvalidAddress
     }
 }
