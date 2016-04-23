@@ -55,24 +55,7 @@ namespace LykkeWalletServices
             get;
             set;
         }
-
-
-        public class AssetDefinition
-        {
-            public string AssetId { get; set; }
-            public string AssetAddress { get; set; }
-            public string Name { get; set; }
-            public string PrivateKey { get; set; }
-            public string DefinitionUrl { get; set; }
-            public int Divisibility { get; set; }
-            public long MultiplyFactor
-            {
-                get
-                {
-                    return (long)Math.Pow(10, Divisibility);
-                }
-            }
-        }
+        
 
         public static string GetAddressFromScriptPubKey(Script scriptPubKey, Network network)
         {

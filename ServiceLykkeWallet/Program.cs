@@ -10,11 +10,18 @@ using Microsoft.Owin.Hosting;
 using System.Threading.Tasks;
 using System.Text;
 using NBitcoin;
+using LykkeWalletServices.Transactions.TaskHandlers;
 
 namespace ServiceLykkeWallet
 {
-    class Program
+    public class Program
     {
+        public static SrvQueueReader srvQueueReader
+        {
+            get;
+            private set;
+        }
+
         static void Main(string[] args)
         {
             var settingsTask = SettingsReader.ReadAppSettins();
@@ -32,7 +39,7 @@ namespace ServiceLykkeWallet
 
             OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
 
-            var srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
+            srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
                 settings.exchangePrivateKey, settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
                 settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress, settings.FeeAddressPrivateKey);
@@ -50,87 +57,4 @@ namespace ServiceLykkeWallet
             Console.ReadLine();
         }
     }
-
-    public static class SettingsReader
-    {
-        private static bool settingsRead = false;
-        private static TheSettings settings = null;
-
-        public class LykkeCredentials : ILykkeCredentials
-        {
-            public string PublicAddress { get; set; }
-            public string PrivateKey { get; set; }
-            public string CcPublicAddress { get; set; }
-        }
-
-        public class TheSettings
-        {
-            public string RestEndPoint { get; set; }
-            public string InQueueConnectionString { get; set; }
-            public string OutQueueConnectionString { get; set; }
-
-            public string ConnectionString { get; set; }
-
-            public LykkeCredentials LykkeCredentials { get; set; }
-
-            public OpenAssetsHelper.AssetDefinition[] AssetDefinitions { get; set; }
-            public NetworkType NetworkType { get; set; }
-            public string exchangePrivateKey { get; set; }
-            public string RPCUsername { get; set; }
-            public string RPCPassword { get; set; }
-            public string RPCServerIpAddress { get; set; }
-            public string FeeAddress { get; set; }
-            public string FeeAddressPrivateKey { get; set; }
-
-            public string QBitNinjaBaseUrl { get; set; }
-        }
-
-        public static async Task<TheSettings> ReadAppSettins()
-        {
-            if (!settingsRead)
-            {
-                try
-                {
-#if DEBUG
-                    var json = await ReadTextAsync("F:\\Lykkex\\settings.json");
-#else
-                    var json = await ReadTextAsync("settings.json");
-#endif
-                    settings = Newtonsoft.Json.JsonConvert.DeserializeObject<TheSettings>(json);
-                    settingsRead = true;
-                    return settings;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Error reading settings.json file: " + ex.Message);
-                    throw;
-                }
-            }
-            else
-            {
-                return settings;
-            }
-        }
-
-        private static async Task<string> ReadTextAsync(string filePath)
-        {
-            using (FileStream sourceStream = new FileStream(filePath,
-                FileMode.Open, FileAccess.Read, FileShare.Read,
-                bufferSize: 4096, useAsync: true))
-            {
-                StringBuilder sb = new StringBuilder();
-
-                byte[] buffer = new byte[0x1000];
-                int numRead;
-                while ((numRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length)) != 0)
-                {
-                    string text = Encoding.ASCII.GetString(buffer, 0, numRead);
-                    sb.Append(text);
-                }
-
-                return sb.ToString();
-            }
-        }
-    }
-
 }

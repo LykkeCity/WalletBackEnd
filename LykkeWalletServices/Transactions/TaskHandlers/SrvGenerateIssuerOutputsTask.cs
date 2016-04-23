@@ -16,7 +16,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample response: GenerateIssuerOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
     public class SrvGenerateIssuerOutputsTask : SrvNetworkBase
     {
-        public SrvGenerateIssuerOutputsTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvGenerateIssuerOutputsTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string connectionString) :
             base(network, assets, username, password, ipAddress, connectionString, null)
         {

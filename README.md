@@ -84,6 +84,11 @@ When a call ends with an error, the error (in the following responses) will be a
         Sample request: GetInputWalletAddresses:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Asset":"TestExchangeUSD"}
         Sample response: GetInputWalletAddresses:{"TransactionId":"10","Result":{"Addresses":["mhF3ghWGgAJxDcUC52ar5DCv56MVzpN94W","2Msbkk8AGbzrVnENqE3m8nk4n6FyTrdnNF4","2MyZey5YzZMnbuzfi3RuNqnkKAuMgwzRYRj"]},"Error":null}
 
+*   Updating asset definitions
+
+        Sample request: UpdateAssets:{"TransactionId":"10","Assets": [{ "AssetId": "oDmVkVUHnrdSKASFWuHy6hxqTWFc9vdL9d", "AssetAddress": "n2JMZcG3dKuRN4c8K89TBwwwDpHshppQUr", "Name": "TestExchangeUSD", "PrivateKey": "xxx", "DefinitionUrl": "https://www.cpr.sm/-KDPVKLTlL","Divisibility": 2 }, { "AssetId": "oZTd8ZfoyRPkYFhbeLXvordpcpND2YpqPg", "AssetAddress": "n4XdhcAWoRBesY2gy5hnF6ht31rLG19kqy", "Name": "TestExchangeEUR","PrivateKey": "xxx","DefinitionUrl": "https://www.cpr.sm/SBi9SeNlyB","Divisibility": 2}]}
+        Sample response: UpdateAssets:{"TransactionId":"10","Result":{"Success":true},"Error":null}
+
 
 ## Some notes
 *   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.

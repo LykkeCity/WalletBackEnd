@@ -10,7 +10,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample output: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvCashOutTask : SrvNetworkInvolvingExchangeBase
     {
-        public SrvCashOutTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvCashOutTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
         }

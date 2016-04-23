@@ -15,7 +15,11 @@ namespace LykkeWalletServices
         private readonly ILog _log;
         private readonly Network _network;
         private readonly string _exchangePrivateKey;
-        private readonly OpenAssetsHelper.AssetDefinition[] _assets;
+        public AssetDefinition[] _assets
+        {
+            get;
+            set;
+        }
         private readonly string _rpcUsername = null;
         private readonly string _rpcPassword = null;
         private readonly string _rpcServer = null;
@@ -24,7 +28,7 @@ namespace LykkeWalletServices
         private readonly string _feeAddressPrivateKey;
 
         public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log,
-            Network network, string exchangePrivateKey, OpenAssetsHelper.AssetDefinition[] assets, string rpcUsername,
+            Network network, string exchangePrivateKey, AssetDefinition[] assets, string rpcUsername,
             string rpcPassword, string rpcServer, string connectionString, string feeAddress, string feeAddressPrivateKey)
             : base("SrvQueueReader", 5000, log)
         {
@@ -237,6 +241,18 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetInputWalletAddresses", @event.TransactionId, result.Item1, result.Item2));
+                });
+                knownTaskType = true;
+            }
+
+            var transactionUpdateAssets = @event as TaskToDoUpdateAssets;
+            if (transactionUpdateAssets != null)
+            {
+                var service = new SrvUpdateAssetsTask(this);
+                service.Execute(transactionUpdateAssets, async result =>
+                {
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        ("UpdateAssets", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }

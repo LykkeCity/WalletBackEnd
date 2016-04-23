@@ -5,7 +5,6 @@ using NBitcoin;
 using ServiceLykkeWallet.Models;
 using System.Linq;
 using System.Web.Http;
-using static ServiceLykkeWallet.SettingsReader;
 
 namespace ServiceLykkeWallet.Controllers
 {
@@ -33,7 +32,7 @@ namespace ServiceLykkeWallet.Controllers
         [HttpGet]
         public IHttpActionResult GetAvailableAssets()
         {
-            return Json((OpenAssetsHelper.AssetDefinition[])Configuration.Properties["assets"]);
+            return Json((AssetDefinition[])Configuration.Properties["assets"]);
         }
         
         private GenerateAccountContract ConvertAccountModelToAccountContract(AccountModel m)

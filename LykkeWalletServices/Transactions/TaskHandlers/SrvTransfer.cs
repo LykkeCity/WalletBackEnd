@@ -10,7 +10,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample Output: Transfer:{"TransactionId":null,"Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
     public class SrvTransferTask : SrvNetworkInvolvingExchangeBase
     {
-        public SrvTransferTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvTransferTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) :
             base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {

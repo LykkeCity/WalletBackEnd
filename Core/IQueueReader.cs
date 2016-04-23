@@ -1,7 +1,25 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Core
 {
+    public class AssetDefinition
+    {
+        public string AssetId { get; set; }
+        public string AssetAddress { get; set; }
+        public string Name { get; set; }
+        public string PrivateKey { get; set; }
+        public string DefinitionUrl { get; set; }
+        public int Divisibility { get; set; }
+        public long MultiplyFactor
+        {
+            get
+            {
+                return (long)Math.Pow(10, Divisibility);
+            }
+        }
+    }
+
     public class TransactionToDoBase
     {
         public string TransactionId { get; set; }
@@ -91,6 +109,15 @@ namespace Core
         public float Amount { get; set; }
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
+    }
+
+    public class TaskToDoUpdateAssets : TransactionToDoBase
+    {
+        public AssetDefinition[] Assets
+        {
+            get;
+            set;
+        }
     }
 
     public class TaskToDoCashOutSeparateSignatures : TransactionToDoBase

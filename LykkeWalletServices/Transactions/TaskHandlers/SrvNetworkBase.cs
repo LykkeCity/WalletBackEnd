@@ -1,4 +1,5 @@
-﻿using NBitcoin;
+﻿using Core;
+using NBitcoin;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -8,7 +9,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         {
             get; set;
         }
-        protected OpenAssetsHelper.AssetDefinition[] Assets
+        protected AssetDefinition[] Assets
         {
             get; set;
         }
@@ -31,7 +32,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         }
 
         protected string ConnectionString { get; set; }
-        public SrvNetworkBase(Network network, OpenAssetsHelper.AssetDefinition[] assets,
+        public SrvNetworkBase(Network network, AssetDefinition[] assets,
             string username, string password, string ipAddress, string connectionString, string feeAddress)
         {
             this.Network = network;

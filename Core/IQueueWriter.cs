@@ -84,6 +84,15 @@ namespace Core
     {
     }
 
+    public class UpdateAssetsTaskResult : ITaskResult
+    {
+        public bool Success
+        {
+            get;
+            set;
+        }
+    }
+
     public class GetCurrentBalanceTaskResult : ITaskResult
     {
         public GetCurrentBalanceTaskResultElement[] ResultArray;
