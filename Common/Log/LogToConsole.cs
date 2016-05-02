@@ -12,6 +12,7 @@ namespace Common.Log
             Console.WriteLine("Process: " + process);
             Console.WriteLine("Context: " + context);
             Console.WriteLine("Info: " + info);
+            Console.WriteLine("Time: " + DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local).ToString());
             Console.WriteLine("---------END LOG INFO-------");
             return Task.FromResult(0);
         }
@@ -23,6 +24,7 @@ namespace Common.Log
             Console.WriteLine("Process: " + process);
             Console.WriteLine("Context: " + context);
             Console.WriteLine("Info: " + info);
+            Console.WriteLine("Time: " + DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local).ToString());
             Console.WriteLine("---------END LOG INFO-------");
             return Task.FromResult(0);
         }
@@ -35,6 +37,7 @@ namespace Common.Log
             Console.WriteLine("Context: " + context);
             Console.WriteLine("Message: " + exeption.Message);
             Console.WriteLine("Stack: " + exeption.StackTrace);
+            Console.WriteLine("Time: " + DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local).ToString());
             Console.WriteLine("---------END LOG INFO-------");
             return Task.FromResult(0);
         }
@@ -48,6 +51,7 @@ namespace Common.Log
             Console.WriteLine("Context: " + context);
             Console.WriteLine("Message: " + exeption.Message);
             Console.WriteLine("Stack: " + exeption.StackTrace);
+            Console.WriteLine("Time: " + DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local).ToString());
             Console.WriteLine("---------END LOG INFO-------");
             return Task.FromResult(0);
         }
