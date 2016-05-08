@@ -35,9 +35,12 @@ namespace ServiceLykkeWallet
 
             var queueReader = new AzureQueueReader(new AzureQueueExt(settings.InQueueConnectionString, "indata"));
             var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, "outdata"));
+            var emailQueueWriter = new AzureQueueExt(settings.OutQueueConnectionString, "emailsqueue");
             var lykkeAccountReader = new LykkeAccountReader(settings.LykkeCredentials);
 
             OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
+            OpenAssetsHelper.PreGeneratedOutputMinimumCount = settings.PreGeneratedOutputMinimumCount;
+            OpenAssetsHelper.EmailQueueWriter = emailQueueWriter;
 
             srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,

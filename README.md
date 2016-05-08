@@ -111,6 +111,7 @@ When a call ends with an error, the error (in the following responses) will be a
 |FeeAddress|Nothing|The address which is used to send the outputs for fee generation to, this outputs will later be used to pay transaction fee.|
 |FeeAddressPrivateKey|Nothing|The private key of the above address|
 |QBitNinjaBaseUrl|Nothing|The qbit ninja url used for querying bitcoin network|
+|PreGeneratedOutputMinimumCount|Nothing|Minimum number of pregenerated outptuts required, either for fee payment or coin issuance. When the number of pregenerated outputs fell below this number and such an output was required, an alert email would be sent (using emailsqueue)|
 
 The AssetDefinitions is an array of json, with the following fields:
 

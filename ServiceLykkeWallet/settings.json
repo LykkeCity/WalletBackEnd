@@ -15,6 +15,7 @@
   "RPCPassword": "xxx",
   "RPCServerIpAddress": "xxx",
   "QBitNinjaBaseUrl": "http://tapi.qbit.ninja/balances/",
+  "PreGeneratedOutputMinimumCount" :  5,
   "AssetDefinitions": [
     {
       "AssetId": "oXjVb4XRo23tp53QFgVUxLhctPKPt6Q127",

@@ -1,4 +1,5 @@
-﻿using Core;
+﻿using Common;
+using Core;
 using NBitcoin;
 using NBitcoin.OpenAsset;
 using NBitcoin.RPC;
@@ -7,6 +8,7 @@ using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace LykkeWalletServices
@@ -55,7 +57,18 @@ namespace LykkeWalletServices
             get;
             set;
         }
-        
+
+        public static int PreGeneratedOutputMinimumCount
+        {
+            get;
+            set;
+        }
+
+        public static IQueueExt EmailQueueWriter
+        {
+            get;
+            set;
+        }
 
         public static string GetAddressFromScriptPubKey(Script scriptPubKey, Network network)
         {
@@ -1131,6 +1144,20 @@ namespace LykkeWalletServices
             return ret;
         }
 
+        public static async Task SendAlertForPregenerateOutput(string assetId, int count, int minimumCount)
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("Hello,");
+            builder.AppendLine(string.Format("The number of pre generated outputs ({0}) for asset {1} has fallen below minimum {2}.",
+                count, assetId ?? "BTC", minimumCount));
+            builder.AppendLine("Please add some pre generatad outputs.");
+            builder.AppendLine("Best,");
+            builder.AppendLine("PreGenerated Watchdog");
+            string message = builder.ToString();
+
+            await EmailQueueWriter.PutMessageAsync(message);
+        }
+
         public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
             string network, string assetId = null)
         {
@@ -1139,6 +1166,12 @@ namespace LykkeWalletServices
                         select item;
 
             int count = await coins.CountAsync();
+
+            if (count < PreGeneratedOutputMinimumCount)
+            {
+                await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount);
+            }
+
             if (count == 0)
             {
                 throw new Exception("There is no coins to use for fee payment");
@@ -1355,7 +1388,7 @@ namespace LykkeWalletServices
             return bytes;
         }
 
-        
+
 
         // Sqlite dll is not copied to output folder, this method creates the reference, never called
         // http://stackoverflow.com/questions/14033193/entity-framework-provider-type-could-not-be-loaded
@@ -1413,7 +1446,7 @@ namespace LykkeWalletServices
             public List<QBitNinjaSpentCoin> spentCoins { get; set; }
         }
 
-        
+
 
         public class QBitNinjaOutputResponse
         {

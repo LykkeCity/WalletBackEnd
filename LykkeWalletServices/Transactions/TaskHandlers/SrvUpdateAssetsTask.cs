@@ -38,6 +38,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             public string FeeAddressPrivateKey { get; set; }
 
             public string QBitNinjaBaseUrl { get; set; }
+            public int PreGeneratedOutputMinimumCount { get; set; }
         }
 
         public static async Task<TheSettings> ReadAppSettins(bool logToConsole = true)
