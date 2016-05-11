@@ -106,8 +106,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 Error localerror = null;
                                 using (var transaction = entities.Database.BeginTransaction())
                                 {
+                                    var txHash = tx.GetHash().ToString();
+                                    
                                     localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
+                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString, null);
 
 
                                     if (localerror == null)
@@ -115,7 +117,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         result = new CashOutSeparateSignaturesTaskResult
                                         {
                                             TransactionHex = tx.ToHex(),
-                                            TransactionHash = tx.GetHash().ToString()
+                                            TransactionHash = txHash
                                         };
                                     }
                                     else

@@ -3,6 +3,7 @@ using Core;
 using NBitcoin;
 using NBitcoin.OpenAsset;
 using NBitcoin.RPC;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
@@ -59,6 +60,12 @@ namespace LykkeWalletServices
         }
 
         public static int PreGeneratedOutputMinimumCount
+        {
+            get;
+            set;
+        }
+
+        public static string LykkeJobsUrl
         {
             get;
             set;
@@ -863,9 +870,54 @@ namespace LykkeWalletServices
             return new Tuple<bool, string, string>(errorOccured, errorMessage, transactionHex);
         }
 
+        public class LykkeJobsNotificationMessage
+        {
+            public string TransactionId
+            {
+                get;
+                set;
+            }
+
+            public string BlockchainHash
+            {
+                get;
+                set;
+            }
+
+            public string Operation
+            {
+                get;
+                set;
+            }
+        }
+
+        public class LykkeJobsNotificationResponseError
+        {
+            public int Code
+            {
+                get;
+                set;
+            }
+
+            public string Message
+            {
+                get;
+                set;
+            }
+        }
+        public class LykkeJobsNotificationResponse
+        {
+            public LykkeJobsNotificationResponseError Error
+            {
+                get;
+                set;
+            }
+        }
+
         // ToDo - Performance should be revisted by possible join operation
         public static async Task<Error> CheckTransactionForDoubleSpentThenSendIt(Transaction tx,
             string username, string password, string ipAddress, Network network, SqlexpressLykkeEntities entitiesContext, string connectionString,
+            LykkeJobsNotificationMessage lykkeJobsNotificationMessage,
             Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null)
         {
             Error error = null;
@@ -920,6 +972,33 @@ namespace LykkeWalletServices
                     });
                 }
                 await entitiesContext.SaveChangesAsync();
+
+                // Notifing the web api of the transaction
+                // The server should respond to: curl -X Post http://localhost:8088/HandledTx -H "Content-Type: application/json" -d "{\"TransactionId\" : \"transactionId\", \"BlockchainHash\" : \"blockchainHash\",\"Operation\" : \"Transfer\" }"
+                if (lykkeJobsNotificationMessage != null)
+                {
+                    var values = new Dictionary<string, string>();
+                    values.Add("json", JsonConvert.SerializeObject(lykkeJobsNotificationMessage).ToString());
+                    using (HttpClient webClient = new HttpClient())
+                    {
+                        //var response = await webClient.PostAsync(LykkeJobsUrl, new FormUrlEncodedContent(values));
+                        var response = await webClient.PostAsJsonAsync(LykkeJobsUrl, lykkeJobsNotificationMessage);
+                        if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                        {
+                            var notificationResponse = JsonConvert.DeserializeObject<LykkeJobsNotificationResponse>
+                                (await response.Content.ReadAsStringAsync());
+                            if(notificationResponse.Error != null)
+                            {
+                                throw new Exception(string.Format("Error while notifing Lykke Jobs. Erro code: {0} and Error Message: {1}",
+                                    notificationResponse.Error.Code, notificationResponse.Error.Message ));
+                            }
+                        }
+                        else
+                        {
+                            throw new Exception("Not a valid http response from Lykke Jobs.");
+                        }
+                    }
+                }
 
                 // Database is successful, only the commit has remained. Broadcating the transaction
                 RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
@@ -1316,32 +1395,32 @@ namespace LykkeWalletServices
                                     using (var transaction = entities.Database.BeginTransaction())
                                     {
                                         Error localerror = await CheckTransactionForDoubleSpentThenSendIt
-                                                    (tx, username, password, ipAddress, network, entities, connectionString,
+                                                    (tx, username, password, ipAddress, network, entities, connectionString, null,
                                                     null, (entitiesContext) =>
-                                                    {
-                                                        var tId = tx.GetHash().ToString();
-                                                        preGeneratedOutputs = new List<PreGeneratedOutput>();
-                                                        for (int i = 0; i < tx.Outputs.Count; i++)
-                                                        {
-                                                            var item = tx.Outputs[i];
-                                                            if (item.Value.Satoshi != Convert.ToInt64(data.FeeAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
-                                                            {
-                                                                continue;
-                                                            }
-                                                            PreGeneratedOutput f = new PreGeneratedOutput();
-                                                            f.TransactionId = tId;
-                                                            f.OutputNumber = i;
-                                                            f.Script = item.ScriptPubKey.ToHex();
-                                                            f.PrivateKey = destinationAddressPrivateKey;
-                                                            f.Amount = item.Value.Satoshi;
-                                                            f.AssetId = assetId;
-                                                            f.Address = destinationAddress;
-                                                            f.Network = network.ToString();
-                                                            preGeneratedOutputs.Add(f);
-                                                        }
+                                                   {
+                                                       var tId = tx.GetHash().ToString();
+                                                       preGeneratedOutputs = new List<PreGeneratedOutput>();
+                                                       for (int i = 0; i < tx.Outputs.Count; i++)
+                                                       {
+                                                           var item = tx.Outputs[i];
+                                                           if (item.Value.Satoshi != Convert.ToInt64(data.FeeAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
+                                                           {
+                                                               continue;
+                                                           }
+                                                           PreGeneratedOutput f = new PreGeneratedOutput();
+                                                           f.TransactionId = tId;
+                                                           f.OutputNumber = i;
+                                                           f.Script = item.ScriptPubKey.ToHex();
+                                                           f.PrivateKey = destinationAddressPrivateKey;
+                                                           f.Amount = item.Value.Satoshi;
+                                                           f.AssetId = assetId;
+                                                           f.Address = destinationAddress;
+                                                           f.Network = network.ToString();
+                                                           preGeneratedOutputs.Add(f);
+                                                       }
 
-                                                        entitiesContext.PreGeneratedOutputs.AddRange(preGeneratedOutputs);
-                                                    });
+                                                       entitiesContext.PreGeneratedOutputs.AddRange(preGeneratedOutputs);
+                                                   });
                                         if (localerror == null)
                                         {
                                             result = new GenerateMassOutputsTaskResult

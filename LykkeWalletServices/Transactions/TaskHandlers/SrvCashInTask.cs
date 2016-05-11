@@ -56,15 +56,23 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         .SetChange(new BitcoinPubKeyAddress(FeeAddress, Network)) // Paying the rest to fee payer address
                                         .BuildTransaction(true);
 
+                                    var txHash = tx.GetHash().ToString();
+
+                                    OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
+                                        new OpenAssetsHelper.LykkeJobsNotificationMessage();
+                                    lykkeJobsNotificationMessage.Operation = "CashIn";
+                                    lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
+                                    lykkeJobsNotificationMessage.BlockchainHash = txHash;
+
                                     Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
+                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
 
                                     if (localerror == null)
                                     {
                                         result = new CashInTaskResult
                                         {
                                             TransactionHex = tx.ToHex(),
-                                            TransactionHash = tx.GetHash().ToString()
+                                            TransactionHash = txHash
                                         };
                                     }
                                     else

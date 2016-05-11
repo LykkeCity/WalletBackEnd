@@ -40,6 +40,7 @@ namespace ServiceLykkeWallet
 
             OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
             OpenAssetsHelper.PreGeneratedOutputMinimumCount = settings.PreGeneratedOutputMinimumCount;
+            OpenAssetsHelper.LykkeJobsUrl = settings.LykkeJobsUrl;
             OpenAssetsHelper.EmailQueueWriter = emailQueueWriter;
 
             srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
@@ -51,7 +52,7 @@ namespace ServiceLykkeWallet
 
             Console.WriteLine("Queue reader is started");
 
-            /*
+           /*
             using (WebApp.Start(settings.RestEndPoint))
             {
                 Console.WriteLine($"Http Server started: {settings.RestEndPoint}");

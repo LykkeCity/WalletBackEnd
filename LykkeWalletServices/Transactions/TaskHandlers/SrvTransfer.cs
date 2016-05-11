@@ -47,15 +47,23 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 .SetChange(new Script(SourceMultisigAddress.MultiSigScript).GetScriptAddress(Network))
                                 .BuildTransaction(true);
 
+                            var txHash = tx.GetHash().ToString();
+
+                            OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
+                                new OpenAssetsHelper.LykkeJobsNotificationMessage();
+                            lykkeJobsNotificationMessage.Operation = "Transfer";
+                            lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
+                            lykkeJobsNotificationMessage.BlockchainHash = txHash;
+
                             Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
+                                (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
 
                             if (localerror == null)
                             {
                                 result = new TransferTaskResult
                                 {
                                     TransactionHex = tx.ToHex(),
-                                    TransactionHash = tx.GetHash().ToString()
+                                    TransactionHash = txHash
                                 };
                             }
                             else

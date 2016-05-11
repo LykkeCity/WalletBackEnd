@@ -80,8 +80,16 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                                 var tx = builder.BuildTransaction(true);
 
+                                var txHash = tx.GetHash().ToString();
+
+                                OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
+                                    new OpenAssetsHelper.LykkeJobsNotificationMessage();
+                                lykkeJobsNotificationMessage.Operation = "Swap";
+                                lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
+                                lykkeJobsNotificationMessage.BlockchainHash = txHash;
+
                                 Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
+                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
 
                                 if (localerror == null)
                                 {
