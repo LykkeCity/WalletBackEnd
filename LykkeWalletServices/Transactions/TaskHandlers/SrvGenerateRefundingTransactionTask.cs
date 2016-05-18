@@ -56,9 +56,11 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     var coins = await OpenAssetsHelper.GetColoredUnColoredCoins(walletOuputs.Item1, null,
                                         Network, Username, Password, IpAddress);
 
-                                    var previousUnspentCoins = from c in entities.RefundedOutputs
-                                                               where c.RefundedAddress.Equals(multiSig.MultiSigAddress) && c.HasBeenSpent.Equals(false)
-                                                               select c;
+                                    // ToDo: Possible bug fix for "System.Data.Entity.Core.EntityCommandExecutionException: An error occurred while executing the command definition. See the inner exception for details. --->System.InvalidOperationException: There is already an open DataReader associated with this Command which must be closed first.
+                                    // ToList may cause performance issues, but it should be neligable
+                                    var previousUnspentCoins = (from c in entities.RefundedOutputs
+                                                                where c.RefundedAddress.Equals(multiSig.MultiSigAddress) && c.HasBeenSpent.Equals(false)
+                                                                select c).ToList();
 
                                     // Finding the coins which has never been refunded
                                     foreach (var item in coins.Item2)
@@ -116,7 +118,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     }
                                     entities.SaveChanges();
 
-                                    if(toBeRefundedCoins.Count == 0)
+                                    if (toBeRefundedCoins.Count == 0)
                                     {
                                         error = new Error();
                                         error.Code = ErrorCode.NoCoinsToRefund;
@@ -177,7 +179,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     else
                                     {
                                         transaction.Rollback();
-                                        if(error.Code == ErrorCode.NoCoinsToRefund)
+                                        if (error.Code == ErrorCode.NoCoinsToRefund)
                                         {
                                             break;
                                         }
