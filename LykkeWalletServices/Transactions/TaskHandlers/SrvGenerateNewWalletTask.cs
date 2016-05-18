@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     // Sample input: GenerateNewWallet:{"TransactionId":"10"}
-    // Sample output: GenerateNewWallet:{"TransactionId":"10","Result":{"WalletAddress":"mtgbKeNYngWvjmUaSfqhnKD3s2niC3tsCx","WalletPrivateKey":"xxx","MultiSigAddress":"2NDSoShWdKkVmjp9RMTRFsAwCRiNouTL6dv"},"Error":null}
+    // Sample output: GenerateNewWallet:{"TransactionId":"10","Result":{"WalletAddress":"mtNawPk9v3QaMaF3bfTBXzc4wVdJ6YrfS9","WalletPrivateKey":"xxx","MultiSigAddress":"2N23DbiKurkz9n9nd9kLgZpnUjHiGszq4BT","ColoredWalletAddress":"bX4LUBZZVPXJGDpQQeHZNBrWeH6oU6yvT3d","ColoredMultiSigAddress":"c7C16qt9FLEsqePwzCNSsDgh44ttSqGVyBE"},"Error":null}
     public class SrvGenerateNewWalletTask
     {
         private Network network = null;
@@ -23,6 +23,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         {
             GenerateNewWalletTaskResult result = null;
             string walletAddress = null;
+            string coloredWalletAddress = null;
             string walletPrivateKey = null;
             string multiSigAddressStorage = null;
             Error error = null;
@@ -32,11 +33,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 BitcoinSecret secret = new BitcoinSecret(key, this.network);
 
                 walletAddress = secret.GetAddress().ToWif();
+                coloredWalletAddress = BitcoinAddress.Create(walletAddress,network).ToColoredAddress().ToWif();
                 walletPrivateKey = secret.PrivateKey.GetWif(network).ToWif();
 
                 var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
                 (new BitcoinSecret(exchangePrivateKey, network)).PubKey });
                 multiSigAddressStorage = multiSigAddress.GetScriptAddress(network).ToString();
+                var coloredMulsigAddress = BitcoinAddress.Create(multiSigAddressStorage, network).ToColoredAddress().ToWif();
 
                 using (SqlexpressLykkeEntities entitiesContext = new SqlexpressLykkeEntities(connectionString))
                 {
@@ -56,8 +59,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                 result = new GenerateNewWalletTaskResult();
                 result.WalletAddress = walletAddress;
+                result.ColoredWalletAddress = coloredWalletAddress;
                 result.WalletPrivateKey = walletPrivateKey;
                 result.MultiSigAddress = multiSigAddressStorage;
+                result.ColoredMultiSigAddress = coloredMulsigAddress;
             }
             catch (Exception e)
             {

@@ -34,6 +34,8 @@ namespace Core
         public string WalletAddress { get; set; }
         public string WalletPrivateKey { get; set; }
         public string MultiSigAddress { get; set; }
+        public string ColoredWalletAddress { get; set; }
+        public string ColoredMultiSigAddress { get; set; }
     }
 
     public class TransactionSenderTaskResult : ITaskResult

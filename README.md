@@ -17,7 +17,7 @@ When a call ends with an error, the error (in the following responses) will be a
 *   Generate New Wallet
 
         Sample request: GenerateNewWallet:{"TransactionId":"10"}
-        Sample response: GenerateNewWallet:{"TransactionId":"10","Result":"WalletAddress":"xxxx","WalletPrivateKey":"xxxx","MultiSigAddress":"xxx"},"Error":null}
+        Sample response: GenerateNewWallet:{"TransactionId":"10","Result":{"WalletAddress":"mtNawPk9v3QaMaF3bfTBXzc4wVdJ6YrfS9","WalletPrivateKey":"xxx","MultiSigAddress":"2N23DbiKurkz9n9nd9kLgZpnUjHiGszq4BT","ColoredWalletAddress":"bX4LUBZZVPXJGDpQQeHZNBrWeH6oU6yvT3d","ColoredMultiSigAddress":"c7C16qt9FLEsqePwzCNSsDgh44ttSqGVyBE"},"Error":null}
    
 *   Cash In
 
