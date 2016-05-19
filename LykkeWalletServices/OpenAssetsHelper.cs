@@ -987,10 +987,10 @@ namespace LykkeWalletServices
                         {
                             var notificationResponse = JsonConvert.DeserializeObject<LykkeJobsNotificationResponse>
                                 (await response.Content.ReadAsStringAsync());
-                            if(notificationResponse.Error != null)
+                            if (notificationResponse.Error != null)
                             {
                                 throw new Exception(string.Format("Error while notifing Lykke Jobs. Erro code: {0} and Error Message: {1}",
-                                    notificationResponse.Error.Code, notificationResponse.Error.Message ));
+                                    notificationResponse.Error.Code, notificationResponse.Error.Message));
                             }
                         }
                         else
@@ -1223,6 +1223,7 @@ namespace LykkeWalletServices
             return ret;
         }
 
+        // PlainTextBroadcast:{"Data":{"BroadcastGroup":100,"MessageData":{"Subject":"Some subject","Text":"Some text"}}}
         public static async Task SendAlertForPregenerateOutput(string assetId, int count, int minimumCount)
         {
             StringBuilder builder = new StringBuilder();
@@ -1234,7 +1235,54 @@ namespace LykkeWalletServices
             builder.AppendLine("PreGenerated Watchdog");
             string message = builder.ToString();
 
-            await EmailQueueWriter.PutMessageAsync(message);
+            var ptb = new PlainTextBroadcast();
+            ptb.Data = new PlainTextBroadcastData();
+            ptb.Data.BroadcastGroup = 100;
+            ptb.Data.MessageData = new PlainTextMessage();
+            ptb.Data.MessageData.Subject = "PreGenerated Output Starvation!";
+            ptb.Data.MessageData.Text = message;
+
+            await EmailQueueWriter.PutMessageAsync("PlainTextBroadcast:" + JsonConvert.SerializeObject(ptb));
+        }
+
+
+        public class PlainTextMessage
+        {
+            public string Subject
+            {
+                get;
+                set;
+            }
+
+            public string Text
+            {
+                get;
+                set;
+            }
+        }
+
+        public class PlainTextBroadcastData
+        {
+            public int BroadcastGroup
+            {
+                get;
+                set;
+            }
+
+            public PlainTextMessage MessageData
+            {
+                get;
+                set;
+            }
+        }
+
+        public class PlainTextBroadcast
+        {
+            public PlainTextBroadcastData Data
+            {
+                get;
+                set;
+            }
         }
 
         public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
