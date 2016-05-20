@@ -1245,7 +1245,7 @@ namespace LykkeWalletServices
             await EmailQueueWriter.PutMessageAsync("PlainTextBroadcast:" + JsonConvert.SerializeObject(ptb));
         }
 
-
+        #region EmailStructure
         public class PlainTextMessage
         {
             public string Subject
@@ -1284,6 +1284,7 @@ namespace LykkeWalletServices
                 set;
             }
         }
+        #endregion
 
         public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
             string network, string assetId = null)
@@ -1339,8 +1340,7 @@ namespace LykkeWalletServices
                     ret = new Asset();
                     ret.AssetId = item.AssetId;
                     ret.AssetPrivateKey = item.PrivateKey;
-                    ret.AssetAddress = (new BitcoinSecret(ret.AssetPrivateKey, network)).PubKey.
-                        GetAddress(network);
+                    ret.AssetAddress = BitcoinAddress.Create(item.AssetAddress, network);
                     ret.AssetMultiplicationFactor = item.MultiplyFactor;
                     ret.AssetDefinitionUrl = item.DefinitionUrl;
                     break;
@@ -1524,6 +1524,7 @@ namespace LykkeWalletServices
             var instance = System.Data.SQLite.EF6.SQLiteProviderFactory.Instance;
         }
 
+        #region BitcoinApiReturnStructure
         public class UniversalUnspentOutput
         {
         }
@@ -1679,5 +1680,6 @@ namespace LykkeWalletServices
             public BlockCypherInput[] inputs { get; set; }
             public BlockCypherOutput[] outputs { get; set; }
         }
+        #endregion
     }
 }
