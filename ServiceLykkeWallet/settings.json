@@ -17,6 +17,8 @@
   "QBitNinjaBaseUrl": "http://tapi.qbit.ninja/balances/",
   "PreGeneratedOutputMinimumCount": 5,
   "LykkeJobsUrl": "http://localhost:1088/HandledTx/",
+  "SwapMinimumConfirmationNumber": null,
+  "DefaultNumberOfRequiredConfirmations": null,
   "AssetDefinitions": [
     {
       "AssetId": "oXjVb4XRo23tp53QFgVUxLhctPKPt6Q127",

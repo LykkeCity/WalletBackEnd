@@ -1,5 +1,7 @@
 ﻿using Core;
+using Newtonsoft.Json;
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -41,6 +43,22 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             public int PreGeneratedOutputMinimumCount { get; set; }
 
             public string LykkeJobsUrl { get; set; }
+
+            [DefaultValue(-1)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int SwapMinimumConfirmationNumber
+            {
+                get;
+                set;
+            }
+
+            [DefaultValue(-1)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int DefaultNumberOfRequiredConfirmations
+            {
+                get;
+                set;
+            }
         }
 
         public static async Task<TheSettings> ReadAppSettins(bool logToConsole = true)

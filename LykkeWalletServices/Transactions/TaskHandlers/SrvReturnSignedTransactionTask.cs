@@ -115,6 +115,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         private static async Task<string> GenerateTransactionHex(string exchangeId, SqlexpressLykkeEntities entitiesContext, 
             Network network, long multiplicationFactor, string connectionString)
         {
+            Func<int> getMinimumConfirmationNumber = (() => { return 0; });
+
             var transaction = await (from tx in entitiesContext.ExchangeRequests
                                      where tx.ExchangeId == exchangeId
                                      select tx).FirstAsync();
@@ -130,14 +132,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             // ToDo - Alert Unbalanced output is also included
             if (!(await IsAssetsEnough(transaction.WalletAddress01,
-                transaction.Asset01, (int)transaction.Amount01, network, multiplicationFactor, true)))
+                transaction.Asset01, (int)transaction.Amount01, network, multiplicationFactor, getMinimumConfirmationNumber)))
             {
                 throw new Exception("Not sufficient funds for asset: " + transaction.Asset01 +
                     " in wallet: " + transaction.WalletAddress01);
             }
             // ToDo - Alert Unbalanced output is also included
             if (!(await IsAssetsEnough(transaction.WalletAddress02,
-                transaction.Asset02, (int)transaction.Amount02, network, multiplicationFactor, true)))
+                transaction.Asset02, (int)transaction.Amount02, network, multiplicationFactor, getMinimumConfirmationNumber)))
             {
                 throw new Exception("Not sufficient funds for asset: " + transaction.Asset02 +
                     " in wallet: " + transaction.WalletAddress02);

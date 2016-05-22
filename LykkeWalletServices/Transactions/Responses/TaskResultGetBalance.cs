@@ -9,6 +9,5 @@ namespace LykkeWalletServices.Transactions.Responses
     public class TaskResultGetBalance : TaskResultBase
     {
         public float Balance { get; set; }
-        public float UnconfirmedBalance { get; set; }
     }
 }

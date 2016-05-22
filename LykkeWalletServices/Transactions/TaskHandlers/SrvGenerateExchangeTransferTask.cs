@@ -26,10 +26,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 return result;
             }
 
+            Func<int> getMinimumConfirmationNumber = (() => { return 0; });
+
             // Checking the asset amounts
             // ToDo - Alert Unbalanced output is also included
             if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress01, data.Asset01, data.Amount01, network,
-                multiplicationFactor, true))
+                multiplicationFactor, getMinimumConfirmationNumber))
             {
                 result.HasErrorOccurred = true;
                 result.ErrorMessage = "Wallet Address " + data.WalletAddress01 + " has not enough of asset " + data.Asset01 + " .";
@@ -37,7 +39,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 return result;
             }
             // ToDo - Alert Unbalanced output is also included
-            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress02, data.Asset02, data.Amount02, network, multiplicationFactor, true))
+            if (!await OpenAssetsHelper.IsAssetsEnough(data.WalletAddress02, data.Asset02, data.Amount02, network, multiplicationFactor, getMinimumConfirmationNumber))
             {
                 result.HasErrorOccurred = true;
                 result.ErrorMessage = "Wallet Address " + data.WalletAddress02 + " has not enough of asset " + data.Asset02 + " .";

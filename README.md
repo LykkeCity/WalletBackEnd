@@ -113,6 +113,8 @@ When a call ends with an error, the error (in the following responses) will be a
 |QBitNinjaBaseUrl|Nothing|The qbit ninja url used for querying bitcoin network|
 |PreGeneratedOutputMinimumCount|Nothing|Minimum number of pregenerated outptuts required, either for fee payment or coin issuance. When the number of pregenerated outputs fell below this number and such an output was required, an alert email would be sent (using emailsqueue)|
 |LykkeJobsUrl|Nothing|The url used by code, to post the notification for the new transaction before sending it (Like CashIn, CashOut and ...).|
+|DefaultNumberOfRequiredConfirmations|1|Minimum number of confirmations required to consider the transaction as final (optional).|
+|SwapMinimumConfirmationNumber|0|Minimum number of confirmations required to consider the transaction as final for the swap operation (optional).|
 
 The AssetDefinitions is an array of json, with the following fields:
 

@@ -77,524 +77,24 @@ namespace LykkeWalletServices
             set;
         }
 
-        public static string GetAddressFromScriptPubKey(Script scriptPubKey, Network network)
+        private static int minimumNumberOfRequiredConfirmations = 1;
+
+        public static int MinimumNumberOfRequiredConfirmations
         {
-            string address = null;
-            if (PayToPubkeyHashTemplate.Instance.CheckScriptPubKey(scriptPubKey))
+            get
             {
-                address = PayToPubkeyHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey).GetAddress(network).ToWif().ToString();
-            }
-            else
-            {
-                if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(scriptPubKey))
-                {
-                    address = PayToScriptHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey).GetAddress(network).ToWif().ToString();
-                }
+                return minimumNumberOfRequiredConfirmations;
             }
 
-            return address;
-        }
-
-        public static Coin GetCoin(this PreGeneratedOutput output)
-        {
-            Network network = null;
-            switch (output.Network.ToLower())
+            set
             {
-                case "main":
-                    network = Network.Main;
-                    break;
-                case "testnet":
-                    network = Network.TestNet;
-                    break;
-                default:
-                    // We should never reach here
-                    throw new Exception("Not a valid network");
-            }
-            return new Coin(new uint256(output.TransactionId), (uint)output.OutputNumber,
-                                    output.Amount, new PayToPubkeyHashTemplate().GenerateScriptPubKey(new BitcoinPubKeyAddress(output.Address, network)));
-        }
-
-        public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
-            string network, int requiredNumberOfColoredCoinFee = 1)
-        {
-            var requiredFee = TransactionSendFeesInSatoshi + requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi;
-            long totalAddedFee = 0;
-
-            while (true)
-            {
-                if (totalAddedFee >= requiredFee)
-                {
-                    break;
-                }
-
-                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, network);
-                Coin feePayerCoin = feePayer.GetCoin();
-
-                totalAddedFee += feePayer.Amount;
-                builder.AddKeys(new BitcoinSecret(feePayer.PrivateKey)).AddCoins(feePayerCoin);
-            }
-
-            return builder;
-        }
-
-        /*
-        public static async Task<Tuple<ColoredCoin[], Coin[]>> GetColoredUnColoredCoins(UniversalUnspentOutput[] walletOutputs,
-            string assetId, Network network, string username, string password, string ipAddress)
-        {
-            switch (apiProvider)
-            {
-                case APIProvider.CoinPrism:
-                    return await GetColoredUnColoredCoins(walletOutputs != null ? walletOutputs.Select(c => (CoinprismUnspentOutput)c).ToArray() : null, assetId,
-                        network, username, password, ipAddress);
-                case APIProvider.QBitNinja:
-                    return await GetColoredUnColoredCoins(walletOutputs != null ? walletOutputs.Select(c => (QBitNinjaUnspentOutput)c).ToArray() : null, assetId,
-                        network, username, password, ipAddress);
-                default:
-                    throw new Exception("We should never reach here.");
-            }
-        }
-        */
-
-        public static async Task<Tuple<ColoredCoin[], Coin[]>> GetColoredUnColoredCoins(UniversalUnspentOutput[] walletOutputs,
-            string assetId, Network network, string username, string password, string ipAddress)
-        {
-            var walletAssetOutputs = GetWalletOutputsForAsset(walletOutputs, assetId);
-            var walletUncoloredOutputs = GetWalletOutputsUncolored(walletOutputs);
-            var walletColoredTransactions = await GetTransactionsHex(walletAssetOutputs, network, username, password, ipAddress);
-            var walletUncoloredTransactions = await GetTransactionsHex(walletUncoloredOutputs, network, username, password, ipAddress);
-            var walletColoredCoins = GenerateWalletColoredCoins(walletColoredTransactions, walletAssetOutputs, assetId);
-            var walletUncoloredCoins = GenerateWalletUnColoredCoins(walletUncoloredTransactions, walletUncoloredOutputs);
-            return new Tuple<ColoredCoin[], Coin[]>(walletColoredCoins, walletUncoloredCoins);
-        }
-
-        /*
-        private static async Task<Tuple<ColoredCoin[], Coin[]>> GetColoredUnColoredCoins(QBitNinjaUnspentOutput[] walletOutputs,
-            string assetId, Network network, string username, string password, string ipAddress)
-        {
-            var walletAssetOutputs = GetWalletOutputsForAsset(walletOutputs, assetId);
-            var walletUncoloredOutputs = GetWalletOutputsUncolored(walletOutputs);
-            var walletColoredTransactions = await GetTransactionsHex(walletAssetOutputs, network, username, password, ipAddress);
-            var walletUncoloredTransactions = await GetTransactionsHex(walletUncoloredOutputs, network, username, password, ipAddress);
-            var walletColoredCoins = GenerateWalletColoredCoins(walletColoredTransactions, walletAssetOutputs, assetId);
-            var walletUncoloredCoins = GenerateWalletUnColoredCoins(walletUncoloredTransactions, walletUncoloredOutputs);
-            return new Tuple<ColoredCoin[], Coin[]>(walletColoredCoins, walletUncoloredCoins);
-        }
-        */
-        private static ColoredCoin[] GenerateWalletColoredCoins(Transaction[] transactions, UniversalUnspentOutput[] usableOutputs, string assetId)
-        {
-            ColoredCoin[] coins = new ColoredCoin[transactions.Length];
-            for (int i = 0; i < transactions.Length; i++)
-            {
-                coins[i] = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), (int)usableOutputs[i].GetAssetAmount()),
-                    new Coin(transactions[i], (uint)usableOutputs[i].GetOutputIndex()));
-            }
-            return coins;
-        }
-
-        private static Coin[] GenerateWalletUnColoredCoins(Transaction[] transactions, UniversalUnspentOutput[] usableOutputs)
-        {
-            Coin[] coins = new Coin[transactions.Length];
-            for (int i = 0; i < transactions.Length; i++)
-            {
-                coins[i] = new Coin(transactions[i], (uint)usableOutputs[i].GetOutputIndex());
-            }
-            return coins;
-        }
-
-        private static async Task<Transaction[]> GetTransactionsHex(UniversalUnspentOutput[] outputList, Network network,
-            string username, string password, string ipAddress)
-        {
-            Transaction[] walletTransactions = new Transaction[outputList.Length];
-            for (int i = 0; i < walletTransactions.Length; i++)
-            {
-                var ret = await GetTransactionHex(outputList[i].GetTransactionHash(), network, username, password, ipAddress);
-                if (!ret.Item1)
-                {
-                    walletTransactions[i] = new Transaction(ret.Item3);
-                }
-                else
-                {
-                    throw new Exception("Could not get the transaction hex for the transaction with id: "
-                        + outputList[i].GetTransactionHash() + " . The exact error message is " + ret.Item2);
-                }
-            }
-            return walletTransactions;
-        }
-
-        public static UniversalUnspentOutput[] GetWalletOutputsUncolored(UniversalUnspentOutput[] input)
-        {
-            IList<UniversalUnspentOutput> outputs = new List<UniversalUnspentOutput>();
-            foreach (var item in input)
-            {
-                if (item.GetAssetId() == null)
-                {
-                    outputs.Add(item);
-                }
-            }
-
-            return outputs.ToArray();
-        }
-
-        /*
-        public static UniversalUnspentOutput[] GetWalletOutputsUncolored(UniversalUnspentOutput[] input)
-        {
-            switch (apiProvider)
-            {
-                case APIProvider.CoinPrism:
-                    var coinPrismResult = GetWalletOutputsUncolored(input != null ? input.Select(c => (CoinprismUnspentOutput)c).
-                        ToArray() : null);
-                    return coinPrismResult != null ? coinPrismResult.Select(c => (UniversalUnspentOutput)c).ToArray() : null;
-                case APIProvider.QBitNinja:
-                    var qbitNinjaResult = GetWalletOutputsUncolored(input != null ? input.Select(c => (QBitNinjaUnspentOutput)c).
-                        ToArray() : null);
-                    return qbitNinjaResult != null ? qbitNinjaResult.Select(c => (UniversalUnspentOutput)c).ToArray() : null;
-                default:
-                    throw new Exception("Not supported");
+                minimumNumberOfRequiredConfirmations = value;
             }
         }
 
-        // ToDo: At the time of this todo I have not addressed, colored coins
-        private static QBitNinjaUnspentOutput[] GetWalletOutputsUncolored(QBitNinjaUnspentOutput[] input)
-        {
-            IList<QBitNinjaUnspentOutput> outputs = new List<QBitNinjaUnspentOutput>();
-            foreach (var item in input)
-            {
-                if (item.asset_id == null)
-                {
-                    outputs.Add(item);
-                }
-            }
+        private readonly static Func<int> DefaultGetMinimumConfirmationNumber = (() => { return MinimumNumberOfRequiredConfirmations; });
 
-            return outputs.ToArray();
-        }
-        private static CoinprismUnspentOutput[] GetWalletOutputsUncolored(CoinprismUnspentOutput[] input)
-        {
-            IList<CoinprismUnspentOutput> outputs = new List<CoinprismUnspentOutput>();
-            foreach (var item in input)
-            {
-                if (item.asset_id == null)
-                {
-                    outputs.Add(item);
-                }
-            }
-
-            return outputs.ToArray();
-        }
-        */
-
-        public static UniversalUnspentOutput[] GetWalletOutputsForAsset(UniversalUnspentOutput[] input, string assetId)
-        {
-            IList<UniversalUnspentOutput> outputs = new List<UniversalUnspentOutput>();
-            if (assetId != null)
-            {
-                foreach (var item in input)
-                {
-                    if (item.GetAssetId() == assetId)
-                    {
-                        outputs.Add(item);
-                    }
-                }
-            }
-
-            return outputs.ToArray();
-        }
-
-        /*
-        public static CoinprismUnspentOutput[] GetWalletOutputsForAsset(CoinprismUnspentOutput[] input, string assetId)
-        {
-            IList<CoinprismUnspentOutput> outputs = new List<CoinprismUnspentOutput>();
-            if (assetId != null)
-            {
-                foreach (var item in input)
-                {
-                    if (item.asset_id == assetId)
-                    {
-                        outputs.Add(item);
-                    }
-                }
-            }
-
-            return outputs.ToArray();
-        }
-        */
-
-        public static async Task<Tuple<UniversalUnspentOutput[], bool, string>> GetWalletOutputs(string walletAddress,
-            Network network, SqlexpressLykkeEntities entities, bool considerTimeOut = true)
-        {
-            Tuple<UniversalUnspentOutput[], bool, string> ret = null;
-            switch (apiProvider)
-            {
-                case APIProvider.CoinPrism:
-                    var coinprismResult = await GetWalletOutputsCoinPrism(walletAddress, network);
-                    ret = new Tuple<UniversalUnspentOutput[], bool, string>(coinprismResult.Item1 != null ? coinprismResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
-                        coinprismResult.Item2, coinprismResult.Item3);
-                    break;
-                case APIProvider.QBitNinja:
-                    var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network);
-                    ret = new Tuple<UniversalUnspentOutput[], bool, string>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
-                        qbitResult.Item2, qbitResult.Item3);
-                    break;
-                default:
-                    throw new Exception("Not supported.");
-            }
-
-            IList<UniversalUnspentOutput> retList = new List<UniversalUnspentOutput>();
-            var joined = from output in ret.Item1
-                         join refunded in entities.RefundedOutputs
-                         on new { A = output.GetTransactionHash(), B = output.GetOutputIndex() } equals new { A = refunded.RefundedTxId, B = refunded.RefundedOutputNumber }
-                         into gj
-                         from item in gj.DefaultIfEmpty(new RefundedOutput { LockTime = DateTime.MaxValue })
-                         where item.HasBeenSpent.Equals(false) && item.RefundInvalid.Equals(false)
-                         select new { output, item.LockTime };
-
-            foreach (var item in joined)
-            {
-                if (item.LockTime >= DateTime.UtcNow.AddMinutes(LocktimeMinutesAllowance))
-                {
-                    retList.Add(item.output);
-                }
-            }
-
-            if (considerTimeOut)
-            {
-                return new Tuple<UniversalUnspentOutput[], bool, string>(retList.ToArray(),
-                    ret.Item2, ret.Item3);
-            }
-            else
-            {
-                return ret;
-            }
-        }
-
-        private static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
-            Network network)
-        {
-            bool errorOccured = false;
-            string errorMessage = string.Empty;
-            IList<QBitNinjaUnspentOutput> unspentOutputsList = new List<QBitNinjaUnspentOutput>();
-
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    string url = null;
-                    url = QBitNinjaBalanceUrl + walletAddress;
-                    HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        errorOccured = true;
-                        errorMessage = result.ReasonPhrase;
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                            (webResponse);
-                        if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
-                        {
-                            notProcessedUnspentOutputs.operations.ForEach((o) =>
-                            {
-                                var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
-                                {
-                                    confirmations = o.confirmations,
-                                    output_index = c.index,
-                                    transaction_hash = c.transactionId,
-                                    value = c.value,
-                                    script_hex = c.scriptPubKey,
-                                    asset_id = c.assetId,
-                                    asset_quantity = c.quantity
-                                });
-                                ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(convertResult);
-                            });
-                        }
-                        else
-                        {
-                            errorOccured = true;
-                            errorMessage = "No coins to retrieve.";
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
-
-            return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
-        }
-
-
-        private static async Task<Tuple<CoinprismUnspentOutput[], bool, string>> GetWalletOutputsCoinPrism(string walletAddress,
-            Network network)
-        {
-            bool errorOccured = false;
-            string errorMessage = string.Empty;
-            CoinprismUnspentOutput[] unspentOutputs = null;
-
-            // ToDo - We currently use coinprism api, later we should replace
-            // with our self implementation
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    string url = null;
-                    if (network == Network.Main)
-                    {
-                        url = coinprismBaseUrl + walletAddress;
-                    }
-                    else
-                    {
-                        url = coinprismTestnetBaseUrl + walletAddress;
-                    }
-                    HttpResponseMessage result = await client.GetAsync(url + "/unspents");
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        errorOccured = true;
-                        errorMessage = result.ReasonPhrase;
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        unspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<CoinprismUnspentOutput[]>
-                            (webResponse);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
-
-            return new Tuple<CoinprismUnspentOutput[], bool, string>(unspentOutputs, errorOccured, errorMessage);
-        }
-
-        public static async Task<Tuple<float, float, bool, string>> GetAccountBalance(string walletAddress,
-            string assetId, Network network)
-        {
-            switch (apiProvider)
-            {
-                case APIProvider.CoinPrism:
-                    return await GetAccountBalanceCoinPrism(walletAddress, assetId, network);
-                case APIProvider.QBitNinja:
-                    return await GetAccountBalanceQBitNinja(walletAddress, assetId, network);
-                default:
-                    throw new Exception("Not supported.");
-            }
-        }
-
-        // ToDo: confirmation number is set to be 1
-        public static async Task<Tuple<float, float, bool, string>> GetAccountBalanceQBitNinja(string walletAddress,
-            string assetId, Network network)
-        {
-            float balance = 0;
-            float unconfirmedBalance = 0;
-            bool errorOccured = false;
-            string errorMessage = "";
-            string url;
-
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    url = QBitNinjaBalanceUrl + walletAddress;
-                    HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        return new Tuple<float, float, bool, string>(0, 0, true, result.ReasonPhrase);
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        QBitNinjaOutputResponse response = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                            (webResponse);
-                        if (response.operations != null && response.operations.Count > 0)
-                        {
-                            foreach (var item in response.operations)
-                            {
-                                response.operations.ForEach((o) =>
-                                {
-                                    balance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations > 0).Select(c => c.quantity).Sum();
-                                    unconfirmedBalance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
-                                });
-                            }
-                        }
-                        else
-                        {
-                            errorOccured = true;
-                            errorMessage = "No coins found.";
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
-            return new Tuple<float, float, bool, string>(balance, unconfirmedBalance, errorOccured, errorMessage);
-        }
-
-        /// <summary>
-        /// Gets the asset balance for the wallet address
-        /// </summary>
-        /// <param name="walletAddress">The address of the wallet to check the balance for.</param>
-        /// <param name="assetId">The id of asset to check the balance.</param>
-        /// <returns>A tuple, first part is balance, second part is unconfirmed balance, third part is whether error has occured or not,
-        ///  forth part is the error message.</returns>
-        public static async Task<Tuple<float, float, bool, string>> GetAccountBalanceCoinPrism(string walletAddress,
-            string assetId, Network network)
-        {
-            float balance = 0;
-            float unconfirmedBalance = 0;
-            bool errorOccured = false;
-            string errorMessage = "";
-            string url;
-            // ToDo - We currently use coinprism api, later we should replace
-            // with our self implementation
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    if (network == Network.Main)
-                    {
-                        url = coinprismBaseUrl + walletAddress;
-                    }
-                    else
-                    {
-                        url = coinprismTestnetBaseUrl + walletAddress;
-                    }
-                    HttpResponseMessage result = await client.GetAsync(url);
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        return new Tuple<float, float, bool, string>(0, 0, true, result.ReasonPhrase);
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        CoinprismGetBalanceResponse response = Newtonsoft.Json.JsonConvert.DeserializeObject<CoinprismGetBalanceResponse>
-                            (webResponse);
-                        foreach (var item in response.assets)
-                        {
-                            if (item.id.Equals(assetId))
-                            {
-                                balance = float.Parse(item.balance);
-                                unconfirmedBalance = float.Parse(item.unconfirmed_balance);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
-            return new Tuple<float, float, bool, string>(balance, unconfirmedBalance, errorOccured, errorMessage);
-        }
-
+        #region UniversalUnspentPropertyProxyFunctions
         public static long GetValue(this UniversalUnspentOutput output)
         {
             switch (apiProvider)
@@ -646,21 +146,7 @@ namespace LykkeWalletServices
                     throw new Exception("Not supported.");
             }
         }
-        /*
-        public static float GetAssetBalance(UniversalUnspentOutput[] outputs,
-            string assetId, long multiplyFactor, bool includeUnconfirmed = false)
-        {
-            switch (apiProvider)
-            {
-                case APIProvider.CoinPrism:
-                    return GetAssetBalance(outputs.Select(c => (CoinprismUnspentOutput)c).ToArray(), assetId, multiplyFactor, includeUnconfirmed);
-                case APIProvider.QBitNinja:
-                    return GetAssetBalance(outputs.Select(c => (QBitNinjaUnspentOutput)c).ToArray(), assetId, multiplyFactor, includeUnconfirmed);
-                default:
-                    throw new Exception("Not supported.");
-            }
-        }
-        */
+
         private static string GetAssetId(this UniversalUnspentOutput item)
         {
             switch (apiProvider)
@@ -712,32 +198,192 @@ namespace LykkeWalletServices
                     throw new Exception("Not supported.");
             }
         }
+        #endregion
+
+        public static Coin GetCoin(this PreGeneratedOutput output)
+        {
+            Network network = null;
+            switch (output.Network.ToLower())
+            {
+                case "main":
+                    network = Network.Main;
+                    break;
+                case "testnet":
+                    network = Network.TestNet;
+                    break;
+                default:
+                    // We should never reach here
+                    throw new Exception("Not a valid network");
+            }
+            return new Coin(new uint256(output.TransactionId), (uint)output.OutputNumber,
+                                    output.Amount, new PayToPubkeyHashTemplate().GenerateScriptPubKey(new BitcoinPubKeyAddress(output.Address, network)));
+        }
+
+        public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
+            string network, int requiredNumberOfColoredCoinFee = 1)
+        {
+            var requiredFee = TransactionSendFeesInSatoshi + requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi;
+            long totalAddedFee = 0;
+
+            while (true)
+            {
+                if (totalAddedFee >= requiredFee)
+                {
+                    break;
+                }
+
+                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, network);
+                Coin feePayerCoin = feePayer.GetCoin();
+
+                totalAddedFee += feePayer.Amount;
+                builder.AddKeys(new BitcoinSecret(feePayer.PrivateKey)).AddCoins(feePayerCoin);
+            }
+
+            return builder;
+        }
+
+        private static ColoredCoin[] GenerateWalletColoredCoins(Transaction[] transactions, UniversalUnspentOutput[] usableOutputs, string assetId)
+        {
+            ColoredCoin[] coins = new ColoredCoin[transactions.Length];
+            for (int i = 0; i < transactions.Length; i++)
+            {
+                coins[i] = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), (int)usableOutputs[i].GetAssetAmount()),
+                    new Coin(transactions[i], (uint)usableOutputs[i].GetOutputIndex()));
+            }
+            return coins;
+        }
+
+        private static Coin[] GenerateWalletUnColoredCoins(Transaction[] transactions, UniversalUnspentOutput[] usableOutputs)
+        {
+            Coin[] coins = new Coin[transactions.Length];
+            for (int i = 0; i < transactions.Length; i++)
+            {
+                coins[i] = new Coin(transactions[i], (uint)usableOutputs[i].GetOutputIndex());
+            }
+            return coins;
+        }
+
+        public static UniversalUnspentOutput[] GetWalletOutputsUncolored(UniversalUnspentOutput[] input)
+        {
+            IList<UniversalUnspentOutput> outputs = new List<UniversalUnspentOutput>();
+            foreach (var item in input)
+            {
+                if (item.GetAssetId() == null)
+                {
+                    outputs.Add(item);
+                }
+            }
+
+            return outputs.ToArray();
+        }
+
+        public static UniversalUnspentOutput[] GetWalletOutputsForAsset(UniversalUnspentOutput[] input,
+            string assetId)
+        {
+            IList<UniversalUnspentOutput> outputs = new List<UniversalUnspentOutput>();
+            if (assetId != null)
+            {
+                foreach (var item in input)
+                {
+                    if (item.GetAssetId() == assetId)
+                    {
+                        outputs.Add(item);
+                    }
+                }
+            }
+
+            return outputs.ToArray();
+        }
+
+        public static async Task<Tuple<ColoredCoin[], Coin[]>> GetColoredUnColoredCoins(UniversalUnspentOutput[] walletOutputs,
+            string assetId, Network network, string username, string password, string ipAddress)
+        {
+            var walletAssetOutputs = GetWalletOutputsForAsset(walletOutputs, assetId);
+            var walletUncoloredOutputs = GetWalletOutputsUncolored(walletOutputs);
+            var walletColoredTransactions = await GetTransactionsHex(walletAssetOutputs, network, username, password, ipAddress);
+            var walletUncoloredTransactions = await GetTransactionsHex(walletUncoloredOutputs, network, username, password, ipAddress);
+            var walletColoredCoins = GenerateWalletColoredCoins(walletColoredTransactions, walletAssetOutputs, assetId);
+            var walletUncoloredCoins = GenerateWalletUnColoredCoins(walletUncoloredTransactions, walletUncoloredOutputs);
+            return new Tuple<ColoredCoin[], Coin[]>(walletColoredCoins, walletUncoloredCoins);
+        }
+
+        public static async Task<Tuple<UniversalUnspentOutput[], bool, string>> GetWalletOutputs(string walletAddress,
+            Network network, SqlexpressLykkeEntities entities, bool considerTimeOut = true, Func<int> getMinimumConfirmationNumber = null)
+        {
+            Tuple<UniversalUnspentOutput[], bool, string> ret = null;
+            switch (apiProvider)
+            {
+                case APIProvider.CoinPrism:
+                    var coinprismResult = await GetWalletOutputsCoinPrism(walletAddress, network);
+                    ret = new Tuple<UniversalUnspentOutput[], bool, string>(coinprismResult.Item1 != null ? coinprismResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
+                        coinprismResult.Item2, coinprismResult.Item3);
+                    break;
+                case APIProvider.QBitNinja:
+                    var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, getMinimumConfirmationNumber);
+                    ret = new Tuple<UniversalUnspentOutput[], bool, string>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
+                        qbitResult.Item2, qbitResult.Item3);
+                    break;
+                default:
+                    throw new Exception("Not supported.");
+            }
+
+            IList<UniversalUnspentOutput> retList = new List<UniversalUnspentOutput>();
+            var joined = from output in ret.Item1
+                         join refunded in entities.RefundedOutputs
+                         on new { A = output.GetTransactionHash(), B = output.GetOutputIndex() } equals new { A = refunded.RefundedTxId, B = refunded.RefundedOutputNumber }
+                         into gj
+                         from item in gj.DefaultIfEmpty(new RefundedOutput { LockTime = DateTime.MaxValue })
+                         where item.HasBeenSpent.Equals(false) && item.RefundInvalid.Equals(false)
+                         select new { output, item.LockTime };
+
+            foreach (var item in joined)
+            {
+                if (item.LockTime >= DateTime.UtcNow.AddMinutes(LocktimeMinutesAllowance))
+                {
+                    retList.Add(item.output);
+                }
+            }
+
+            if (considerTimeOut)
+            {
+                return new Tuple<UniversalUnspentOutput[], bool, string>(retList.ToArray(),
+                    ret.Item2, ret.Item3);
+            }
+            else
+            {
+                return ret;
+            }
+        }
+
+        public static async Task<Tuple<float, bool, string>> GetAccountBalance(string walletAddress,
+            string assetId, Network network, Func<int> getMinimumConfirmationNumber = null)
+        {
+            switch (apiProvider)
+            {
+                case APIProvider.CoinPrism:
+                    return await GetAccountBalanceCoinPrism(walletAddress, assetId, network);
+                case APIProvider.QBitNinja:
+                    return await GetAccountBalanceQBitNinja(walletAddress, assetId, network, getMinimumConfirmationNumber);
+                default:
+                    throw new Exception("Not supported.");
+            }
+        }
 
         // ToDo - Clear confirmation number
         public static float GetAssetBalance(UniversalUnspentOutput[] outputs,
-            string assetId, long multiplyFactor, bool includeUnconfirmed = false)
+            string assetId, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
             float total = 0;
+
+            getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
+            var minimumConfirmationNumber = getMinimumConfirmationNumber();
+
             foreach (var item in outputs)
             {
                 if ((item.GetAssetId() != null && item.GetAssetId().Equals(assetId))
                     || (item.GetAssetId() == null && assetId.Trim().ToUpper().Equals("BTC")))
                 {
-                    if (item.GetConfirmationNumber() == 0)
-                    {
-                        if (includeUnconfirmed)
-                        {
-                            if (item.GetAssetId() != null)
-                            {
-                                total += (float)item.GetAssetAmount();
-                            }
-                            else
-                            {
-                                total += item.GetBitcoinAmount();
-                            }
-                        }
-                    }
-                    else
+                    if (item.GetConfirmationNumber() >= getMinimumConfirmationNumber())
                     {
                         if (item.GetAssetId() != null)
                         {
@@ -754,44 +400,20 @@ namespace LykkeWalletServices
             return total / multiplyFactor;
         }
 
-        public static bool IsAssetsEnough(UniversalUnspentOutput[] outputs,
-            string assetId, float assetAmount, long multiplyFactor, bool includeUnconfirmed = false)
-        {
-            if (!string.IsNullOrEmpty(assetId))
-            {
-                float total = GetAssetBalance(outputs, assetId, multiplyFactor, includeUnconfirmed);
-                if (total >= assetAmount)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return true;
-            }
-        }
-
         // ToDo - Clear confirmation number
         public static bool IsBitcoinsEnough(UniversalUnspentOutput[] outputs,
-            long amountInSatoshi, bool includeUnconfirmed = false)
+            long amountInSatoshi, Func<int> getMinimumConfirmationNumber = null)
         {
             long total = 0;
+
+            getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
+            var minimumConfirmationNumber = getMinimumConfirmationNumber();
+
             foreach (var item in outputs)
             {
-                if (item.GetConfirmationNumber() == 0)
+                if (item.GetConfirmationNumber() >= getMinimumConfirmationNumber())
                 {
-                    if (includeUnconfirmed)
-                    {
                         total += item.GetBitcoinAmount();
-                    }
-                }
-                else
-                {
-                    total += item.GetBitcoinAmount();
                 }
             }
 
@@ -814,104 +436,171 @@ namespace LykkeWalletServices
         /// <returns>Whether the asset amount is enough or not.</returns>
         /// ToDo - Figure out a method for unconfirmed balance
         public static async Task<bool> IsAssetsEnough(string walletAddress, string assetId,
-            int amount, Network network, long multiplyFactor, bool includeUnconfirmed = false)
+            int amount, Network network, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
-            Tuple<float, float, bool, string> result = await GetAccountBalance(walletAddress, assetId, network);
-            if (result.Item3 == true)
+            Tuple<float, bool, string> result = await GetAccountBalance(walletAddress, assetId, network, getMinimumConfirmationNumber);
+            if (result.Item2 == true)
             {
                 return false;
             }
             else
             {
-                if (!includeUnconfirmed)
+                if (result.Item1 >= amount)
                 {
-                    if (result.Item1 >= amount)
-                    {
-                        return true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
+                    return true;
                 }
                 else
                 {
-                    if (result.Item1 + result.Item2 >= amount)
-                    {
-                        return true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
         }
 
-        // The returned object is a Tuple with first parameter specifing if an error has occured,
-        // second the error message and third the transaction hex
-        public static async Task<Tuple<bool, string, string>> GetTransactionHex(string transactionId, Network network,
-            string username, string password, string ipAddress)
+        public static bool IsAssetsEnough(UniversalUnspentOutput[] outputs,
+            string assetId, float assetAmount, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
-            string transactionHex = "";
-            bool errorOccured = false;
-            string errorMessage = "";
+            if (!string.IsNullOrEmpty(assetId))
+            {
+                float total = GetAssetBalance(outputs, assetId, multiplyFactor, getMinimumConfirmationNumber);
+                if (total >= assetAmount)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        public static async Task<GetCoinsForWalletReturnType> GetCoinsForWallet
+            (string multiSigAddress, long requiredSatoshiAmount, float requiredAssetAmount, string asset, AssetDefinition[] assets,
+            Network network, string username, string password, string ipAddress, string connectionString, SqlexpressLykkeEntities entities,
+            bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true, Func<int> getMinimumConfirmationNumber = null)
+        {
+            GetCoinsForWalletReturnType ret;
+            if (isOrdinaryReturnTypeRequired)
+            {
+                ret = new GetOrdinaryCoinsForWalletReturnType();
+            }
+            else
+            {
+                ret = new GetScriptCoinsForWalletReturnType();
+            }
+
             try
             {
-                RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
-                                ipAddress, network);
-                transactionHex = (await client.GetRawTransactionAsync(uint256.Parse(transactionId), true)).ToHex();
+                if (isAddressMultiSig)
+                {
+                    ret.MatchingAddress = await GetMatchingMultisigAddress(multiSigAddress, entities);
+                }
+
+                // Getting wallet outputs
+                var walletOutputs = await GetWalletOutputs
+                    (multiSigAddress, network, entities, true, getMinimumConfirmationNumber);
+                if (walletOutputs.Item2)
+                {
+                    ret.Error = new Error();
+                    ret.Error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
+                    ret.Error.Message = walletOutputs.Item3;
+                }
+                else
+                {
+                    // Getting bitcoin outputs to provide the transaction fee
+                    var bitcoinOutputs = GetWalletOutputsUncolored(walletOutputs.Item1);
+                    if (!IsBitcoinsEnough(bitcoinOutputs, requiredSatoshiAmount, getMinimumConfirmationNumber))
+                    {
+                        ret.Error = new Error();
+                        ret.Error.Code = ErrorCode.NotEnoughBitcoinAvailable;
+                        ret.Error.Message = "The required amount of satoshis to send transaction is " + requiredSatoshiAmount +
+                            " . The address is: " + multiSigAddress;
+                    }
+                    else
+                    {
+                        UniversalUnspentOutput[] assetOutputs = null;
+
+                        if (IsRealAsset(asset))
+                        {
+                            ret.Asset = GetAssetFromName(assets, asset, network);
+                            if (ret.Asset == null)
+                            {
+                                ret.Error = new Error();
+                                ret.Error.Code = ErrorCode.AssetNotFound;
+                                ret.Error.Message = "Could not find asset with name: " + asset;
+                            }
+                            else
+                            {
+                                // Getting the asset output to provide the assets
+                                assetOutputs = GetWalletOutputsForAsset(walletOutputs.Item1, ret.Asset.AssetId);
+                            }
+                        }
+                        if (IsRealAsset(asset) && ret.Asset != null && !IsAssetsEnough(assetOutputs, ret.Asset.AssetId, requiredAssetAmount, ret.Asset.AssetMultiplicationFactor, getMinimumConfirmationNumber))
+                        {
+                            ret.Error = new Error();
+                            ret.Error.Code = ErrorCode.NotEnoughAssetAvailable;
+                            ret.Error.Message = "The required amount of " + asset + " to send transaction is " + requiredAssetAmount +
+                                " . The address is: " + multiSigAddress;
+                        }
+                        else
+                        {
+                            // Converting bitcoins to script coins so that we could sign the transaction
+                            var coins = (await GetColoredUnColoredCoins(bitcoinOutputs, null, network,
+                                username, password, ipAddress)).Item2;
+                            if (coins.Length != 0)
+                            {
+                                if (isOrdinaryReturnTypeRequired)
+                                {
+                                    ((GetOrdinaryCoinsForWalletReturnType)ret).Coins = coins;
+                                }
+                                else
+                                {
+                                    ((GetScriptCoinsForWalletReturnType)ret).ScriptCoins = new ScriptCoin[coins.Length];
+                                    for (int i = 0; i < coins.Length; i++)
+                                    {
+                                        ((GetScriptCoinsForWalletReturnType)ret).ScriptCoins[i] = new ScriptCoin(coins[i], new Script(ret.MatchingAddress.MultiSigScript));
+                                    }
+                                }
+                            }
+
+                            if (IsRealAsset(asset))
+                            {
+                                // Converting assets to script coins so that we could sign the transaction
+                                var assetCoins = ret.Asset != null ? (await GetColoredUnColoredCoins(assetOutputs, ret.Asset.AssetId, network,
+                                username, password, ipAddress)).Item1 : new ColoredCoin[0];
+
+                                if (assetCoins.Length != 0)
+                                {
+                                    if (isOrdinaryReturnTypeRequired)
+                                    {
+                                        ((GetOrdinaryCoinsForWalletReturnType)ret).AssetCoins = assetCoins;
+                                    }
+                                    else
+                                    {
+                                        ((GetScriptCoinsForWalletReturnType)ret).AssetScriptCoins = new ColoredCoin[assetCoins.Length];
+                                        for (int i = 0; i < assetCoins.Length; i++)
+                                        {
+                                            ((GetScriptCoinsForWalletReturnType)ret).AssetScriptCoins[i] = new ColoredCoin(assetCoins[i].Amount,
+                                                new ScriptCoin(assetCoins[i].Bearer, new Script(ret.MatchingAddress.MultiSigScript)));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
             catch (Exception e)
             {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
-            return new Tuple<bool, string, string>(errorOccured, errorMessage, transactionHex);
-        }
-
-        public class LykkeJobsNotificationMessage
-        {
-            public string TransactionId
-            {
-                get;
-                set;
+                ret.Error = new Error();
+                ret.Error.Code = ErrorCode.Exception;
+                ret.Error.Message = e.ToString();
             }
 
-            public string BlockchainHash
-            {
-                get;
-                set;
-            }
-
-            public string Operation
-            {
-                get;
-                set;
-            }
-        }
-
-        public class LykkeJobsNotificationResponseError
-        {
-            public int Code
-            {
-                get;
-                set;
-            }
-
-            public string Message
-            {
-                get;
-                set;
-            }
-        }
-        public class LykkeJobsNotificationResponse
-        {
-            public LykkeJobsNotificationResponseError Error
-            {
-                get;
-                set;
-            }
+            return ret;
         }
 
         // ToDo - Performance should be revisted by possible join operation
@@ -1009,345 +698,6 @@ namespace LykkeWalletServices
             }
 
             return error;
-        }
-
-        public class Asset
-        {
-            public string AssetId
-            {
-                get;
-                set;
-            }
-
-            public BitcoinAddress AssetAddress
-            {
-                get;
-                set;
-            }
-
-            public long AssetMultiplicationFactor
-            {
-                get;
-                set;
-            }
-
-            public string AssetDefinitionUrl { get; set; }
-
-            public string AssetPrivateKey { get; set; }
-        }
-
-        public class GetCoinsForWalletReturnType
-        {
-            public Error Error
-            {
-                get;
-                set;
-            }
-
-
-
-            public KeyStorage MatchingAddress
-            {
-                get;
-                set;
-            }
-
-            public Asset Asset { get; set; }
-        }
-
-        public class GetScriptCoinsForWalletReturnType : GetCoinsForWalletReturnType
-        {
-            public ColoredCoin[] AssetScriptCoins
-            {
-                get;
-                set;
-            }
-
-            public ScriptCoin[] ScriptCoins
-            {
-                get;
-                set;
-            }
-        }
-
-        public class GetOrdinaryCoinsForWalletReturnType : GetCoinsForWalletReturnType
-        {
-            public ColoredCoin[] AssetCoins
-            {
-                get;
-                set;
-            }
-
-            public Coin[] Coins
-            {
-                get;
-                set;
-            }
-        }
-
-        public static bool IsRealAsset(string asset)
-        {
-            if (asset != null && asset.Trim().ToUpper() != "BTC")
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        public static async Task<GetCoinsForWalletReturnType> GetCoinsForWallet
-            (string multiSigAddress, long requiredSatoshiAmount, float requiredAssetAmount, string asset, AssetDefinition[] assets,
-            Network network, string username, string password, string ipAddress, string connectionString, SqlexpressLykkeEntities entities,
-            bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true)
-        {
-            GetCoinsForWalletReturnType ret;
-            if (isOrdinaryReturnTypeRequired)
-            {
-                ret = new GetOrdinaryCoinsForWalletReturnType();
-            }
-            else
-            {
-                ret = new GetScriptCoinsForWalletReturnType();
-            }
-
-            try
-            {
-                if (isAddressMultiSig)
-                {
-                    ret.MatchingAddress = await GetMatchingMultisigAddress(multiSigAddress, entities);
-                }
-
-                // Getting wallet outputs
-                var walletOutputs = await GetWalletOutputs
-                    (multiSigAddress, network, entities);
-                if (walletOutputs.Item2)
-                {
-                    ret.Error = new Error();
-                    ret.Error.Code = ErrorCode.ProblemInRetrivingWalletOutput;
-                    ret.Error.Message = walletOutputs.Item3;
-                }
-                else
-                {
-                    // Getting bitcoin outputs to provide the transaction fee
-                    var bitcoinOutputs = GetWalletOutputsUncolored(walletOutputs.Item1);
-                    if (!IsBitcoinsEnough(bitcoinOutputs, requiredSatoshiAmount))
-                    {
-                        ret.Error = new Error();
-                        ret.Error.Code = ErrorCode.NotEnoughBitcoinAvailable;
-                        ret.Error.Message = "The required amount of satoshis to send transaction is " + requiredSatoshiAmount +
-                            " . The address is: " + multiSigAddress;
-                    }
-                    else
-                    {
-                        UniversalUnspentOutput[] assetOutputs = null;
-
-                        if (IsRealAsset(asset))
-                        {
-                            ret.Asset = GetAssetFromName(assets, asset, network);
-                            if (ret.Asset == null)
-                            {
-                                ret.Error = new Error();
-                                ret.Error.Code = ErrorCode.AssetNotFound;
-                                ret.Error.Message = "Could not find asset with name: " + asset;
-                            }
-                            else
-                            {
-                                // Getting the asset output to provide the assets
-                                assetOutputs = GetWalletOutputsForAsset(walletOutputs.Item1, ret.Asset.AssetId);
-                            }
-                        }
-                        if (IsRealAsset(asset) && ret.Asset != null && !IsAssetsEnough(assetOutputs, ret.Asset.AssetId, requiredAssetAmount, ret.Asset.AssetMultiplicationFactor))
-                        {
-                            ret.Error = new Error();
-                            ret.Error.Code = ErrorCode.NotEnoughAssetAvailable;
-                            ret.Error.Message = "The required amount of " + asset + " to send transaction is " + requiredAssetAmount +
-                                " . The address is: " + multiSigAddress;
-                        }
-                        else
-                        {
-                            // Converting bitcoins to script coins so that we could sign the transaction
-                            var coins = (await GetColoredUnColoredCoins(bitcoinOutputs, null, network,
-                                username, password, ipAddress)).Item2;
-                            if (coins.Length != 0)
-                            {
-                                if (isOrdinaryReturnTypeRequired)
-                                {
-                                    ((GetOrdinaryCoinsForWalletReturnType)ret).Coins = coins;
-                                }
-                                else
-                                {
-                                    ((GetScriptCoinsForWalletReturnType)ret).ScriptCoins = new ScriptCoin[coins.Length];
-                                    for (int i = 0; i < coins.Length; i++)
-                                    {
-                                        ((GetScriptCoinsForWalletReturnType)ret).ScriptCoins[i] = new ScriptCoin(coins[i], new Script(ret.MatchingAddress.MultiSigScript));
-                                    }
-                                }
-                            }
-
-                            if (IsRealAsset(asset))
-                            {
-                                // Converting assets to script coins so that we could sign the transaction
-                                var assetCoins = ret.Asset != null ? (await GetColoredUnColoredCoins(assetOutputs, ret.Asset.AssetId, network,
-                                username, password, ipAddress)).Item1 : new ColoredCoin[0];
-
-                                if (assetCoins.Length != 0)
-                                {
-                                    if (isOrdinaryReturnTypeRequired)
-                                    {
-                                        ((GetOrdinaryCoinsForWalletReturnType)ret).AssetCoins = assetCoins;
-                                    }
-                                    else
-                                    {
-                                        ((GetScriptCoinsForWalletReturnType)ret).AssetScriptCoins = new ColoredCoin[assetCoins.Length];
-                                        for (int i = 0; i < assetCoins.Length; i++)
-                                        {
-                                            ((GetScriptCoinsForWalletReturnType)ret).AssetScriptCoins[i] = new ColoredCoin(assetCoins[i].Amount,
-                                                new ScriptCoin(assetCoins[i].Bearer, new Script(ret.MatchingAddress.MultiSigScript)));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ret.Error = new Error();
-                ret.Error.Code = ErrorCode.Exception;
-                ret.Error.Message = e.ToString();
-            }
-
-            return ret;
-        }
-
-        // PlainTextBroadcast:{"Data":{"BroadcastGroup":100,"MessageData":{"Subject":"Some subject","Text":"Some text"}}}
-        public static async Task SendAlertForPregenerateOutput(string assetId, int count, int minimumCount)
-        {
-            StringBuilder builder = new StringBuilder();
-            builder.AppendLine("Hello,");
-            builder.AppendLine(string.Format("The number of pre generated outputs ({0}) for asset {1} has fallen below minimum {2}.",
-                count, assetId ?? "BTC", minimumCount));
-            builder.AppendLine("Please add some pre generatad outputs.");
-            builder.AppendLine("Best,");
-            builder.AppendLine("PreGenerated Watchdog");
-            string message = builder.ToString();
-
-            var ptb = new PlainTextBroadcast();
-            ptb.Data = new PlainTextBroadcastData();
-            ptb.Data.BroadcastGroup = 100;
-            ptb.Data.MessageData = new PlainTextMessage();
-            ptb.Data.MessageData.Subject = "PreGenerated Output Starvation!";
-            ptb.Data.MessageData.Text = message;
-
-            await EmailQueueWriter.PutMessageAsync("PlainTextBroadcast:" + JsonConvert.SerializeObject(ptb));
-        }
-
-        #region EmailStructure
-        public class PlainTextMessage
-        {
-            public string Subject
-            {
-                get;
-                set;
-            }
-
-            public string Text
-            {
-                get;
-                set;
-            }
-        }
-
-        public class PlainTextBroadcastData
-        {
-            public int BroadcastGroup
-            {
-                get;
-                set;
-            }
-
-            public PlainTextMessage MessageData
-            {
-                get;
-                set;
-            }
-        }
-
-        public class PlainTextBroadcast
-        {
-            public PlainTextBroadcastData Data
-            {
-                get;
-                set;
-            }
-        }
-        #endregion
-
-        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
-            string network, string assetId = null)
-        {
-            var coins = from item in entities.PreGeneratedOutputs
-                        where item.Consumed.Equals(0) && item.Network.Equals(network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString()))
-                        select item;
-
-            int count = await coins.CountAsync();
-
-            if (count < PreGeneratedOutputMinimumCount)
-            {
-                await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount);
-            }
-
-            if (count == 0)
-            {
-                throw new Exception("There is no coins to use for fee payment");
-            }
-            else
-            {
-                int index = new Random().Next(coins.Count());
-                PreGeneratedOutput f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
-                f.Consumed = 1;
-                await entities.SaveChangesAsync();
-                return f;
-            }
-        }
-
-        public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
-        {
-            KeyStorage ret = null;
-            ret = await (from item in entities.KeyStorages
-                         where item.MultiSigAddress.Equals(multiSigAddress)
-                         select item).SingleOrDefaultAsync();
-
-            if (ret == null)
-            {
-                throw new Exception("Could not find a matching record for MultiSigAddress: "
-                    + multiSigAddress);
-            }
-
-            return ret;
-        }
-
-        public static Asset GetAssetFromName(AssetDefinition[] assets, string assetName, Network network)
-        {
-            Asset ret = null;
-            foreach (var item in assets)
-            {
-                if (item.Name == assetName)
-                {
-                    ret = new Asset();
-                    ret.AssetId = item.AssetId;
-                    ret.AssetPrivateKey = item.PrivateKey;
-                    ret.AssetAddress = BitcoinAddress.Create(item.AssetAddress, network);
-                    ret.AssetMultiplicationFactor = item.MultiplyFactor;
-                    ret.AssetDefinitionUrl = item.DefinitionUrl;
-                    break;
-                }
-            }
-
-            return ret;
         }
 
         public static async Task<Tuple<GenerateMassOutputsTaskResult, Error>> GenerateMassOutputs(TaskToDoGenerateMassOutputs data, string purpose,
@@ -1505,6 +855,238 @@ namespace LykkeWalletServices
             return new Tuple<GenerateMassOutputsTaskResult, Error>(result, error);
         }
 
+        #region BasicStructures
+        public class Asset
+        {
+            public string AssetId
+            {
+                get;
+                set;
+            }
+
+            public BitcoinAddress AssetAddress
+            {
+                get;
+                set;
+            }
+
+            public long AssetMultiplicationFactor
+            {
+                get;
+                set;
+            }
+
+            public string AssetDefinitionUrl { get; set; }
+
+            public string AssetPrivateKey { get; set; }
+        }
+
+        public class GetCoinsForWalletReturnType
+        {
+            public Error Error
+            {
+                get;
+                set;
+            }
+
+            public KeyStorage MatchingAddress
+            {
+                get;
+                set;
+            }
+
+            public Asset Asset { get; set; }
+        }
+
+        public class GetScriptCoinsForWalletReturnType : GetCoinsForWalletReturnType
+        {
+            public ColoredCoin[] AssetScriptCoins
+            {
+                get;
+                set;
+            }
+
+            public ScriptCoin[] ScriptCoins
+            {
+                get;
+                set;
+            }
+        }
+
+        public class GetOrdinaryCoinsForWalletReturnType : GetCoinsForWalletReturnType
+        {
+            public ColoredCoin[] AssetCoins
+            {
+                get;
+                set;
+            }
+
+            public Coin[] Coins
+            {
+                get;
+                set;
+            }
+        }
+        #endregion
+
+        #region OtherUsefulFunctions
+        private static async Task<Transaction[]> GetTransactionsHex(UniversalUnspentOutput[] outputList, Network network,
+            string username, string password, string ipAddress)
+        {
+            Transaction[] walletTransactions = new Transaction[outputList.Length];
+            for (int i = 0; i < walletTransactions.Length; i++)
+            {
+                var ret = await GetTransactionHex(outputList[i].GetTransactionHash(), network, username, password, ipAddress);
+                if (!ret.Item1)
+                {
+                    walletTransactions[i] = new Transaction(ret.Item3);
+                }
+                else
+                {
+                    throw new Exception("Could not get the transaction hex for the transaction with id: "
+                        + outputList[i].GetTransactionHash() + " . The exact error message is " + ret.Item2);
+                }
+            }
+            return walletTransactions;
+        }
+
+        public static string GetAddressFromScriptPubKey(Script scriptPubKey, Network network)
+        {
+            string address = null;
+            if (PayToPubkeyHashTemplate.Instance.CheckScriptPubKey(scriptPubKey))
+            {
+                address = PayToPubkeyHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey).GetAddress(network).ToWif().ToString();
+            }
+            else
+            {
+                if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(scriptPubKey))
+                {
+                    address = PayToScriptHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey).GetAddress(network).ToWif().ToString();
+                }
+            }
+
+            return address;
+        }
+
+        // The returned object is a Tuple with first parameter specifing if an error has occured,
+        // second the error message and third the transaction hex
+        public static async Task<Tuple<bool, string, string>> GetTransactionHex(string transactionId, Network network,
+            string username, string password, string ipAddress)
+        {
+            string transactionHex = "";
+            bool errorOccured = false;
+            string errorMessage = "";
+            try
+            {
+                RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
+                                ipAddress, network);
+                transactionHex = (await client.GetRawTransactionAsync(uint256.Parse(transactionId), true)).ToHex();
+            }
+            catch (Exception e)
+            {
+                errorOccured = true;
+                errorMessage = e.ToString();
+            }
+            return new Tuple<bool, string, string>(errorOccured, errorMessage, transactionHex);
+        }
+
+        // PlainTextBroadcast:{"Data":{"BroadcastGroup":100,"MessageData":{"Subject":"Some subject","Text":"Some text"}}}
+        public static async Task SendAlertForPregenerateOutput(string assetId, int count, int minimumCount)
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("Hello,");
+            builder.AppendLine(string.Format("The number of pre generated outputs ({0}) for asset {1} has fallen below minimum {2}.",
+                count, assetId ?? "BTC", minimumCount));
+            builder.AppendLine("Please add some pre generatad outputs.");
+            builder.AppendLine("Best,");
+            builder.AppendLine("PreGenerated Watchdog");
+            string message = builder.ToString();
+
+            var ptb = new PlainTextBroadcast();
+            ptb.Data = new PlainTextBroadcastData();
+            ptb.Data.BroadcastGroup = 100;
+            ptb.Data.MessageData = new PlainTextMessage();
+            ptb.Data.MessageData.Subject = "PreGenerated Output Starvation!";
+            ptb.Data.MessageData.Text = message;
+
+            await EmailQueueWriter.PutMessageAsync("PlainTextBroadcast:" + JsonConvert.SerializeObject(ptb));
+        }
+
+        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
+            string network, string assetId = null)
+        {
+            var coins = from item in entities.PreGeneratedOutputs
+                        where item.Consumed.Equals(0) && item.Network.Equals(network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString()))
+                        select item;
+
+            int count = await coins.CountAsync();
+
+            if (count < PreGeneratedOutputMinimumCount)
+            {
+                await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount);
+            }
+
+            if (count == 0)
+            {
+                throw new Exception("There is no coins to use for fee payment");
+            }
+            else
+            {
+                int index = new Random().Next(coins.Count());
+                PreGeneratedOutput f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
+                f.Consumed = 1;
+                await entities.SaveChangesAsync();
+                return f;
+            }
+        }
+        public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
+        {
+            KeyStorage ret = null;
+            ret = await (from item in entities.KeyStorages
+                         where item.MultiSigAddress.Equals(multiSigAddress)
+                         select item).SingleOrDefaultAsync();
+
+            if (ret == null)
+            {
+                throw new Exception("Could not find a matching record for MultiSigAddress: "
+                    + multiSigAddress);
+            }
+
+            return ret;
+        }
+
+        public static bool IsRealAsset(string asset)
+        {
+            if (asset != null && asset.Trim().ToUpper() != "BTC")
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static Asset GetAssetFromName(AssetDefinition[] assets, string assetName, Network network)
+        {
+            Asset ret = null;
+            foreach (var item in assets)
+            {
+                if (item.Name == assetName)
+                {
+                    ret = new Asset();
+                    ret.AssetId = item.AssetId;
+                    ret.AssetPrivateKey = item.PrivateKey;
+                    ret.AssetAddress = BitcoinAddress.Create(item.AssetAddress, network);
+                    ret.AssetMultiplicationFactor = item.MultiplyFactor;
+                    ret.AssetDefinitionUrl = item.DefinitionUrl;
+                    break;
+                }
+            }
+
+            return ret;
+        }
+
         // From: http://stackoverflow.com/questions/311165/how-do-you-convert-byte-array-to-hexadecimal-string-and-vice-versa
         public static byte[] StringToByteArray(String hex)
         {
@@ -1515,14 +1097,101 @@ namespace LykkeWalletServices
             return bytes;
         }
 
-
-
         // Sqlite dll is not copied to output folder, this method creates the reference, never called
         // http://stackoverflow.com/questions/14033193/entity-framework-provider-type-could-not-be-loaded
         public static void FixEfProviderServicesProblem()
         {
             var instance = System.Data.SQLite.EF6.SQLiteProviderFactory.Instance;
         }
+
+        #endregion
+
+        #region EmailStructure
+        public class PlainTextMessage
+        {
+            public string Subject
+            {
+                get;
+                set;
+            }
+
+            public string Text
+            {
+                get;
+                set;
+            }
+        }
+
+        public class PlainTextBroadcastData
+        {
+            public int BroadcastGroup
+            {
+                get;
+                set;
+            }
+
+            public PlainTextMessage MessageData
+            {
+                get;
+                set;
+            }
+        }
+
+        public class PlainTextBroadcast
+        {
+            public PlainTextBroadcastData Data
+            {
+                get;
+                set;
+            }
+        }
+        #endregion
+
+        #region LykkeJobsNotificationStructures
+        public class LykkeJobsNotificationMessage
+        {
+            public string TransactionId
+            {
+                get;
+                set;
+            }
+
+            public string BlockchainHash
+            {
+                get;
+                set;
+            }
+
+            public string Operation
+            {
+                get;
+                set;
+            }
+        }
+
+        public class LykkeJobsNotificationResponseError
+        {
+            public int Code
+            {
+                get;
+                set;
+            }
+
+            public string Message
+            {
+                get;
+                set;
+            }
+        }
+        public class LykkeJobsNotificationResponse
+        {
+            public LykkeJobsNotificationResponseError Error
+            {
+                get;
+                set;
+            }
+        }
+        #endregion
 
         #region BitcoinApiReturnStructure
         public class UniversalUnspentOutput
@@ -1679,6 +1348,232 @@ namespace LykkeWalletServices
             public int confidence { get; set; }
             public BlockCypherInput[] inputs { get; set; }
             public BlockCypherOutput[] outputs { get; set; }
+        }
+        #endregion
+
+        #region QBitNinjaFunctions
+        // ToDo: confirmation number is set to be 1
+        public static async Task<Tuple<float, bool, string>> GetAccountBalanceQBitNinja(string walletAddress,
+            string assetId, Network network, Func<int> getMinimumConfirmationNumber = null)
+        {
+            float balance = 0;
+            float unconfirmedBalance = 0;
+            bool errorOccured = false;
+            string errorMessage = "";
+            string url;
+
+            getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
+            var minimumConfirmationNumber = getMinimumConfirmationNumber();
+
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    url = QBitNinjaBalanceUrl + walletAddress;
+                    HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        return new Tuple<float, bool, string>(0, true, result.ReasonPhrase);
+                    }
+                    else
+                    {
+                        var webResponse = await result.Content.ReadAsStringAsync();
+                        QBitNinjaOutputResponse response = JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                            (webResponse);
+                        if (response.operations != null && response.operations.Count > 0)
+                        {
+                            foreach (var item in response.operations)
+                            {
+                                response.operations.ForEach((o) =>
+                                {
+                                    balance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations >= getMinimumConfirmationNumber()).Select(c => c.quantity).Sum();
+                                    unconfirmedBalance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
+                                });
+                            }
+                        }
+                        else
+                        {
+                            errorOccured = true;
+                            errorMessage = "No coins found.";
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                errorOccured = true;
+                errorMessage = e.ToString();
+            }
+            return new Tuple<float, bool, string>(balance, errorOccured, errorMessage);
+        }
+
+        private static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
+            Network network, Func<int> getMinimumConfirmationNumber = null)
+        {
+            bool errorOccured = false;
+            string errorMessage = string.Empty;
+            IList<QBitNinjaUnspentOutput> unspentOutputsList = new List<QBitNinjaUnspentOutput>();
+
+            getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
+            var minimumConfirmationNumber = getMinimumConfirmationNumber();
+
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    string url = null;
+                    url = QBitNinjaBalanceUrl + walletAddress;
+                    HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        errorOccured = true;
+                        errorMessage = result.ReasonPhrase;
+                    }
+                    else
+                    {
+                        var webResponse = await result.Content.ReadAsStringAsync();
+                        var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                            (webResponse);
+                        if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
+                        {
+                            notProcessedUnspentOutputs.operations.ForEach((o) =>
+                            {
+                                var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
+                                {
+                                    confirmations = o.confirmations,
+                                    output_index = c.index,
+                                    transaction_hash = c.transactionId,
+                                    value = c.value,
+                                    script_hex = c.scriptPubKey,
+                                    asset_id = c.assetId,
+                                    asset_quantity = c.quantity
+                                });
+                                ((List<QBitNinjaUnspentOutput>)unspentOutputsList)
+                                .AddRange(convertResult.Where(u => u.confirmations >= getMinimumConfirmationNumber()));
+                            });
+                        }
+                        else
+                        {
+                            errorOccured = true;
+                            errorMessage = "No coins to retrieve.";
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                errorOccured = true;
+                errorMessage = e.ToString();
+            }
+
+            return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
+        }
+
+        #endregion
+
+        #region CoinprismFunctions
+        private static async Task<Tuple<CoinprismUnspentOutput[], bool, string>> GetWalletOutputsCoinPrism(string walletAddress,
+            Network network)
+        {
+            bool errorOccured = false;
+            string errorMessage = string.Empty;
+            CoinprismUnspentOutput[] unspentOutputs = null;
+
+            // ToDo - We currently use coinprism api, later we should replace
+            // with our self implementation
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    string url = null;
+                    if (network == Network.Main)
+                    {
+                        url = coinprismBaseUrl + walletAddress;
+                    }
+                    else
+                    {
+                        url = coinprismTestnetBaseUrl + walletAddress;
+                    }
+                    HttpResponseMessage result = await client.GetAsync(url + "/unspents");
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        errorOccured = true;
+                        errorMessage = result.ReasonPhrase;
+                    }
+                    else
+                    {
+                        var webResponse = await result.Content.ReadAsStringAsync();
+                        unspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<CoinprismUnspentOutput[]>
+                            (webResponse);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                errorOccured = true;
+                errorMessage = e.ToString();
+            }
+
+            return new Tuple<CoinprismUnspentOutput[], bool, string>(unspentOutputs, errorOccured, errorMessage);
+        }
+
+        /// <summary>
+        /// Gets the asset balance for the wallet address
+        /// </summary>
+        /// <param name="walletAddress">The address of the wallet to check the balance for.</param>
+        /// <param name="assetId">The id of asset to check the balance.</param>
+        /// <returns>A tuple, first part is balance, second part is unconfirmed balance, third part is whether error has occured or not,
+        ///  forth part is the error message.</returns>
+        public static async Task<Tuple<float, bool, string>> GetAccountBalanceCoinPrism(string walletAddress,
+            string assetId, Network network)
+        {
+            float balance = 0;
+            float unconfirmedBalance = 0;
+            bool errorOccured = false;
+            string errorMessage = "";
+            string url;
+            // ToDo - We currently use coinprism api, later we should replace
+            // with our self implementation
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    if (network == Network.Main)
+                    {
+                        url = coinprismBaseUrl + walletAddress;
+                    }
+                    else
+                    {
+                        url = coinprismTestnetBaseUrl + walletAddress;
+                    }
+                    HttpResponseMessage result = await client.GetAsync(url);
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        return new Tuple<float, bool, string>(0, true, result.ReasonPhrase);
+                    }
+                    else
+                    {
+                        var webResponse = await result.Content.ReadAsStringAsync();
+                        CoinprismGetBalanceResponse response = Newtonsoft.Json.JsonConvert.DeserializeObject<CoinprismGetBalanceResponse>
+                            (webResponse);
+                        foreach (var item in response.assets)
+                        {
+                            if (item.id.Equals(assetId))
+                            {
+                                balance = float.Parse(item.balance);
+                                unconfirmedBalance = float.Parse(item.unconfirmed_balance);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                errorOccured = true;
+                errorMessage = e.ToString();
+            }
+            return new Tuple<float, bool, string>(balance, errorOccured, errorMessage);
         }
         #endregion
     }

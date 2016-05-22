@@ -10,6 +10,20 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample Response: Swap:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvSwapTask : SrvNetworkInvolvingExchangeBase
     {
+        private static int swapMinimumConfirmationNumber = 0;
+
+        public static int SwapMinimumConfirmationNumber
+        {
+            get
+            {
+                return swapMinimumConfirmationNumber;
+            }
+            set
+            {
+                swapMinimumConfirmationNumber = value;
+            }
+        }
+
         public SrvSwapTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
@@ -19,12 +33,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         {
             SwapTaskResult result = null;
             Error error = null;
+
+            Func<int> getMinimumConfirmationNumber = (() => { return SwapMinimumConfirmationNumber; });
+
             try
             {
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
                     OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet1Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer1, !OpenAssetsHelper.IsRealAsset(data.Asset1) ? Convert.ToInt64(data.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount1, data.Asset1,
-                    Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
+                    Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false, true, getMinimumConfirmationNumber);
                     if (wallet1Coins.Error != null)
                     {
                         error = wallet1Coins.Error;
@@ -32,7 +49,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     else
                     {
                         OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet2Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer2, !OpenAssetsHelper.IsRealAsset(data.Asset2) ? Convert.ToInt64(data.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount2, data.Asset2,
-                         Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
+                         Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false, true, getMinimumConfirmationNumber);
                         if (wallet2Coins.Error != null)
                         {
                             error = wallet2Coins.Error;

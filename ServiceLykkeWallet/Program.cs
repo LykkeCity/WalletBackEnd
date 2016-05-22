@@ -42,6 +42,14 @@ namespace ServiceLykkeWallet
             OpenAssetsHelper.PreGeneratedOutputMinimumCount = settings.PreGeneratedOutputMinimumCount;
             OpenAssetsHelper.LykkeJobsUrl = settings.LykkeJobsUrl;
             OpenAssetsHelper.EmailQueueWriter = emailQueueWriter;
+            if(settings.SwapMinimumConfirmationNumber >= 0)
+            {
+                SrvSwapTask.SwapMinimumConfirmationNumber = settings.SwapMinimumConfirmationNumber;
+            }
+            if(settings.DefaultNumberOfRequiredConfirmations >= 0)
+            {
+                OpenAssetsHelper.MinimumNumberOfRequiredConfirmations = settings.DefaultNumberOfRequiredConfirmations;
+            }
 
             srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
