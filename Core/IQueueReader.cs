@@ -69,6 +69,11 @@ namespace Core
         } 
     }
 
+    public class TaskToDoGetExpiredUnclaimedRefundingTransactions : TransactionToDoBase
+    {
+        public string MultisigAddress { get; set; }
+    }
+
     public class TaskToDoGenerateRefundingTransaction : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }
@@ -92,6 +97,7 @@ namespace Core
     public class TaskToDoGetCurrentBalance : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }
+        public int MinimumConfirmation { get; set; }
     }
 
     public class TaskToDoGetFeeOutputsStatus : TransactionToDoBase

@@ -23,6 +23,7 @@ namespace LykkeWalletServices
         public long id { get; set; }
         public string RefundTxId { get; set; }
         public byte[] Version { get; set; }
+        public string RefundTxHex { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<RefundedOutput> RefundedOutputs { get; set; }

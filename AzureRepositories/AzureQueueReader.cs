@@ -31,7 +31,8 @@ namespace AzureRepositories
                 QueueType.Create("GetFeeOutputsStatus", typeof(TaskToDoGetFeeOutputsStatus)),
                 QueueType.Create("GenerateRefundingTransaction", typeof(TaskToDoGenerateRefundingTransaction)),
                 QueueType.Create("GetInputWalletAddresses", typeof(TaskToDoGetInputWalletAddresses)),
-                QueueType.Create("UpdateAssets", typeof(TaskToDoUpdateAssets))
+                QueueType.Create("UpdateAssets", typeof(TaskToDoUpdateAssets)),
+                QueueType.Create("GetExpiredUnclaimedRefundingTransactions", typeof(TaskToDoGetExpiredUnclaimedRefundingTransactions))
                 );
         }
 

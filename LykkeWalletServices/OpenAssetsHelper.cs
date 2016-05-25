@@ -35,7 +35,7 @@ namespace LykkeWalletServices
         public const uint ConcurrencyRetryCount = 3;
         public const uint NBitcoinColoredCoinOutputInSatoshi = 2730;
         private const APIProvider apiProvider = APIProvider.QBitNinja;
-        private const int LocktimeMinutesAllowance = 120;
+        public const int LocktimeMinutesAllowance = 120;
 
         public static string QBitNinjaBalanceUrl
         {
@@ -369,7 +369,6 @@ namespace LykkeWalletServices
             }
         }
 
-        // ToDo - Clear confirmation number
         public static float GetAssetBalance(UniversalUnspentOutput[] outputs,
             string assetId, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
@@ -400,7 +399,6 @@ namespace LykkeWalletServices
             return total / multiplyFactor;
         }
 
-        // ToDo - Clear confirmation number
         public static bool IsBitcoinsEnough(UniversalUnspentOutput[] outputs,
             long amountInSatoshi, Func<int> getMinimumConfirmationNumber = null)
         {
@@ -413,7 +411,7 @@ namespace LykkeWalletServices
             {
                 if (item.GetConfirmationNumber() >= getMinimumConfirmationNumber())
                 {
-                        total += item.GetBitcoinAmount();
+                    total += item.GetBitcoinAmount();
                 }
             }
 
@@ -434,7 +432,6 @@ namespace LykkeWalletServices
         /// <param name="assetId">Asset id to check the balance for.</param>
         /// <param name="amount">The required amount to check for.</param>
         /// <returns>Whether the asset amount is enough or not.</returns>
-        /// ToDo - Figure out a method for unconfirmed balance
         public static async Task<bool> IsAssetsEnough(string walletAddress, string assetId,
             int amount, Network network, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
@@ -510,7 +507,6 @@ namespace LykkeWalletServices
                 }
                 else
                 {
-                    // Getting bitcoin outputs to provide the transaction fee
                     var bitcoinOutputs = GetWalletOutputsUncolored(walletOutputs.Item1);
                     if (!IsBitcoinsEnough(bitcoinOutputs, requiredSatoshiAmount, getMinimumConfirmationNumber))
                     {
@@ -625,7 +621,7 @@ namespace LykkeWalletServices
                     error = new Error();
                     error.Code = ErrorCode.PossibleDoubleSpend;
                     error.Message = "The output number " + item.PrevOut.N + " from transaction " + item.PrevOut.Hash +
-                        " has been already spent in transcation " + (new Transaction(spentTx)).GetHash();
+                        " has been already spent in transaction " + (new Transaction(spentTx)).GetHash();
                     break;
                 }
             }
@@ -1352,7 +1348,6 @@ namespace LykkeWalletServices
         #endregion
 
         #region QBitNinjaFunctions
-        // ToDo: confirmation number is set to be 1
         public static async Task<Tuple<float, bool, string>> GetAccountBalanceQBitNinja(string walletAddress,
             string assetId, Network network, Func<int> getMinimumConfirmationNumber = null)
         {

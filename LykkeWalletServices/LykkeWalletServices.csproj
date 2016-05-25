@@ -129,6 +129,7 @@
     <Compile Include="Transactions\Responses\TaskResultGetTransactionToSign.cs" />
     <Compile Include="Transactions\Responses\TaskResultGenerateExchangeTransfer.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetBalance.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvGetExpiredUnclaimedRefundingTransactionsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvUpdateAssetsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateRefundingTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateIssuerOutputsTask.cs" />

@@ -245,6 +245,19 @@ namespace LykkeWalletServices
                 knownTaskType = true;
             }
 
+            var transactionGetExpiredUnclaimedRefundingTransactions = @event as TaskToDoGetExpiredUnclaimedRefundingTransactions;
+            if (transactionGetExpiredUnclaimedRefundingTransactions != null)
+            {
+                var service = new SrvGetExpiredUnclaimedRefundingTransactionsTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer,
+                    _feeAddress, _feeAddressPrivateKey, _exchangePrivateKey, _connectionString);
+                service.Execute(transactionGetExpiredUnclaimedRefundingTransactions, async result =>
+                {
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        ("GetExpiredUnclaimedRefundingTransactions", @event.TransactionId, result.Item1, result.Item2));
+                });
+                knownTaskType = true;
+            }
+
             var transactionUpdateAssets = @event as TaskToDoUpdateAssets;
             if (transactionUpdateAssets != null)
             {

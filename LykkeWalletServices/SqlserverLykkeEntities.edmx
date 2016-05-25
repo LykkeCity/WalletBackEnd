@@ -69,6 +69,7 @@
           </Key>
           <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="RefundTxId" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="RefundTxHex" Type="text" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
         <EntityType Name="SentTransactions">
@@ -274,6 +275,7 @@
           <Property Name="RefundTxId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
           <NavigationProperty Name="RefundedOutputs" Relationship="SqlexpressLykkeModel.FK_RefundedOutputs_RefundTransactions" FromRole="RefundTransaction" ToRole="RefundedOutput" />
+          <Property Name="RefundTxHex" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
         </EntityType>
         <Association Name="FK_RefundedOutputs_RefundTransactions">
           <End Type="SqlexpressLykkeModel.RefundTransaction" Role="RefundTransaction" Multiplicity="1" />
@@ -387,6 +389,7 @@
           <EntitySetMapping Name="RefundTransactions">
             <EntityTypeMapping TypeName="SqlexpressLykkeModel.RefundTransaction">
               <MappingFragment StoreEntitySet="RefundTransactions">
+                <ScalarProperty Name="RefundTxHex" ColumnName="RefundTxHex" />
                 <ScalarProperty Name="Version" ColumnName="Version" />
                 <ScalarProperty Name="RefundTxId" ColumnName="RefundTxId" />
                 <ScalarProperty Name="id" ColumnName="id" />

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Core
@@ -42,6 +43,29 @@ namespace Core
     {
         public string TransactionHex { get; set; }
         public string TransactionHash { get; set; }
+    }
+
+    public class GetExpiredUnclaimedRefundingTransactionsTaskResultElement
+    {
+        public string TxId
+        {
+            get;
+            set;
+        }
+
+        public string TxHex
+        {
+            get;
+            set;
+        }
+    }
+    public class GetExpiredUnclaimedRefundingTransactionsTaskResult : ITaskResult
+    {
+        public GetExpiredUnclaimedRefundingTransactionsTaskResultElement[] Elements
+        {
+            get;
+            set;
+        }
     }
 
     public class GenerateRefundingTransactionTaskResult : ITaskResult
@@ -115,13 +139,13 @@ namespace Core
     {
         public GetIssuersOutputStatusTaskResultElement[] ResultArray;
     }
-    
+
     public class GetIssuersOutputStatusTaskResultElement
     {
         public string Asset { get; set; }
         public float Amount { get; set; }
         public int Count { get; set; }
-        
+
     }
 
     public class GetFeeOutputsStatusTaskResultElement

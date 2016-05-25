@@ -41,7 +41,7 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   GetCurrentBalance
 
-        Sample request: GetCurrentBalance:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B" }
+        Sample request: GetCurrentBalance:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B", "MinimumConfirmation":0 }
         Sample response: GetCurrentBalance:{"TransactionId":"10","Result":{"ResultArray":[{"Asset":"bjkUSD","Amount":9400.0},{"Asset":"bjkEUR","Amount":1300.0},{"Asset":"TestExchangeUSD","Amount":1300.0}]},"Error":null}
 
 *   Swap
@@ -51,18 +51,18 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   Transfer
 
-        Sample request: Transfer:{"SourceMultisigAddress":"2N5H4VU7R4s5CBsyq77HQ7Gu8ZXKDz3ZHVD","SourcePrivateKey":"???","DestinationMultisigAddress":"2N3e9ZNg6uFbVg7EwnSsaWPr6VAbnDfjkTo", "Amount":100, "Asset":"bjkUSD"}
-        Sample response: Transfer:{"TransactionId":null,"Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
+        Sample request: Transfer:{"TransactionId":"10","SourceMultisigAddress":"2N5H4VU7R4s5CBsyq77HQ7Gu8ZXKDz3ZHVD","SourcePrivateKey":"???","DestinationMultisigAddress":"2N3e9ZNg6uFbVg7EwnSsaWPr6VAbnDfjkTo", "Amount":100, "Asset":"bjkUSD"}
+        Sample response: Transfer:{"TransactionId":"10","Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
 
 *   GenerateFeeOutputs
 
-        Sample request: GenerateFeeOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.00015,"Count":1000}
-        Sample request: GenerateFeeOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
+        Sample request: GenerateFeeOutputs:{"TransactionId":"10","WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.00015,"Count":1000}
+        Sample response: GenerateFeeOutputs:{"TransactionId":"10","Result":{"TransactionHash":"xxx"},"Error":null}
 
 *   GenerateIssuerOutputs
 
-        Sample request: GenerateIssuerOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.0000273,"Count":10, "AssetName":"bjkUSD"}
-        Sample request: GenerateIssuerOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
+        Sample request: GenerateIssuerOutputs:{"TransactionId":"10","WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.0000273,"Count":10, "AssetName":"bjkUSD"}
+        Sample response: GenerateIssuerOutputs:{"TransactionId":"10","Result":{"TransactionHash":"xxx"},"Error":null}
 
 *   Getting fee outputs count
 
@@ -89,6 +89,12 @@ When a call ends with an error, the error (in the following responses) will be a
         Sample request: UpdateAssets:{"TransactionId":"10","Assets": [{ "AssetId": "oDmVkVUHnrdSKASFWuHy6hxqTWFc9vdL9d", "AssetAddress": "n2JMZcG3dKuRN4c8K89TBwwwDpHshppQUr", "Name": "TestExchangeUSD", "PrivateKey": "xxx", "DefinitionUrl": "https://www.cpr.sm/-KDPVKLTlL","Divisibility": 2 }, { "AssetId": "oZTd8ZfoyRPkYFhbeLXvordpcpND2YpqPg", "AssetAddress": "n4XdhcAWoRBesY2gy5hnF6ht31rLG19kqy", "Name": "TestExchangeEUR","PrivateKey": "xxx","DefinitionUrl": "https://www.cpr.sm/SBi9SeNlyB","Divisibility": 2}]}
         Sample response: UpdateAssets:{"TransactionId":"10","Result":{"Success":true},"Error":null}
 
+*   Get Expired Unclaimed Refunding Transactions
+
+        Sample request: GetExpiredUnclaimedRefundingTransactions:{"TransactionId":"10","MultisigAddress":"2Mz5iEcM7VT3aaGRhKaAdRzJtRJtDKoYMsL"}
+        Sample response: GetExpiredUnclaimedRefundingTransactions:{"TransactionId":"10","Result":{"Elements":[{"TxId":"xxx","TxHex":"xxx"}]},"Error":null}
+
+If MultisigAddress is null (not passed), appropriate transactions for all addresses are returned.
 
 ## Some notes
 *   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.

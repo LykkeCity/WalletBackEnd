@@ -138,7 +138,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                             .SetLockTime(lockTime)
                                             .AddKeys(new BitcoinSecret(multiSig.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
                                             .AddCoins(scriptCoinsToBeRefunded)
-                                            .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi)) // We have 2 colored coin outputs
+                                            .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi)) 
                                             .SetChange(BitcoinAddress.Create(multiSig.WalletAddress, Network)).BuildTransaction(false);
 
                                         refundTx.Inputs[0].Sequence = Sequence.SEQUENCE_FINAL - 1;
@@ -150,6 +150,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         // Adding the refunded outputs to DB
                                         var refund = new RefundTransaction();
                                         refund.RefundTxId = refundTx.GetHash().ToString();
+                                        refund.RefundTxHex = refundTx.ToHex();
                                         entities.RefundTransactions.Add(refund);
                                         entities.SaveChanges();
 
