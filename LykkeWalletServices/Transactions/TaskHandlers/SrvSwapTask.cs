@@ -29,6 +29,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         {
         }
 
+        // in order to pay from each address separately we can build two transactions for each
+        // source address and then calculate the fee for each transaction, the build the third final transaction
         public async Task<Tuple<SwapTaskResult, Error>> ExecuteTask(TaskToDoSwap data)
         {
             SwapTaskResult result = null;
@@ -58,44 +60,62 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         {
                             using (var transaction = entities.Database.BeginTransaction())
                             {
+                                int coloredCoinCount1 = 0;
+                                int coloredCoinCount2 = 0;
                                 TransactionBuilder builder = new TransactionBuilder();
-                                builder.AddKeys(new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
+                                builder
+                                    .SetChange(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                    .AddKeys(new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
                                 if (OpenAssetsHelper.IsRealAsset(data.Asset1))
                                 {
-                                    builder.AddCoins(wallet1Coins.AssetScriptCoins);
-                                    builder = await builder.AddEnoughPaymentFee(entities, Network.ToString());
-                                    builder.SendAsset(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet1Coins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount1 * wallet1Coins.Asset.AssetMultiplicationFactor))));
+                                    builder
+                                        .AddCoins(wallet1Coins.AssetScriptCoins)
+                                        .SendAsset(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet1Coins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount1 * wallet1Coins.Asset.AssetMultiplicationFactor))));
+                                    coloredCoinCount1 = wallet1Coins.AssetScriptCoins.Length;
                                 }
                                 else
                                 {
-                                    builder.AddCoins(wallet1Coins.ScriptCoins);
-                                    builder.Send(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network),
-                                    Convert.ToInt64(data.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
-                                    .SetChange(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network)).Then();
-                                    builder = await builder.AddEnoughPaymentFee(entities, Network.ToString());
+                                    builder
+                                        .AddCoins(wallet1Coins.ScriptCoins)
+                                        .SendWithChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network),
+                                        Convert.ToInt64(data.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
+                                        wallet1Coins.ScriptCoins,
+                                        new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network));
                                 }
-                                builder.SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
-                                .SetChange(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                                .Then();
-                                builder.AddKeys(new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
+
+                                builder
+                                    .Then()
+                                    .SetChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                    .AddKeys(new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
+
                                 if (OpenAssetsHelper.IsRealAsset(data.Asset2))
                                 {
-                                    builder.AddCoins(wallet2Coins.AssetScriptCoins);
-                                    builder = await builder.AddEnoughPaymentFee(entities, Network.ToString());
-                                    builder.SendAsset(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet2Coins.Asset.AssetId, Network)), Convert.ToInt64(data.Amount2 * wallet2Coins.Asset.AssetMultiplicationFactor)));
+                                    builder
+                                        .AddCoins(wallet2Coins.AssetScriptCoins)
+                                        .SendAsset(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(wallet2Coins.Asset.AssetId, Network)), Convert.ToInt64(data.Amount2 * wallet2Coins.Asset.AssetMultiplicationFactor)));
+                                    coloredCoinCount2 = wallet2Coins.AssetScriptCoins.Length;
                                 }
                                 else
                                 {
-                                    builder.AddCoins(wallet2Coins.ScriptCoins);
-                                    builder.Send(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network),
-                                    Convert.ToInt64(data.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
-                                    .SetChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network)).Then();
-                                    builder = await builder.AddEnoughPaymentFee(entities, Network.ToString());
+                                    builder
+                                        .AddCoins(wallet2Coins.ScriptCoins)
+                                        .SendWithChange(new Script(wallet1Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network),
+                                        Convert.ToInt64(data.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
+                                        wallet2Coins.ScriptCoins,
+                                        new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network));
                                 }
-                                builder.SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi / 2))
-                                .SetChange(new Script(wallet2Coins.MatchingAddress.MultiSigScript).GetScriptAddress(Network));
 
-                                var tx = builder.BuildTransaction(true);
+                                /*
+                                var tx = builder.BuildTransaction(false);
+                                var estimatedFee = builder.EstimateFees(tx, OpenAssetsHelper.GetFeeRate());
+
+                                // Adding in two stages to show how this should be done if various parties will pay the fee
+                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, coloredCoinCount1, estimatedFee / 2));
+                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, coloredCoinCount2, estimatedFee / 2));
+                                */
+
+                                var tx = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, coloredCoinCount1 + coloredCoinCount2))
+                                    .BuildTransaction(true);
 
                                 var txHash = tx.GetHash().ToString();
 

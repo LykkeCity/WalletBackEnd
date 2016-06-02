@@ -35,12 +35,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         {
                             TransactionBuilder builder = new TransactionBuilder();
                             var tx = (await builder
+                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), ChangeType.Colored)
                                 .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
                                 .AddCoins(walletCoins.AssetScriptCoins)
-                                .AddEnoughPaymentFee(entities, Network.ToString()))
                                 .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                                .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi - OpenAssetsHelper.NBitcoinColoredCoinOutputInSatoshi)) // We have 2 colored coin outputs
                                 .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                .AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress))
                                 .BuildTransaction(true);
 
                             var txHash = tx.GetHash().ToString();

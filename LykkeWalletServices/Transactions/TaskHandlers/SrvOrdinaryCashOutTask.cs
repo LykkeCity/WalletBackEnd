@@ -3,6 +3,7 @@ using NBitcoin;
 using NBitcoin.OpenAsset;
 using System;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -36,25 +37,25 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         {
                             TransactionBuilder builder = new TransactionBuilder();
                             builder
+                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), ChangeType.Colored)
                                 .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
                             if (OpenAssetsHelper.IsRealAsset(data.Currency))
                             {
-                                builder.AddCoins(walletCoins.AssetScriptCoins);
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString()))
-                                    .SendAsset(new BitcoinPubKeyAddress(data.PublicWallet), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
+                                builder.AddCoins(walletCoins.AssetScriptCoins).
+                                    SendAsset(new BitcoinPubKeyAddress(data.PublicWallet), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
+                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, walletCoins.AssetScriptCoins.Length));
                             }
                             else
                             {
                                 builder.AddCoins(walletCoins.ScriptCoins);
-                                builder.Send(new BitcoinPubKeyAddress(data.PublicWallet),
-                                    Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
-                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network)).Then();
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), 0));
+                                builder.SendWithChange(new BitcoinPubKeyAddress(data.PublicWallet),
+                                    Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
+                                    walletCoins.ScriptCoins,
+                                    new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network));
+                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 0));
                             }
 
-                            var tx = builder.SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi - OpenAssetsHelper.NBitcoinColoredCoinOutputInSatoshi))
-                            .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                            .BuildTransaction(true);
+                            var tx = builder.BuildTransaction(true);
 
                             var txHash = tx.GetHash().ToString();
 

@@ -44,7 +44,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             public string LykkeJobsUrl { get; set; }
 
-            [DefaultValue(-1)]
+            [DefaultValue(0)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public int SwapMinimumConfirmationNumber
             {
@@ -52,7 +52,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 set;
             }
 
-            [DefaultValue(-1)]
+            [DefaultValue(1)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public int DefaultNumberOfRequiredConfirmations
             {

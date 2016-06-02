@@ -219,11 +219,48 @@ namespace LykkeWalletServices
                                     output.Amount, new PayToPubkeyHashTemplate().GenerateScriptPubKey(new BitcoinPubKeyAddress(output.Address, network)));
         }
 
-        public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
-            string network, int requiredNumberOfColoredCoinFee = 1)
+        public static TransactionBuilder SendWithChange(this TransactionBuilder builder, IDestination destination,
+            Money amount, Coin[] coins, IDestination changeDestination)
         {
-            var requiredFee = TransactionSendFeesInSatoshi + requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi;
+            long sum = coins.Sum(c => c.Amount);
+            builder.Send(destination, amount);
+            builder.Send(changeDestination, sum - amount);
+            return builder;
+        }
+
+        public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
+            string network, string feeAddress, int requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1)
+        {
+            builder.SetChange(BitcoinAddress.Create(feeAddress), ChangeType.Uncolored);
+
             long totalAddedFee = 0;
+
+            if (estimatedFee == -1)
+            {
+                Transaction tx = null;
+                bool continueLoop = true;
+                while (continueLoop)
+                {
+                    try
+                    {
+                        tx = builder.BuildTransaction(false);
+                        continueLoop = false;
+                    }
+                    catch (NotEnoughFundsException)
+                    {
+                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, network);
+                        Coin feePayerCoin = feePayer.GetCoin();
+
+                        totalAddedFee += feePayer.Amount;
+                        builder.AddKeys(new BitcoinSecret(feePayer.PrivateKey)).AddCoins(feePayerCoin);
+                    }
+                }
+                
+                estimatedFee = builder.EstimateFees(tx, GetFeeRate());
+            }
+
+            var requiredFee = estimatedFee + requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi;
+            
 
             while (true)
             {
@@ -238,6 +275,8 @@ namespace LykkeWalletServices
                 totalAddedFee += feePayer.Amount;
                 builder.AddKeys(new BitcoinSecret(feePayer.PrivateKey)).AddCoins(feePayerCoin);
             }
+            builder             
+                .SendFees(new Money(totalAddedFee - requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi)); // We put all added fee here, since estimate is under estimate
 
             return builder;
         }
@@ -926,6 +965,13 @@ namespace LykkeWalletServices
         #endregion
 
         #region OtherUsefulFunctions
+        // This is written as a function instead of a constant since we may need to change the implementation
+        // to adaptable one in future
+        public static FeeRate GetFeeRate()
+        {
+            return new FeeRate(new Money(TransactionSendFeesInSatoshi));
+        }
+
         private static async Task<Transaction[]> GetTransactionsHex(UniversalUnspentOutput[] outputList, Network network,
             string username, string password, string ipAddress)
         {

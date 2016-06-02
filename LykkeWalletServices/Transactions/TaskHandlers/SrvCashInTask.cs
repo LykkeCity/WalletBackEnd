@@ -43,17 +43,17 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     issueCoin.DefinitionUrl = new Uri(asset.AssetDefinitionUrl);
 
                                     var multiSigScript = new Script((await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities)).MultiSigScript);
+                                    
                                     // Issuing the asset
                                     TransactionBuilder builder = new TransactionBuilder();
-                                    var tx = (await builder
+                                    builder = builder
                                         .AddKeys(new BitcoinSecret(issuancePayer.PrivateKey, Network))
                                         .AddCoins(issueCoin)
-                                        .AddEnoughPaymentFee(entities, Network.ToString()))
                                         .IssueAsset(multiSigScript.GetScriptAddress(Network), new NBitcoin.OpenAsset.AssetMoney(
                                             new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, Network)),
-                                            Convert.ToInt64(data.Amount * asset.AssetMultiplicationFactor)))
-                                        .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                                        .SetChange(new BitcoinPubKeyAddress(FeeAddress, Network)) // Paying the rest to fee payer address
+                                            Convert.ToInt64(data.Amount * asset.AssetMultiplicationFactor)));
+
+                                    var tx = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress))
                                         .BuildTransaction(true);
 
                                     var txHash = tx.GetHash().ToString();
