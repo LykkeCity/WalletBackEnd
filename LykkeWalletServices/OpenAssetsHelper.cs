@@ -219,6 +219,18 @@ namespace LykkeWalletServices
                                     output.Amount, new PayToPubkeyHashTemplate().GenerateScriptPubKey(new BitcoinPubKeyAddress(output.Address, network)));
         }
 
+        public static TransactionBuilder SendAssetWithChange(this TransactionBuilder builder, IDestination destination,
+            AssetMoney assetMoney, ColoredCoin[] coins, IDestination changeDestination)
+        {
+            long sum = coins.Sum(c => c.Amount.Quantity);
+            builder.SendAsset(destination, assetMoney);
+
+            var changeAssetMoney = new AssetMoney(assetMoney.Id, sum - assetMoney.Quantity);
+            builder.SendAsset(changeDestination, changeAssetMoney);
+
+            return builder;
+        }
+
         public static TransactionBuilder SendWithChange(this TransactionBuilder builder, IDestination destination,
             Money amount, Coin[] coins, IDestination changeDestination)
         {
@@ -229,7 +241,7 @@ namespace LykkeWalletServices
         }
 
         public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
-            string network, string feeAddress, int requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1)
+            string network, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1)
         {
             builder.SetChange(BitcoinAddress.Create(feeAddress), ChangeType.Uncolored);
 
@@ -239,6 +251,7 @@ namespace LykkeWalletServices
             {
                 Transaction tx = null;
                 bool continueLoop = true;
+                int counter = 0;
                 while (continueLoop)
                 {
                     try
@@ -246,13 +259,15 @@ namespace LykkeWalletServices
                         tx = builder.BuildTransaction(false);
                         continueLoop = false;
                     }
-                    catch (NotEnoughFundsException)
+                    catch (NotEnoughFundsException ex)
                     {
                         PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, network);
                         Coin feePayerCoin = feePayer.GetCoin();
 
                         totalAddedFee += feePayer.Amount;
                         builder.AddKeys(new BitcoinSecret(feePayer.PrivateKey)).AddCoins(feePayerCoin);
+
+                        counter++;
                     }
                 }
                 
@@ -970,6 +985,30 @@ namespace LykkeWalletServices
         public static FeeRate GetFeeRate()
         {
             return new FeeRate(new Money(TransactionSendFeesInSatoshi));
+        }
+
+        public static TransactionBuilder BuildHalfOfSwap(this TransactionBuilder builder, BitcoinSecret[] secret, ScriptCoin[] uncoloredCoins, ColoredCoin[] coloredCoins, BitcoinScriptAddress destAddress,
+            BitcoinScriptAddress changeAddress, AssetMoney coloredAmount, long uncoloredAmount, string asset, out long coloredCoinCount)
+        {
+            coloredCoinCount = 0;
+
+            builder
+                .AddKeys(secret);
+            if (IsRealAsset(asset))
+            {
+                builder
+                    .AddCoins(coloredCoins)
+                    .SendAssetWithChange(destAddress, coloredAmount, coloredCoins, changeAddress);
+                coloredCoinCount = coloredCoins.Length;
+            }
+            else
+            {
+                builder
+                    .AddCoins(uncoloredCoins)
+                    .SendWithChange(destAddress, uncoloredAmount, uncoloredCoins, changeAddress);
+            }
+
+            return builder;
         }
 
         private static async Task<Transaction[]> GetTransactionsHex(UniversalUnspentOutput[] outputList, Network network,
