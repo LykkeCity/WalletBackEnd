@@ -5,6 +5,13 @@
     <!-- SSDL content -->
     <edmx:StorageModels>
     <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="EmailMessages">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Message" Type="text" Nullable="false" />
+        </EntityType>
         <EntityType Name="ExchangeRequests">
           <Key>
             <PropertyRef Name="ExchangeId" />
@@ -69,8 +76,8 @@
           </Key>
           <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="RefundTxId" Type="varchar" MaxLength="64" Nullable="false" />
-          <Property Name="RefundTxHex" Type="text" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+          <Property Name="RefundTxHex" Type="text" />
         </EntityType>
         <EntityType Name="SentTransactions">
           <Key>
@@ -126,6 +133,7 @@
           </ReferentialConstraint>
         </Association>
         <EntityContainer Name="SqlexpressLykkeModelStoreContainer">
+          <EntitySet Name="EmailMessages" EntityType="Self.EmailMessages" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="PreGeneratedOutput" EntityType="Self.PreGeneratedOutput" Schema="dbo" store:Type="Tables" />
@@ -164,6 +172,7 @@
             <End Role="RefundTransaction" EntitySet="RefundTransactions" />
             <End Role="RefundedOutput" EntitySet="RefundedOutputs" />
           </AssociationSet>
+          <EntitySet Name="EmailMessages" EntityType="SqlexpressLykkeModel.EmailMessage" />
         </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -289,6 +298,13 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <EntityType Name="EmailMessage">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" />
+          <Property Name="Message" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
+        </EntityType>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -392,6 +408,14 @@
                 <ScalarProperty Name="RefundTxHex" ColumnName="RefundTxHex" />
                 <ScalarProperty Name="Version" ColumnName="Version" />
                 <ScalarProperty Name="RefundTxId" ColumnName="RefundTxId" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EmailMessages">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.EmailMessage">
+              <MappingFragment StoreEntitySet="EmailMessages">
+                <ScalarProperty Name="Message" ColumnName="Message" />
                 <ScalarProperty Name="id" ColumnName="id" />
               </MappingFragment>
             </EntityTypeMapping>

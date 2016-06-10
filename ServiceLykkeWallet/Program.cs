@@ -39,6 +39,7 @@ namespace ServiceLykkeWallet
             var lykkeAccountReader = new LykkeAccountReader(settings.LykkeCredentials);
 
             OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
+            OpenAssetsHelper.BroadcastGroup = settings.BroadcastGroup;
             OpenAssetsHelper.PreGeneratedOutputMinimumCount = settings.PreGeneratedOutputMinimumCount;
             OpenAssetsHelper.LykkeJobsUrl = settings.LykkeJobsUrl;
             OpenAssetsHelper.EmailQueueWriter = emailQueueWriter;

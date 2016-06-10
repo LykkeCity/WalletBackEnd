@@ -1,4 +1,5 @@
 ﻿using Common;
+using Common.Log;
 using Core;
 using NBitcoin;
 using NBitcoin.OpenAsset;
@@ -16,7 +17,7 @@ namespace LykkeWalletServices
 {
     public static class OpenAssetsHelper
     {
-        private enum APIProvider
+        public enum APIProvider
         {
             CoinPrism,
             QBitNinja
@@ -66,6 +67,12 @@ namespace LykkeWalletServices
         }
 
         public static string LykkeJobsUrl
+        {
+            get;
+            set;
+        }
+
+        public static int BroadcastGroup
         {
             get;
             set;
@@ -270,12 +277,12 @@ namespace LykkeWalletServices
                         counter++;
                     }
                 }
-                
+
                 estimatedFee = builder.EstimateFees(tx, GetFeeRate());
             }
 
             var requiredFee = estimatedFee + requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi;
-            
+
 
             while (true)
             {
@@ -290,7 +297,7 @@ namespace LykkeWalletServices
                 totalAddedFee += feePayer.Amount;
                 builder.AddKeys(new BitcoinSecret(feePayer.PrivateKey)).AddCoins(feePayerCoin);
             }
-            builder             
+            builder
                 .SendFees(new Money(totalAddedFee - requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi)); // We put all added fee here, since estimate is under estimate
 
             return builder;
@@ -657,7 +664,8 @@ namespace LykkeWalletServices
         public static async Task<Error> CheckTransactionForDoubleSpentThenSendIt(Transaction tx,
             string username, string password, string ipAddress, Network network, SqlexpressLykkeEntities entitiesContext, string connectionString,
             LykkeJobsNotificationMessage lykkeJobsNotificationMessage,
-            Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null)
+            Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
+            APIProvider apiProvider = APIProvider.QBitNinja)
         {
             Error error = null;
             // Checking if the inputs has been already spent
@@ -745,6 +753,38 @@ namespace LykkeWalletServices
 
                 await client.SendRawTransactionAsync(tx);
 
+                // Waiting until the transaction has appeared in block explorer
+                // This is because some consequent operaions like generating refund may instantly
+                // be called and the new transaction has not been propagaed
+                // If the appearence does not take place after some retries, the
+                // current function returns successfuly, since the responsibility of
+                // the current function is to send the transaction and not the rest
+                bool breakFor = false;
+                for (int i = 0; i < 10; i++)
+                {
+                    switch (apiProvider)
+                    {
+                        case APIProvider.QBitNinja:
+                            bool isPresent = await IsTransactionPresentInQBitNinja(tx);
+                            if (isPresent)
+                            {
+                                breakFor = true;
+                                break;
+                            }
+                            else
+                            {
+                                System.Threading.Thread.Sleep(500);
+                            }
+                            break;
+                        default:
+                            breakFor = true;
+                            break;
+                    }
+                    if (breakFor)
+                    {
+                        break;
+                    }
+                }
             }
 
             return error;
@@ -999,7 +1039,7 @@ namespace LykkeWalletServices
                 builder
                     .AddCoins(coloredCoins)
                     .SendAssetWithChange(destAddress, coloredAmount, coloredCoins, changeAddress);
-                coloredCoinCount = coloredCoins.Length;
+                coloredCoinCount = 2;
             }
             else
             {
@@ -1071,8 +1111,44 @@ namespace LykkeWalletServices
             return new Tuple<bool, string, string>(errorOccured, errorMessage, transactionHex);
         }
 
+        public static async Task PerformFunctionEndJobs(string connectionString, ILog log)
+        {
+            try
+            {
+                await SendPendingEmails(connectionString);
+            }
+            catch (Exception e)
+            {
+                if(log != null)
+                {
+                    await log.WriteError("OpenAssetsHelper", "ServiceLykkeWallet", "", e);
+                }
+            }
+        }
+
+        public static async Task SendPendingEmails(string connectionString)
+        {
+            using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
+            {
+                var emails = from item in entities.EmailMessages
+                             select item;
+
+                if (emails.Count() > 0)
+                {
+                    foreach (var item in emails)
+                    {
+                        await EmailQueueWriter.PutMessageAsync(item.Message);
+                    }
+
+                    entities.EmailMessages.RemoveRange(emails);
+                    await entities.SaveChangesAsync();
+                }
+            }
+        }
+
         // PlainTextBroadcast:{"Data":{"BroadcastGroup":100,"MessageData":{"Subject":"Some subject","Text":"Some text"}}}
-        public static async Task SendAlertForPregenerateOutput(string assetId, int count, int minimumCount)
+        public static async Task SendAlertForPregenerateOutput(string assetId, int count,
+            int minimumCount, SqlexpressLykkeEntities entities)
         {
             StringBuilder builder = new StringBuilder();
             builder.AppendLine("Hello,");
@@ -1085,12 +1161,14 @@ namespace LykkeWalletServices
 
             var ptb = new PlainTextBroadcast();
             ptb.Data = new PlainTextBroadcastData();
-            ptb.Data.BroadcastGroup = 100;
+            ptb.Data.BroadcastGroup = BroadcastGroup;
             ptb.Data.MessageData = new PlainTextMessage();
             ptb.Data.MessageData.Subject = "PreGenerated Output Starvation!";
             ptb.Data.MessageData.Text = message;
 
-            await EmailQueueWriter.PutMessageAsync("PlainTextBroadcast:" + JsonConvert.SerializeObject(ptb));
+            entities.EmailMessages.Add(new EmailMessage { Message = "PlainTextBroadcast:" + JsonConvert.SerializeObject(ptb) });
+            await entities.SaveChangesAsync();
+            //await EmailQueueWriter.PutMessageAsync();
         }
 
         public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
@@ -1104,7 +1182,7 @@ namespace LykkeWalletServices
 
             if (count < PreGeneratedOutputMinimumCount)
             {
-                await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount);
+                await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount, entities);
             }
 
             if (count == 0)
@@ -1433,6 +1511,31 @@ namespace LykkeWalletServices
         #endregion
 
         #region QBitNinjaFunctions
+        public static async Task<bool> IsTransactionPresentInQBitNinja(Transaction tx)
+        {
+            string url = null;
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    url = QBitNinjaTransactionUrl + tx.GetHash().ToString();
+                    HttpResponseMessage result = await client.GetAsync(url);
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                return true;
+            }
+        }
+
         public static async Task<Tuple<float, bool, string>> GetAccountBalanceQBitNinja(string walletAddress,
             string assetId, Network network, Func<int> getMinimumConfirmationNumber = null)
         {

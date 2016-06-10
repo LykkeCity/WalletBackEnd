@@ -39,8 +39,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
                                 .AddCoins(walletCoins.AssetScriptCoins)
                                 .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                                .AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress))
+                                .AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2))
                                 .BuildTransaction(true);
 
                             var txHash = tx.GetHash().ToString();

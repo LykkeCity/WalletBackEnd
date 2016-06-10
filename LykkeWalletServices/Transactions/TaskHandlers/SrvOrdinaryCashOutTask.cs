@@ -43,7 +43,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             {
                                 builder.AddCoins(walletCoins.AssetScriptCoins).
                                     SendAsset(new BitcoinPubKeyAddress(data.PublicWallet), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, walletCoins.AssetScriptCoins.Length));
+                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2));
                             }
                             else
                             {

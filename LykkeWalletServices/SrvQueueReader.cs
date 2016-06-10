@@ -64,6 +64,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(
                         TransactionResultModel.Create("GenerateNewWallet", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -76,6 +77,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("CashIn", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -88,6 +90,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("OrdinaryCashIn", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -100,6 +103,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("CashOut", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -112,6 +116,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("CashOutSeparateSignatures", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -124,6 +129,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("OrdinaryCashOut", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -137,6 +143,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetCurrentBalance", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -150,6 +157,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("Swap", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -163,6 +171,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GenerateFeeOutputs", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -176,6 +185,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GenerateIssuerOutputs", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -189,6 +199,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("Transfer", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -202,6 +213,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetIssuersOutputStatus", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -215,6 +227,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetFeeOutputsStatus", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -228,6 +241,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GenerateRefundingTransaction", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -241,6 +255,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetInputWalletAddresses", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -254,6 +269,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetExpiredUnclaimedRefundingTransactions", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }
@@ -266,6 +282,7 @@ namespace LykkeWalletServices
                 {
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("UpdateAssets", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
                 });
                 knownTaskType = true;
             }

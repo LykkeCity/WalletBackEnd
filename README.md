@@ -121,6 +121,7 @@ If MultisigAddress is null (not passed), appropriate transactions for all addres
 |LykkeJobsUrl|Nothing|The url used by code, to post the notification for the new transaction before sending it (Like CashIn, CashOut and ...).|
 |DefaultNumberOfRequiredConfirmations|1|Minimum number of confirmations required to consider the transaction as final (optional).|
 |SwapMinimumConfirmationNumber|0|Minimum number of confirmations required to consider the transaction as final for the swap operation (optional).|
+|BroadcastGroup|400|The Broadcast Group used to send the email for insufficient fee outputs to (optional).|
 
 The AssetDefinitions is an array of json, with the following fields:
 

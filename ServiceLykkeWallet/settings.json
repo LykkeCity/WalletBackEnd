@@ -7,6 +7,7 @@
   "exchangePrivateKey": "xxx",
   "FeeAddress": "moTLjH5p8hxgEm7a7pKh2BsjqDWABRCHBm",
   "FeeAddressPrivateKey": "xxx",
+  "BroadcastGroup": 400,
   "LykkeCredentials": {
     "PublicAddress": "xxxxxxxxx",
     "PrivateKey": "xxxxxxxxx"

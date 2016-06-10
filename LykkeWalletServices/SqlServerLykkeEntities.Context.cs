@@ -38,5 +38,6 @@ namespace LykkeWalletServices
         public virtual DbSet<TransactionsToBeSigned> TransactionsToBeSigneds { get; set; }
         public virtual DbSet<RefundedOutput> RefundedOutputs { get; set; }
         public virtual DbSet<RefundTransaction> RefundTransactions { get; set; }
+        public virtual DbSet<EmailMessage> EmailMessages { get; set; }
     }
 }
