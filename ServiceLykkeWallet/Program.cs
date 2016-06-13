@@ -40,6 +40,7 @@ namespace ServiceLykkeWallet
 
             OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
             OpenAssetsHelper.BroadcastGroup = settings.BroadcastGroup;
+            OpenAssetsHelper.EnvironmentName = settings.EnvironmentName;
             OpenAssetsHelper.PreGeneratedOutputMinimumCount = settings.PreGeneratedOutputMinimumCount;
             OpenAssetsHelper.LykkeJobsUrl = settings.LykkeJobsUrl;
             OpenAssetsHelper.EmailQueueWriter = emailQueueWriter;

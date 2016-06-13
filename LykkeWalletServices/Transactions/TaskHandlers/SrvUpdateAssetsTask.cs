@@ -44,6 +44,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             public string LykkeJobsUrl { get; set; }
 
+            [DefaultValue(null)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public string EnvironmentName
+            {
+                get;
+                set;
+            }
+
             [DefaultValue(400)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public int BroadcastGroup

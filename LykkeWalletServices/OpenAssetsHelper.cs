@@ -78,6 +78,12 @@ namespace LykkeWalletServices
             set;
         }
 
+        public static string EnvironmentName
+        {
+            get;
+            set;
+        }
+
         public static IQueueExt EmailQueueWriter
         {
             get;
@@ -1119,7 +1125,7 @@ namespace LykkeWalletServices
             }
             catch (Exception e)
             {
-                if(log != null)
+                if (log != null)
                 {
                     await log.WriteError("OpenAssetsHelper", "ServiceLykkeWallet", "", e);
                 }
@@ -1155,6 +1161,11 @@ namespace LykkeWalletServices
             builder.AppendLine(string.Format("The number of pre generated outputs ({0}) for asset {1} has fallen below minimum {2}.",
                 count, assetId ?? "BTC", minimumCount));
             builder.AppendLine("Please add some pre generatad outputs.");
+            if (!string.IsNullOrEmpty(EnvironmentName))
+            {
+                builder.Append("The current environment is: ");
+                builder.AppendLine(EnvironmentName);
+            }
             builder.AppendLine("Best,");
             builder.AppendLine("PreGenerated Watchdog");
             string message = builder.ToString();

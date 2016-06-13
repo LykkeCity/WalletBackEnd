@@ -33,61 +33,71 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     }
                     else
                     {
-                        using (var transaction = entities.Database.BeginTransaction())
+                        var dest = Base58Data.GetFromBase58Data(data.PublicWallet, Network) as BitcoinAddress;
+                        if (dest == null)
                         {
-                            TransactionBuilder builder = new TransactionBuilder();
-                            builder
-                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), ChangeType.Colored)
-                                .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
-                            if (OpenAssetsHelper.IsRealAsset(data.Currency))
+                            error = new Error();
+                            error.Code = ErrorCode.InvalidAddress;
+                            error.Message = "Invalid address provided";
+                        }
+                        else
+                        {
+                            using (var transaction = entities.Database.BeginTransaction())
                             {
-                                builder.AddCoins(walletCoins.AssetScriptCoins).
-                                    SendAsset(new BitcoinPubKeyAddress(data.PublicWallet), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2));
-                            }
-                            else
-                            {
-                                builder.AddCoins(walletCoins.ScriptCoins);
-                                builder.SendWithChange(new BitcoinPubKeyAddress(data.PublicWallet),
-                                    Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
-                                    walletCoins.ScriptCoins,
-                                    new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network));
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 0));
-                            }
-
-                            var tx = builder.BuildTransaction(true);
-
-                            var txHash = tx.GetHash().ToString();
-
-                            OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
-                                new OpenAssetsHelper.LykkeJobsNotificationMessage();
-                            lykkeJobsNotificationMessage.Operation = "OrdinaryCashOut";
-                            lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
-                            lykkeJobsNotificationMessage.BlockchainHash = txHash;
-
-                            Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
-
-                            if (localerror == null)
-                            {
-                                result = new OrdinaryCashOutTaskResult
+                                TransactionBuilder builder = new TransactionBuilder();
+                                builder
+                                    .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), ChangeType.Colored)
+                                    .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
+                                if (OpenAssetsHelper.IsRealAsset(data.Currency))
                                 {
-                                    TransactionHex = tx.ToHex(),
-                                    TransactionHash = txHash
-                                };
-                            }
-                            else
-                            {
-                                error = localerror;
-                            }
+                                    builder.AddCoins(walletCoins.AssetScriptCoins).
+                                        SendAsset(dest, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
+                                    builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2));
+                                }
+                                else
+                                {
+                                    builder.AddCoins(walletCoins.ScriptCoins);
+                                    builder.SendWithChange(dest,
+                                        Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
+                                        walletCoins.ScriptCoins,
+                                        new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network));
+                                    builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 0));
+                                }
 
-                            if (error == null)
-                            {
-                                transaction.Commit();
-                            }
-                            else
-                            {
-                                transaction.Rollback();
+                                var tx = builder.BuildTransaction(true);
+
+                                var txHash = tx.GetHash().ToString();
+
+                                OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
+                                    new OpenAssetsHelper.LykkeJobsNotificationMessage();
+                                lykkeJobsNotificationMessage.Operation = "OrdinaryCashOut";
+                                lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
+                                lykkeJobsNotificationMessage.BlockchainHash = txHash;
+
+                                Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                    (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
+
+                                if (localerror == null)
+                                {
+                                    result = new OrdinaryCashOutTaskResult
+                                    {
+                                        TransactionHex = tx.ToHex(),
+                                        TransactionHash = txHash
+                                    };
+                                }
+                                else
+                                {
+                                    error = localerror;
+                                }
+
+                                if (error == null)
+                                {
+                                    transaction.Commit();
+                                }
+                                else
+                                {
+                                    transaction.Rollback();
+                                }
                             }
                         }
                     }

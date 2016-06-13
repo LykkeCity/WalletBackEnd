@@ -8,6 +8,7 @@
   "FeeAddress": "moTLjH5p8hxgEm7a7pKh2BsjqDWABRCHBm",
   "FeeAddressPrivateKey": "xxx",
   "BroadcastGroup": 400,
+  "EnvironmentName": "Production",
   "LykkeCredentials": {
     "PublicAddress": "xxxxxxxxx",
     "PrivateKey": "xxxxxxxxx"

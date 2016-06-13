@@ -51,7 +51,7 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   Transfer
 
-        Sample request: Transfer:{"TransactionId":"10","SourceMultisigAddress":"2N5H4VU7R4s5CBsyq77HQ7Gu8ZXKDz3ZHVD","SourcePrivateKey":"???","DestinationMultisigAddress":"2N3e9ZNg6uFbVg7EwnSsaWPr6VAbnDfjkTo", "Amount":100, "Asset":"bjkUSD"}
+        Sample request: Transfer:{"TransactionId":"10","SourceAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU","SourcePrivateKey":"???","DestinationAddress":"2MxTYg5MsBANnTQVB88AtUmQw5zhj5gayxT", "Amount":2, "Asset":"TestExchangeUSD"}
         Sample response: Transfer:{"TransactionId":"10","Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
 
 *   GenerateFeeOutputs
@@ -76,7 +76,7 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   Generating the refund transaction
 
-        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2Mvny9kSaUJhbCTMWUaFQPYERCSrduKJjD4", "timeoutInMinutes":360}
+        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360}
         Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
 
 *   Getting correspondent wallet addresses
@@ -122,6 +122,7 @@ If MultisigAddress is null (not passed), appropriate transactions for all addres
 |DefaultNumberOfRequiredConfirmations|1|Minimum number of confirmations required to consider the transaction as final (optional).|
 |SwapMinimumConfirmationNumber|0|Minimum number of confirmations required to consider the transaction as final for the swap operation (optional).|
 |BroadcastGroup|400|The Broadcast Group used to send the email for insufficient fee outputs to (optional).|
+|EnvironmentName|null|The name environment in which the program is being runned, for example test or production.|
 
 The AssetDefinitions is an array of json, with the following fields:
 

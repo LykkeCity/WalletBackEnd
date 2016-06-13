@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
-    // Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2Mvny9kSaUJhbCTMWUaFQPYERCSrduKJjD4", "timeoutInMinutes":360}
+    // Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360}
     // Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
     // If refund transaction is sent early, one gets "64: non-final (code -26)"
     public class SrvGenerateRefundingTransactionTask : SrvNetworkInvolvingExchangeBase
@@ -133,13 +133,23 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                             scriptCoinsToBeRefunded.Add(new ScriptCoin(item, new Script(multiSig.MultiSigScript)));
                                         }
 
+                                        IDestination dest = null;
+                                        if(string.IsNullOrEmpty(data.RefundAddress))
+                                        {
+                                            dest = Base58Data.GetFromBase58Data(multiSig.WalletAddress, Network) as BitcoinAddress;
+                                        }
+                                        else
+                                        {
+                                            dest = Base58Data.GetFromBase58Data(data.RefundAddress, Network) as BitcoinAddress;
+                                        }
+
                                         TransactionBuilder builder = new TransactionBuilder();
                                         refundTx = builder
                                             .SetLockTime(lockTime)
                                             .AddKeys(new BitcoinSecret(multiSig.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
                                             .AddCoins(scriptCoinsToBeRefunded)
                                             .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi)) 
-                                            .SetChange(BitcoinAddress.Create(multiSig.WalletAddress, Network)).BuildTransaction(false);
+                                            .SetChange(dest).BuildTransaction(false);
 
                                         refundTx.Inputs[0].Sequence = Sequence.SEQUENCE_FINAL - 1;
 

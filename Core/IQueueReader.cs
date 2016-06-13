@@ -78,6 +78,7 @@ namespace Core
     {
         public string MultisigAddress { get; set; }
         public uint timeoutInMinutes { get; set; }
+        public string RefundAddress { get; set; }
     }
 
     public class TaskToDoGetInputWalletAddresses : TransactionToDoBase
@@ -157,9 +158,9 @@ namespace Core
 
     public class TaskToDoTransfer : TransactionToDoBase
     {
-        public string SourceMultisigAddress { get; set; }
+        public string SourceAddress { get; set; }
         public string SourcePrivateKey { get; set; }
-        public string DestinationMultisigAddress { get; set; }
+        public string DestinationAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
         public float Amount { get; set; }
         public string Asset { get; set; }
