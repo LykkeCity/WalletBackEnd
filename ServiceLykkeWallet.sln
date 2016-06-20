@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceLykkeWallet", "ServiceLykkeWallet\ServiceLykkeWallet.csproj", "{51AF88B9-966F-4209-825A-E0FD2E5CCCE3}"
 EndProject
@@ -20,6 +20,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "02. Implementation", "02. Implementation", "{D818076B-3774-4B36-83EE-7F716B5398D5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestConsole", "TestConsole\TestConsole.csproj", "{0C22C06B-86F9-40DE-AD5A-2D2297077C2D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -85,6 +87,14 @@ Global
 		{0C22C06B-86F9-40DE-AD5A-2D2297077C2D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0C22C06B-86F9-40DE-AD5A-2D2297077C2D}.Release|x64.ActiveCfg = Release|Any CPU
 		{0C22C06B-86F9-40DE-AD5A-2D2297077C2D}.Release|x64.Build.0 = Release|Any CPU
+		{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE}.Debug|x64.Build.0 = Debug|Any CPU
+		{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE}.Release|x64.ActiveCfg = Release|Any CPU
+		{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

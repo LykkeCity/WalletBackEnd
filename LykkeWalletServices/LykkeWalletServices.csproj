@@ -123,6 +123,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
     </Compile>
+    <Compile Include="SrvFeeUpdater.cs" />
     <Compile Include="SrvQueueReader.cs" />
     <Compile Include="TransactionsToBeSigned.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>

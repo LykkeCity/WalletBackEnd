@@ -31,7 +31,14 @@ namespace LykkeWalletServices
         */
 
         public const uint MinimumRequiredSatoshi = 50000; // 100000000 satoshi is one BTC
-        public const uint TransactionSendFeesInSatoshi = 10000;
+        public static uint TransactionSendFeesInSatoshi
+        {
+            get;
+            set;
+        }
+
+        public const uint DefaultTransactionSendFeesInSatoshi = 20000;
+        public const int MinimumTransactionSendFeesInSatoshi = 10000;
         public const ulong BTCToSathoshiMultiplicationFactor = 100000000;
         public const uint ConcurrencyRetryCount = 3;
         public const uint NBitcoinColoredCoinOutputInSatoshi = 2730;
@@ -284,7 +291,7 @@ namespace LykkeWalletServices
                     }
                 }
 
-                estimatedFee = builder.EstimateFees(tx, GetFeeRate());
+                estimatedFee = builder.EstimateFees(tx, await GetFeeRate());
             }
 
             var requiredFee = estimatedFee + requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi;
@@ -1028,9 +1035,55 @@ namespace LykkeWalletServices
         #region OtherUsefulFunctions
         // This is written as a function instead of a constant since we may need to change the implementation
         // to adaptable one in future
-        public static FeeRate GetFeeRate()
+        public static async Task<FeeRate> GetFeeRate()
         {
+            if (TransactionSendFeesInSatoshi == 0)
+            {
+                if ((TransactionSendFeesInSatoshi = await UpdateFeeRateFromInternet()) == 0)
+                {
+                    TransactionSendFeesInSatoshi = DefaultTransactionSendFeesInSatoshi;
+                }
+            }
             return new FeeRate(new Money(TransactionSendFeesInSatoshi));
+        }
+
+        public class TwentyOneFeeReport
+        {
+            public int fastestFee
+            {
+                get;
+                set;
+            }
+
+            public int halfHourFee
+            {
+                get;
+                set;
+            }
+
+            public int hourFee
+            {
+                get;
+                set;
+            }
+        }
+
+        public static async Task<uint> UpdateFeeRateFromInternet()
+        {
+            string url = "https://bitcoinfees.21.co/api/v1/fees/recommended";
+            try
+            {
+                using (HttpClient webClient = new HttpClient())
+                {
+                    var str = await webClient.GetStringAsync(url);
+                    var deserialize = JsonConvert.DeserializeObject<TwentyOneFeeReport>(str);
+                    return (uint)Math.Max(deserialize.hourFee * 1000, MinimumTransactionSendFeesInSatoshi);
+                }
+            }
+            catch (Exception e)
+            {
+                return Math.Max(TransactionSendFeesInSatoshi, MinimumTransactionSendFeesInSatoshi);
+            }
         }
 
         public static TransactionBuilder BuildHalfOfSwap(this TransactionBuilder builder, BitcoinSecret[] secret, ScriptCoin[] uncoloredCoins, ColoredCoin[] coloredCoins, BitcoinScriptAddress destAddress,

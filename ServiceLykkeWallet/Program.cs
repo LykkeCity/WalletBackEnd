@@ -60,6 +60,10 @@ namespace ServiceLykkeWallet
 
             srvQueueReader.Start();
 
+            var srvFeeUpdater = new SrvFeeUpdater(log);
+            srvFeeUpdater.Start();
+
+
             Console.WriteLine("Queue reader is started");
 
            /*
