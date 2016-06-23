@@ -10,8 +10,7 @@ namespace LykkeWalletServices
 {
     public class SrvFeeUpdater : TimerPeriod
     {
-        //public SrvFeeUpdater(ILog log) : base ("SrvFeeUpdater", 60 * 60 * 1000, log)
-        public SrvFeeUpdater(ILog log) : base("SrvFeeUpdater", 10 * 1000, log)
+        public SrvFeeUpdater(ILog log) : base ("SrvFeeUpdater", 60 * 60 * 1000, log)
         {
         }
 

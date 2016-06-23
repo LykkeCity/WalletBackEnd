@@ -1,11 +1,4 @@
-﻿using NBitcoin;
-using NUnit.Framework;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft;
+﻿using NUnit.Framework;
 
 namespace Lykkex.WalletBackend.Tests.GenerateFeeOutputs
 {

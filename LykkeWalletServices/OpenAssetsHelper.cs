@@ -533,7 +533,8 @@ namespace LykkeWalletServices
             if (!string.IsNullOrEmpty(assetId))
             {
                 float total = GetAssetBalance(outputs, assetId, multiplyFactor, getMinimumConfirmationNumber);
-                if (total >= assetAmount)
+
+                if (Math.Abs(total - assetAmount) >= 0)
                 {
                     return true;
                 }
@@ -1654,7 +1655,7 @@ namespace LykkeWalletServices
             return new Tuple<float, bool, string>(balance, errorOccured, errorMessage);
         }
 
-        private static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
+        public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
             Network network, Func<int> getMinimumConfirmationNumber = null)
         {
             bool errorOccured = false;

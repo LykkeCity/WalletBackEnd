@@ -1,21 +1,20 @@
-﻿using AzureRepositories;
-using AzureStorage;
+﻿using AzureStorage;
 using Common;
+using Core;
+using LykkeWalletServices;
+using Lykkex.WalletBackend.Tests.GenerateFeeOutputs;
 using NBitcoin;
-using NBitcoin.RPC;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
-using System.Threading.Tasks;
-using Core;
-using LykkeWalletServices;
 using System.Linq;
-using Lykkex.WalletBackend.Tests.CashIn;
-using Lykkex.WalletBackend.Tests.GenerateIssuerOutputs;
-using System.Threading;
-using Lykkex.WalletBackend.Tests.GenerateFeeOutputs;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Tests;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace Lykkex.WalletBackend.Tests
 {
@@ -92,6 +91,24 @@ namespace Lykkex.WalletBackend.Tests
             get;
             set;
         }
+
+        public Network Network
+        {
+            get;
+            set;
+        }
+
+        public string ExchangePrivateKey
+        {
+            get;
+            set;
+        }
+
+        public string QBitNinjaBaseUrl
+        {
+            get;
+            set;
+        }
     }
 
     public class GenerateMassOutputsModel : BaseRequestModel
@@ -130,9 +147,9 @@ namespace Lykkex.WalletBackend.Tests
         }
     }
 
-        public class TaskTestsCommon
+    public class TaskTestsCommon
     {
-        public Settings Settings
+        public static Settings Settings
         {
             get;
             set;
@@ -141,8 +158,8 @@ namespace Lykkex.WalletBackend.Tests
         public static BitcoinAddress MassBitcoinHolder = Base58Data.GetFromBase58Data("mxMh2btve8BKNmPj18SkWtmaegzmM3kDtm") as BitcoinAddress;
         public const string MassBitcoinHolderPrivateKey = "cVn1XQLBwcxcaBw4FDctsYfHWqCLdQaLQz8vh5mouXw4iK6DKnPx";
 
-        public AzureQueueExt QueueReader = null;
-        public AzureQueueExt QueueWriter = null;
+        public static AzureQueueExt QueueReader = null;
+        public static AzureQueueExt QueueWriter = null;
 
         public class TransactionResponseBase
         {
@@ -195,37 +212,35 @@ namespace Lykkex.WalletBackend.Tests
             }
         }
 
-        public static void ClearDB(Settings settings)
-        {
-            using (SqlexpressLykkeEntities entities
-                = new SqlexpressLykkeEntities(settings.DBConnectionString))
-            {
-                entities.EmailMessages.RemoveRange(entities.EmailMessages.Select(c => c));
-                entities.ExchangeRequests.RemoveRange(entities.ExchangeRequests.Select(c => c));
-                entities.RefundedOutputs.RemoveRange(entities.RefundedOutputs.Select(c => c));
-                entities.RefundTransactions.RemoveRange(entities.RefundTransactions.Select(c => c));
-                entities.SentTransactions.RemoveRange(entities.SentTransactions.Select(c => c));
-                entities.PreGeneratedOutputs.RemoveRange(entities.PreGeneratedOutputs.Select(c => c));
-                entities.SpentOutputs.RemoveRange(entities.SpentOutputs.Select(c => c));
-                entities.KeyStorages.RemoveRange(entities.KeyStorages.Select(c => c));
-                entities.SaveChanges();
-            }
-        }
+        
 
-        public void InitializeBitcoinNetwork(Settings settings)
+        public async Task InitializeBitcoinNetwork(Settings settings)
         {
-            SendBTC(settings,
+            await GenerateBlocks(Settings, 101);
+
+            var txId = await SendBTC(settings,
                     MassBitcoinHolder,
-                    0.5f).Wait();
-            GenerateBlocks(settings, 1).Wait();
-            Thread.Sleep(10000);
+                    0.5f);
+            var blocks = await GenerateBlocks(settings, 1);
+            await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexed, new string[] { txId }, MassBitcoinHolder.ToWif());
 
-            GenerateIssuerOutputsModel generateIssuers = new GenerateIssuerOutputsModel { AssetName = "TestExchangeUSD",
-                FeeAmount = 0.0000273f, Count = 50, PrivateKey = MassBitcoinHolderPrivateKey,
-                TransactionId = "10", WalletAddress = MassBitcoinHolder.ToWif() };
-            CreateLykkeWalletRequestAndProcessResult<GenerateIssuerOutputsResponse>("GenerateIssuerOutputs", generateIssuers, QueueReader, QueueWriter);
-            GenerateBlocks(settings, 1).Wait();
-            Thread.Sleep(10000);
+
+            GenerateIssuerOutputsModel generateIssuers = new GenerateIssuerOutputsModel
+            {
+                AssetName = "TestExchangeUSD",
+                FeeAmount = 0.0000273f,
+                Count = 50,
+                PrivateKey = MassBitcoinHolderPrivateKey,
+                TransactionId = "10",
+                WalletAddress = MassBitcoinHolder.ToWif()
+            };
+            var generateIssuersOutputResponse = await CreateLykkeWalletRequestAndProcessResult<GenerateIssuerOutputsResponse>
+                ("GenerateIssuerOutputs", generateIssuers, QueueReader, QueueWriter);
+            await GenerateBlocks(settings, 1);
+            await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
+                new string[] { generateIssuersOutputResponse.Result.TransactionHash }, null);
+            await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexed,
+                new string[] { generateIssuersOutputResponse.Result.TransactionHash }, MassBitcoinHolder.ToWif());
 
             GenerateFeeOutputsModel generateFees = new GenerateFeeOutputsModel
             {
@@ -235,52 +250,13 @@ namespace Lykkex.WalletBackend.Tests
                 TransactionId = "10",
                 WalletAddress = MassBitcoinHolder.ToWif()
             };
-            CreateLykkeWalletRequestAndProcessResult<GenerateFeeOutputsResponse>("GenerateFeeOutputs", generateFees, QueueReader, QueueWriter);
-            GenerateBlocks(settings, 1).Wait();
-        }
-
-        [OneTimeSetUp]
-        public void TestFixtureSetup()
-        {
-            Settings = ReadAppSettings();
-
-            ClearDB(Settings);
-
-            Startup(Settings);
-            GenerateBlocks(Settings, 101).Wait();
-            QueueReader = new AzureQueueExt(Settings.InQueueConnectionString, "outdata");
-            QueueWriter = new AzureQueueExt(Settings.OutQueueConnectionString, "indata");
-
-            QueueReader.RegisterTypes(
-                QueueType.Create("GenerateNewWallet", typeof(GenerateNewWalletResponse)),
-                QueueType.Create("CashIn", typeof(CashInResponse)),
-                QueueType.Create("OrdinaryCashIn", typeof(TaskToDoOrdinaryCashIn)),
-                QueueType.Create("CashOut", typeof(TaskToDoCashOut)),
-                QueueType.Create("CashOutSeparateSignatures", typeof(TaskToDoCashOutSeparateSignatures)),
-                QueueType.Create("OrdinaryCashOut", typeof(TaskToDoOrdinaryCashOut)),
-                QueueType.Create("GetCurrentBalance", typeof(GetCurrentBalanceResponse)),
-                QueueType.Create("Swap", typeof(TaskToDoSwap)),
-                QueueType.Create("GetBalance", typeof(TaskToDoGetBalance)),
-                QueueType.Create("DepositWithdraw", typeof(TaskToDoDepositWithdraw)),
-                QueueType.Create("Exchange", typeof(TaskToDoSendAsset)),
-                QueueType.Create("GenerateFeeOutputs", typeof(GenerateFeeOutputsResponse)),
-                QueueType.Create("GenerateIssuerOutputs", typeof(GenerateIssuerOutputsResponse)),
-                QueueType.Create("Transfer", typeof(TaskToDoTransfer)),
-                QueueType.Create("GetIssuersOutputStatus", typeof(TaskToDoGetIssuersOutputStatus)),
-                QueueType.Create("GetFeeOutputsStatus", typeof(TaskToDoGetFeeOutputsStatus)),
-                QueueType.Create("GenerateRefundingTransaction", typeof(TaskToDoGenerateRefundingTransaction)),
-                QueueType.Create("GetInputWalletAddresses", typeof(TaskToDoGetInputWalletAddresses)),
-                QueueType.Create("UpdateAssets", typeof(TaskToDoUpdateAssets)),
-                QueueType.Create("GetExpiredUnclaimedRefundingTransactions", typeof(TaskToDoGetExpiredUnclaimedRefundingTransactions))
-                );
-
-            InitializeBitcoinNetwork(Settings);
-        }
-
-        [OneTimeTearDown]
-        public void TestFixtureTeardown()
-        {
-            TearDown(Settings);
+            var generateFeeOutputResponse = await CreateLykkeWalletRequestAndProcessResult<GenerateFeeOutputsResponse>
+                ("GenerateFeeOutputs", generateFees, QueueReader, QueueWriter);
+            await GenerateBlocks(settings, 1);
+            await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
+                new string[] { generateFeeOutputResponse.Result.TransactionHash }, null);
+            await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexed,
+                new string[] { generateFeeOutputResponse.Result.TransactionHash }, MassBitcoinHolder.ToWif());
         }
 
         public static Settings ReadAppSettings()
@@ -299,10 +275,13 @@ namespace Lykkex.WalletBackend.Tests
             settings.InQueueConnectionString = config.AppSettings.Settings["InQueueConnectionString"].Value;
             settings.OutQueueConnectionString = config.AppSettings.Settings["OutQueueConnectionString"].Value;
             settings.DBConnectionString = config.AppSettings.Settings["DBConnectionString"].Value;
+            settings.ExchangePrivateKey = config.AppSettings.Settings["ExchangePrivateKey"].Value;
+            settings.Network = config.AppSettings.Settings["Network"].Value.ToLower().Equals("main") ? Network.Main : Network.TestNet;
+            settings.QBitNinjaBaseUrl = config.AppSettings.Settings["QBitNinjaBaseUrl"].Value;
             return settings;
         }
 
-        public static RPCClient GetRPCClient(Settings setting)
+        public static LykkeExtenddedRPCClient GetRPCClient(Settings setting)
         {
             UriBuilder builder = new UriBuilder();
             builder.Host = setting.RegtestRPCIP;
@@ -310,19 +289,22 @@ namespace Lykkex.WalletBackend.Tests
             builder.Port = setting.RegtestPort;
             var uri = builder.Uri;
 
-            return new RPCClient(new System.Net.NetworkCredential(setting.RegtestRPCUsername, setting.RegtestRPCPassword),
+            return new LykkeExtenddedRPCClient(new System.Net.NetworkCredential(setting.RegtestRPCUsername, setting.RegtestRPCPassword),
                 uri);
         }
 
-        public static bool PerformShellCommandAndLeave(string commandName, string commandParams,
-            out Process startedProcess, string workingDiectory = null, string waitForString = null)
+        public async static Task<bool> PerformShellCommandAndLeave(string commandName, string commandParams,
+            Action<Process> processStartedCallback, string workingDiectory = null, string waitForString = null, bool redirectOutput = true)
         {
             bool exitFromMethod = false;
 
             ProcessStartInfo processStartInfo = new ProcessStartInfo();
-            processStartInfo.RedirectStandardOutput = true;
-            processStartInfo.RedirectStandardError = true;
-            processStartInfo.UseShellExecute = false;
+            if (!string.IsNullOrEmpty(waitForString))
+            {
+                processStartInfo.RedirectStandardOutput = true;
+                processStartInfo.RedirectStandardError = true;
+                processStartInfo.UseShellExecute = false;
+            }
             processStartInfo.FileName = commandName;
             processStartInfo.Arguments = commandParams;
             if (!string.IsNullOrEmpty(workingDiectory))
@@ -360,7 +342,7 @@ namespace Lykkex.WalletBackend.Tests
             p.StartInfo = processStartInfo;
             p.Start();
 
-            startedProcess = p;
+            processStartedCallback(p);
 
             if (!string.IsNullOrEmpty(waitForString))
             {
@@ -369,7 +351,7 @@ namespace Lykkex.WalletBackend.Tests
                 var counter = 0;
                 while (!exitFromMethod)
                 {
-                    Thread.Sleep(1000);
+                    await Task.Delay(1000);
                     counter++;
                     if (counter > 30)
                     {
@@ -433,80 +415,114 @@ namespace Lykkex.WalletBackend.Tests
             }
         }
 
-        public static bool ClearAzureTables(string emulatorPath)
+        public async Task<bool> HasBalanceIndexed(Settings settings, string txId, string btcAddress)
         {
-            var commandName = emulatorPath + "AzureStorageEmulator";
-            var commandParams = "clear table";
+            using (HttpClient client = new HttpClient())
+            {
+                string url = null;
+                var exists = false;
+                url = settings.QBitNinjaBaseUrl + "balances/" + btcAddress + "?headeronly=true";
+                HttpResponseMessage result = await client.GetAsync(url);
+                if (!result.IsSuccessStatusCode)
+                {
+                    return false;
+                }
+                else
+                {
+                    var webResponse = await result.Content.ReadAsStringAsync();
+                    var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                        (webResponse);
+                    if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
+                    {
+                        notProcessedUnspentOutputs.operations.ForEach((o) =>
+                        {
+                            exists = o.receivedCoins
+                           .Where(c => c.transactionId.Equals(txId) && o.confirmations > 0)
+                           .Any() | exists;
+                            if (exists)
+                            {
+                                return;
+                            }
+                        });
+                    }
 
-            return PerformShellCommandAndExit(commandName, commandParams);
+                    return exists;
+                }
+            }
         }
 
-        public static bool EmptyBitcoinDirectiry(Settings settings)
+        public static async Task<bool> IsUrlSuccessful(string url)
         {
-            var dirPath = settings.BitcoinWorkingPath + "\\data";
             try
             {
-                if (Directory.Exists(dirPath))
+                using (HttpClient client = new HttpClient())
                 {
-                    Directory.Delete(dirPath, true);
-                }
-                Directory.CreateDirectory(dirPath);
-            }
-            catch (Exception e)
-            {
-                return false;
-            }
-            return true;
-        }
 
-        public static bool StartClearVersionOfBitcoinRegtest(Settings settings)
-        {
-            if (!EmptyBitcoinDirectiry(settings))
-            {
-                return false;
-            }
-
-            var bitcoinPath = settings.BitcoinDaemonPath + "\\bitcoind.exe";
-
-            Process bitcoinProcess = null;
-            PerformShellCommandAndLeave(bitcoinPath, GetBitcoinConfParam(settings), out bitcoinProcess);
-
-            int count = 0;
-            var rpcClient = GetRPCClient(settings);
-            while (true)
-            {
-                try
-                {
-                    rpcClient.GetBlockCount();
-                    return true;
-                }
-                catch (Exception e)
-                {
-                    Thread.Sleep(1000);
-                    count++;
-                    if (count > 30)
+                    HttpResponseMessage result = await client.GetAsync(url);
+                    if (!result.IsSuccessStatusCode)
                     {
                         return false;
                     }
+                    else
+                    {
+                        return true;
+                    }
                 }
             }
-        }
-
-        public static async Task<bool> GenerateBlocks(Settings settings, int count)
-        {
-            var rpcClient = GetRPCClient(settings);
-            RPCResponse response = await rpcClient.SendCommandAsync("generate", new object[] { count });
-            if (response.Error != null)
-            {
-                return false;
-            }
-            else
+            catch (Exception)
             {
                 return true;
             }
         }
 
-        public static async Task<string> SendBTC(Settings settings, BitcoinAddress destination, float amount)
+        public async Task<bool> HasTransactionIndexed(Settings settings, string txId, string dummy)
+        {
+            string url = settings.QBitNinjaBaseUrl + "transactions/" + txId + "?headeronly=true";
+            return await IsUrlSuccessful(url);
+        }
+
+        public async Task<bool> HasBlockIndexed(Settings settings, string blockId, string dummy)
+        {
+            string url = settings.QBitNinjaBaseUrl + "blocks/" + blockId + "?headeronly=true";
+            return await IsUrlSuccessful(url);
+        }
+
+        public async Task WaitUntillQBitNinjaHasIndexed(Settings settings,
+            Func<Settings, string, string, Task<bool>> checkIndexed, IEnumerable<string> ids, string id2 = null)
+        {
+            var indexed = false;
+            foreach (var id in ids)
+            {
+                indexed = false;
+                for (int i = 0; i < 30; i++)
+                {
+                    if (await checkIndexed(settings, id, id2))
+                    {
+                        indexed = true;
+                        break;
+                    }
+                    else
+                    {
+                        await Task.Delay(1000);
+                    }
+                }
+
+                if (!indexed)
+                {
+                    throw new Exception(string.IsNullOrEmpty(id2) ? string.Format("Item with id: {0} did not get indexed yet.", id) : string.Format("Item with id: {0} did not get indexed yet. Provided id2 is {1}", id, id2));
+                }
+            }
+        }
+
+        public async Task<IEnumerable<string>> GenerateBlocks(Settings settings, int count)
+        {
+            var rpcClient = GetRPCClient(settings);
+            var response = await rpcClient.GenerateBlocksAsync(count);
+            await WaitUntillQBitNinjaHasIndexed(settings, HasBlockIndexed, response);
+            return response;
+        }
+
+        public async Task<string> SendBTC(Settings settings, BitcoinAddress destination, float amount)
         {
             var rpcClient = GetRPCClient(settings);
             uint256 response = null;
@@ -518,87 +534,15 @@ namespace Lykkex.WalletBackend.Tests
             {
                 return null;
             }
+            await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed, new string[] { response.ToString() });
             return response.ToString();
         }
 
-        private static string GetBitcoinCliExecPath(Settings settings)
-        {
-            return settings.BitcoinDaemonPath + "\\bitcoin-cli.exe";
-        }
-
-        private static string GetBitcoinConfParam(Settings settings)
-        {
-            return String.Format("-conf=\"{0}\"", settings.BitcoinWorkingPath + "\\bitcoin.conf");
-        }
-
-        private static bool StopBitcoinServer(Settings settings)
-        {
-            string commandName = GetBitcoinCliExecPath(settings);
-            string commandParams = GetBitcoinConfParam(settings) + " stop";
-            return PerformShellCommandAndExit(commandName, commandParams);
-        }
-
-        private static Process QBitNinjaProcess = null;
-        private static Process WalletBackendProcess = null;
-
-        private static bool StartQBitNinjaListener(Settings settings)
-        {
-            var command = settings.QBitNinjaListenerConsolePath + "\\QBitNinja.Listener.Console.exe";
-            var commandParams = "--Listen";
-            return PerformShellCommandAndLeave(command, commandParams, out QBitNinjaProcess);
-        }
-
-        private static bool StartWalletBackend(Settings settings)
-        {
-            var command = settings.WalletBackendExecutablePath + "\\ServiceLykkeWallet.exe";
-            return PerformShellCommandAndLeave(command, null, out WalletBackendProcess,
-                settings.WalletBackendExecutablePath, "Queue reader is started");
-        }
-
-        private static void Startup(Settings settings)
-        {
-
-            var success = ClearAzureTables(settings.AzureStorageEmulatorPath);
-            if (success)
-            {
-                success = StartClearVersionOfBitcoinRegtest(settings);
-                if (success)
-                {
-                    success = StartQBitNinjaListener(settings);
-                    if (success)
-                    {
-                        success = StartWalletBackend(settings);
-                    }
-                }
-            }
-
-            if (!success)
-            {
-                throw new Exception("Startup was not successful.");
-            }
-        }
-
-        private static void FinishQBitNinjaListener()
-        {
-            QBitNinjaProcess.Kill();
-            WalletBackendProcess.Kill();
-        }
-
-        private static void TearDown(Settings settings)
-        {
-            FinishQBitNinjaListener();
-            bool success = StopBitcoinServer(settings);
-            if (!success)
-            {
-                throw new Exception("Teardown was not successful.");
-            }
-        }
-
-        public static T CreateLykkeWalletRequestAndProcessResult<T>(string opName, object param, AzureQueueExt QueueReader, AzureQueueExt QueueWriter) where T : TransactionResponseBase
+        public async static Task<T> CreateLykkeWalletRequestAndProcessResult<T>(string opName, object param, AzureQueueExt QueueReader, AzureQueueExt QueueWriter) where T : TransactionResponseBase
         {
             var requestString = string.Format("{0}:{1}", opName, Newtonsoft.Json.JsonConvert.SerializeObject(param));
-            QueueWriter.PutMessageAsync(requestString).Wait();
-            var reply = GetReturnReply<T>(QueueReader);
+            await QueueWriter.PutMessageAsync(requestString);
+            var reply = await GetReturnReply<T>(QueueReader);
             if (reply == null)
             {
                 throw new Exception(string.Format("{0} reply is null.", opName));
@@ -611,20 +555,20 @@ namespace Lykkex.WalletBackend.Tests
             return reply;
         }
 
-        public static T GetReturnReply<T>(AzureQueueExt QueueReader)
+        public async static Task<T> GetReturnReply<T>(AzureQueueExt QueueReader)
         {
             object message = null;
             int count = 0;
             while (true)
             {
-                message = QueueReader.GetMessage();
+                message = await QueueReader.GetMessageAsync();
                 if (message != null)
                 {
                     return (T)message;
                 }
                 count++;
-                Thread.Sleep(1000);
-                if (count > 30)
+                await Task.Delay(1000);
+                if (count > 60)
                 {
                     return default(T);
                 }
