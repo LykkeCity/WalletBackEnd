@@ -1,0 +1,2 @@
+﻿This is the dummy listener used to replace the LykkeJobs for testing; It is called when after broadcasting transaction to bitcoin network, LykkeJobs is notified.
+It should response to with no error: curl -X Post http://localhost:8088/HandledTx -H "Content-Type: application/json" -d "{\"TransactionId\" : \"transactionId\", \"BlockchainHash\" : \"blockchainHash\",\"Operation\" : \"Transfer\" }"
