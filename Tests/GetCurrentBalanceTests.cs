@@ -1,6 +1,7 @@
 ﻿using NUnit.Framework;
 using System.Linq;
 using System.Threading.Tasks;
+using NBitcoin;
 
 namespace Lykkex.WalletBackend.Tests
 {
@@ -31,6 +32,24 @@ namespace Lykkex.WalletBackend.Tests
                 QueueReader, QueueWriter);
 
             return reply.Result.ResultArray.Where(item => item.Asset == assetName).FirstOrDefault()?.Amount ?? -1;
+        }
+
+        [Test]
+        public async Task TestWhenContinuationOfQBitNinjaGetsActive()
+        {
+            var multisig = Base58Data.GetFromBase58Data("2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo")
+                as BitcoinAddress;
+            string[] txId = new string[500];
+            for (int i = 0; i < txId.Count(); i++)
+            {
+                txId[i] = await SendBTC(Settings, multisig, 0.0001f);
+            }
+
+            var dummyTxId = await SendBTC(Settings, MassBitcoinHolder, 0.0001f);
+
+            await GenerateBlocks(Settings, 1);
+            await WaitUntillQBitNinjaHasIndexed(Settings, HasBalanceIndexed,
+                new string[] { dummyTxId }, multisig.ToWif());
         }
     }
 }

@@ -136,11 +136,11 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         IDestination dest = null;
                                         if(string.IsNullOrEmpty(data.RefundAddress))
                                         {
-                                            dest = Base58Data.GetFromBase58Data(multiSig.WalletAddress, Network) as BitcoinAddress;
+                                            dest = OpenAssetsHelper.GetBitcoinAddressFormBase58Date(multiSig.WalletAddress);
                                         }
                                         else
                                         {
-                                            dest = Base58Data.GetFromBase58Data(data.RefundAddress, Network) as BitcoinAddress;
+                                            dest = OpenAssetsHelper.GetBitcoinAddressFormBase58Date(data.RefundAddress);
                                         }
 
                                         TransactionBuilder builder = new TransactionBuilder();

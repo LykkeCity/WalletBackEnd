@@ -33,7 +33,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     }
                     else
                     {
-                        var dest = Base58Data.GetFromBase58Data(data.PublicWallet, Network) as BitcoinAddress;
+                        var dest = OpenAssetsHelper.GetBitcoinAddressFormBase58Date(data.PublicWallet);
                         if (dest == null)
                         {
                             error = new Error();

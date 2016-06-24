@@ -24,7 +24,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             {
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
-                    var sourceAddress = Base58Data.GetFromBase58Data(data.SourceAddress, Network) as BitcoinAddress;
+                    var sourceAddress = OpenAssetsHelper.GetBitcoinAddressFormBase58Date(data.SourceAddress);
                     if (sourceAddress == null)
                     {
                         error = new Error();
@@ -33,7 +33,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     }
                     else
                     {
-                        var destAddress = Base58Data.GetFromBase58Data(data.DestinationAddress, Network) as BitcoinAddress;
+                        var destAddress = OpenAssetsHelper.GetBitcoinAddressFormBase58Date(data.DestinationAddress);
                         if (destAddress == null)
                         {
                             error = new Error();

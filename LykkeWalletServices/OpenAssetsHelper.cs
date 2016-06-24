@@ -1266,6 +1266,11 @@ namespace LykkeWalletServices
         public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
         {
             KeyStorage ret = null;
+            var base58Data = Base58Data.GetFromBase58Data(multiSigAddress);
+            if (base58Data is BitcoinColoredAddress)
+            {
+                multiSigAddress = (base58Data as BitcoinColoredAddress).Address.ToWif();
+            }
             ret = await (from item in entities.KeyStorages
                          where item.MultiSigAddress.Equals(multiSigAddress)
                          select item).SingleOrDefaultAsync();
@@ -1326,6 +1331,20 @@ namespace LykkeWalletServices
         public static void FixEfProviderServicesProblem()
         {
             var instance = System.Data.SQLite.EF6.SQLiteProviderFactory.Instance;
+        }
+
+        public static BitcoinAddress GetBitcoinAddressFormBase58Date(string base58Data)
+        {
+            var base58Decoded = Base58Data.GetFromBase58Data(base58Data);
+            var address = base58Decoded as BitcoinAddress;
+            if (address != null)
+            {
+                return address;
+            }
+            else
+            {
+                return (base58Decoded as BitcoinColoredAddress)?.Address;
+            }
         }
 
         #endregion
