@@ -103,6 +103,7 @@ If MultisigAddress is null (not passed), appropriate transactions for all addres
 
 | Name | Defaul Value | Description |
 |------|--------------|-------------|
+|RestEndPoint|Nothing|The web endpoint used to submit requests|
 |InQueueConnectionString|UseDevelopmentStorage=true|The connection string for the input queue, the default is for the emulator|
 |OutQueueConnectionString|UseDevelopmentStorage=true|The connection string for the output queue, the default is for the emulator|
 |ConnectionString|Nothing|The connection string to sqlite database|
@@ -121,6 +122,7 @@ If MultisigAddress is null (not passed), appropriate transactions for all addres
 |SwapMinimumConfirmationNumber|0|Minimum number of confirmations required to consider the transaction as final for the swap operation (optional).|
 |BroadcastGroup|400|The Broadcast Group used to send the email for insufficient fee outputs to (optional).|
 |EnvironmentName|null|The name environment in which the program is being runned, for example test or production.|
+|PrivateKeyWillBeSubmitted|false|If the private key will be submitted through POST via url [RestEndPoint]/PrivateKey/Add |
 
 The AssetDefinitions is an array of json, with the following fields:
 
@@ -131,6 +133,7 @@ The AssetDefinitions is an array of json, with the following fields:
 |PrivateKey|Private key of the asset used while issuing the asset|
 |DefinitionUrl|The asset definition url, used while issuing the asset|
 |Divisibility|Number of decimal places for the asset|
+
 
 
 *   The exchange private key could be generated using TestConsole project, Program.cs, function TestBitcoinScripts, for the configured Main or TestNet.

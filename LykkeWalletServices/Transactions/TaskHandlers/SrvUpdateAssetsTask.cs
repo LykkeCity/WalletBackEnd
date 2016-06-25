@@ -75,6 +75,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 get;
                 set;
             }
+
+            [DefaultValue(false)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public bool PrivateKeyWillBeSubmitted
+            {
+                get;
+                set;
+            }
         }
 
         public static async Task<TheSettings> ReadAppSettins(bool logToConsole = true)

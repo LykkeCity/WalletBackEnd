@@ -21,6 +21,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
         public async Task<Tuple<GenerateNewWalletTaskResult, Error>> ExecuteTask()
         {
+            if(OpenAssetsHelper.PrivateKeyWillBeSubmitted)
+            {
+                Error notSupportedError = new Error();
+                notSupportedError.Code = ErrorCode.OperationNotSupported;
+                notSupportedError.Message = "This fuction is no longer supported. Wallets are generated in client.";
+                return new Tuple<GenerateNewWalletTaskResult, Error>(null, notSupportedError);
+            }
+
             GenerateNewWalletTaskResult result = null;
             string walletAddress = null;
             string coloredWalletAddress = null;

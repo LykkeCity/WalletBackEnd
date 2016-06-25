@@ -91,6 +91,12 @@ namespace LykkeWalletServices
             set;
         }
 
+        public static bool PrivateKeyWillBeSubmitted
+        {
+            get;
+            set;
+        }
+
         public static IQueueExt EmailQueueWriter
         {
             get;
@@ -113,6 +119,22 @@ namespace LykkeWalletServices
         }
 
         private readonly static Func<int> DefaultGetMinimumConfirmationNumber = (() => { return MinimumNumberOfRequiredConfirmations; });
+
+        public static IDictionary<string, string> P2PKHDictionary = new Dictionary<string, string>();
+        public static IDictionary<string, string> MultisigDictionary = new Dictionary<string, string>();
+        public static IDictionary<string, string> MultisigScriptDictionary = new Dictionary<string, string>();
+
+        public static string ExchangePrivateKey
+        {
+            get;
+            set;
+        }
+
+        public static Network Network
+        {
+            get;
+            set;
+        }
 
         #region UniversalUnspentPropertyProxyFunctions
         public static long GetValue(this UniversalUnspentOutput output)
@@ -877,9 +899,15 @@ namespace LykkeWalletServices
                                         o.GetValue(), new Script(StringToByteArray(o.GetScriptHex()))));
                                     TransactionBuilder builder = new TransactionBuilder();
                                     //builder.DustPrevention = false;
-                                    builder
-                                        .AddKeys(new BitcoinSecret(data.PrivateKey))
-                                        .AddCoins(sourceCoins);
+                                    if (PrivateKeyWillBeSubmitted)
+                                    {
+                                        builder.AddKeys(new BitcoinSecret(GetPrivateKeyForAddress(data.WalletAddress)));
+                                    }
+                                    else
+                                    {
+                                        builder.AddKeys(new BitcoinSecret(data.PrivateKey));
+                                    }
+                                    builder.AddCoins(sourceCoins);
                                     builder.SetChange(new BitcoinPubKeyAddress(data.WalletAddress, network));
                                     for (int i = 0; i < data.Count; i++)
                                     {
@@ -1034,6 +1062,22 @@ namespace LykkeWalletServices
         #endregion
 
         #region OtherUsefulFunctions
+        public static void AddPrivateKey(string privateKey)
+        {
+            var secret = new BitcoinSecret(privateKey);
+            var p2pkhAddr = secret.GetAddress();
+            if (P2PKHDictionary.ContainsKey(p2pkhAddr.ToString()))
+            {
+                return;
+            }
+            var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
+                (new BitcoinSecret(ExchangePrivateKey)).PubKey });
+            var multiSigAddressStorage = multiSigAddress.GetScriptAddress(Network).ToString();
+
+            MultisigDictionary.AddThreadSafe(multiSigAddressStorage, privateKey);
+            MultisigScriptDictionary.AddThreadSafe(multiSigAddressStorage, multiSigAddress.ToString());
+            P2PKHDictionary.AddThreadSafe(p2pkhAddr.ToWif(), privateKey);
+        }
         // This is written as a function instead of a constant since we may need to change the implementation
         // to adaptable one in future
         public static async Task<FeeRate> GetFeeRate()
@@ -1263,17 +1307,71 @@ namespace LykkeWalletServices
                 return f;
             }
         }
+
+        public static string GetPrivateKeyForAddress(string address)
+        {
+            Exception exp = new Exception("Could not find a matching record for address: "
+                    + address);
+            var parsedAddr = Base58Data.GetFromBase58Data(address);
+            if (parsedAddr is BitcoinColoredAddress)
+            {
+                parsedAddr = ((BitcoinColoredAddress)parsedAddr).Address;
+            }
+            if (parsedAddr is BitcoinAddress)
+            {
+                if (P2PKHDictionary.ContainsKey(address))
+                {
+                    return P2PKHDictionary[address];
+                }
+                else
+                {
+                    throw exp;
+                }
+            }
+            if (parsedAddr is BitcoinScriptAddress)
+            {
+                if (MultisigDictionary.ContainsKey(address))
+                {
+                    return MultisigDictionary[address];
+                }
+                else
+                {
+                    throw exp;
+                }
+            }
+
+            throw new Exception(string.Format("Could not parse the address {0} successfully.", address));
+        }
+
+
         public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
         {
             KeyStorage ret = null;
-            var base58Data = Base58Data.GetFromBase58Data(multiSigAddress);
-            if (base58Data is BitcoinColoredAddress)
+
+            if (PrivateKeyWillBeSubmitted)
             {
-                multiSigAddress = (base58Data as BitcoinColoredAddress).Address.ToWif();
+                if (MultisigDictionary.ContainsKey(multiSigAddress))
+                {
+                    ret = new KeyStorage();
+                    ret.ExchangePrivateKey = ExchangePrivateKey;
+                    ret.MultiSigAddress = multiSigAddress;
+                    ret.MultiSigScript = MultisigScriptDictionary[multiSigAddress];
+                    ret.Network = Network.ToString();
+                    ret.WalletPrivateKey = MultisigDictionary[multiSigAddress];
+                    ret.WalletAddress = (new BitcoinSecret(ret.WalletPrivateKey)).GetAddress().ToWif();
+                }
             }
-            ret = await (from item in entities.KeyStorages
-                         where item.MultiSigAddress.Equals(multiSigAddress)
-                         select item).SingleOrDefaultAsync();
+            else
+            {
+                var base58Data = Base58Data.GetFromBase58Data(multiSigAddress);
+                if (base58Data is BitcoinColoredAddress)
+                {
+                    multiSigAddress = (base58Data as BitcoinColoredAddress).Address.ToWif();
+                }
+                ret = await (from item in entities.KeyStorages
+                             where item.MultiSigAddress.Equals(multiSigAddress)
+                             select item).SingleOrDefaultAsync();
+            }
 
             if (ret == null)
             {

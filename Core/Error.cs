@@ -26,6 +26,7 @@ namespace Core
         PersistantConcurrencyProblem,
         NoCoinsToRefund,
         NoCoinsFound,
-        InvalidAddress
+        InvalidAddress,
+        OperationNotSupported
     }
 }

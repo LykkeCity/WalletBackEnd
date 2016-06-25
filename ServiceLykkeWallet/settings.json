@@ -21,6 +21,7 @@
   "LykkeJobsUrl": "http://localhost:1088/HandledTx/",
   "SwapMinimumConfirmationNumber": null,
   "DefaultNumberOfRequiredConfirmations": null,
+  "PrivateKeyWillBeSubmitted": false,
   "AssetDefinitions": [
     {
       "AssetId": "oXjVb4XRo23tp53QFgVUxLhctPKPt6Q127",

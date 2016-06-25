@@ -73,7 +73,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         .SetChange(sourceAddress, ChangeType.Colored);
                                     if (sourceAddress is BitcoinPubKeyAddress)
                                     {
-                                        builder.AddKeys(new BitcoinSecret(data.SourcePrivateKey, Network));
+                                        if (OpenAssetsHelper.PrivateKeyWillBeSubmitted)
+                                        {
+                                            builder.AddKeys(new BitcoinSecret(OpenAssetsHelper.GetPrivateKeyForAddress(data.SourceAddress)));
+                                        }
+                                        else
+                                        {
+                                            builder.AddKeys(new BitcoinSecret(data.SourcePrivateKey, Network));
+                                        }
                                         if (OpenAssetsHelper.IsRealAsset(data.Asset))
                                         {
                                             builder.AddCoins(((OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)walletCoins).AssetCoins);
@@ -111,7 +118,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                             sourceAddress);
                                         builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 0));
                                     }
-                                        
+
                                     var tx = builder.BuildTransaction(true);
 
                                     var txHash = tx.GetHash().ToString();

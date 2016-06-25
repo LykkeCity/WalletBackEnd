@@ -52,6 +52,9 @@ namespace ServiceLykkeWallet
             {
                 OpenAssetsHelper.MinimumNumberOfRequiredConfirmations = settings.DefaultNumberOfRequiredConfirmations;
             }
+            OpenAssetsHelper.PrivateKeyWillBeSubmitted = settings.PrivateKeyWillBeSubmitted;
+            OpenAssetsHelper.ExchangePrivateKey = settings.exchangePrivateKey;
+            OpenAssetsHelper.Network = settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet;
 
             srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
@@ -65,14 +68,12 @@ namespace ServiceLykkeWallet
 
 
             Console.WriteLine("Queue reader is started");
-
-           /*
+           
             using (WebApp.Start(settings.RestEndPoint))
             {
                 Console.WriteLine($"Http Server started: {settings.RestEndPoint}");
+                Console.ReadLine();
             }
-            */
-            Console.ReadLine();
         }
     }
 }
