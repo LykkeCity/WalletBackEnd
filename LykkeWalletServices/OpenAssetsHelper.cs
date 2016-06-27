@@ -19,16 +19,8 @@ namespace LykkeWalletServices
     {
         public enum APIProvider
         {
-            CoinPrism,
             QBitNinja
         }
-
-        const string coinprismBaseUrl = "https://api.coinprism.com/v1/addresses/";
-        const string coinprismTestnetBaseUrl = "https://testnet.api.coinprism.com/v1/addresses/";
-        /*
-        const string qbitNinjaBaseUrl = "http://localhost:85/balances/";
-        const string qbitNinjaTestnetBaseUrl = "http://localhost:85/balances/";
-        */
 
         public const uint MinimumRequiredSatoshi = 50000; // 100000000 satoshi is one BTC
         public static uint TransactionSendFeesInSatoshi
@@ -39,6 +31,7 @@ namespace LykkeWalletServices
 
         public const uint DefaultTransactionSendFeesInSatoshi = 20000;
         public const int MinimumTransactionSendFeesInSatoshi = 10000;
+        public const int MaximumTransactionSendFeesInSatoshi = 100000;
         public const ulong BTCToSathoshiMultiplicationFactor = 100000000;
         public const uint ConcurrencyRetryCount = 3;
         public const uint NBitcoinColoredCoinOutputInSatoshi = 2730;
@@ -141,8 +134,6 @@ namespace LykkeWalletServices
         {
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    return ((CoinprismUnspentOutput)output).value;
                 case APIProvider.QBitNinja:
                     return ((QBitNinjaUnspentOutput)output).value;
                 default:
@@ -154,8 +145,6 @@ namespace LykkeWalletServices
         {
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    return ((CoinprismUnspentOutput)output).transaction_hash;
                 case APIProvider.QBitNinja:
                     return ((QBitNinjaUnspentOutput)output).transaction_hash;
                 default:
@@ -167,8 +156,6 @@ namespace LykkeWalletServices
         {
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    return ((CoinprismUnspentOutput)output).script_hex;
                 case APIProvider.QBitNinja:
                     return ((QBitNinjaUnspentOutput)output).script_hex;
                 default:
@@ -180,8 +167,6 @@ namespace LykkeWalletServices
         {
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    return ((CoinprismUnspentOutput)output).output_index;
                 case APIProvider.QBitNinja:
                     return ((QBitNinjaUnspentOutput)output).output_index;
                 default:
@@ -193,8 +178,6 @@ namespace LykkeWalletServices
         {
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    return ((CoinprismUnspentOutput)item).asset_id;
                 case APIProvider.QBitNinja:
                     return ((QBitNinjaUnspentOutput)item).asset_id;
                 default:
@@ -206,8 +189,6 @@ namespace LykkeWalletServices
         {
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    return ((CoinprismUnspentOutput)item).confirmations;
                 case APIProvider.QBitNinja:
                     return ((QBitNinjaUnspentOutput)item).confirmations;
                 default:
@@ -219,8 +200,6 @@ namespace LykkeWalletServices
         {
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    return ((CoinprismUnspentOutput)item).asset_quantity;
                 case APIProvider.QBitNinja:
                     return ((QBitNinjaUnspentOutput)item).asset_quantity;
                 default:
@@ -232,8 +211,6 @@ namespace LykkeWalletServices
         {
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    return ((CoinprismUnspentOutput)item).value;
                 case APIProvider.QBitNinja:
                     return ((QBitNinjaUnspentOutput)item).value;
                 default:
@@ -409,11 +386,6 @@ namespace LykkeWalletServices
             Tuple<UniversalUnspentOutput[], bool, string> ret = null;
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    var coinprismResult = await GetWalletOutputsCoinPrism(walletAddress, network);
-                    ret = new Tuple<UniversalUnspentOutput[], bool, string>(coinprismResult.Item1 != null ? coinprismResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
-                        coinprismResult.Item2, coinprismResult.Item3);
-                    break;
                 case APIProvider.QBitNinja:
                     var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, getMinimumConfirmationNumber);
                     ret = new Tuple<UniversalUnspentOutput[], bool, string>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
@@ -456,8 +428,6 @@ namespace LykkeWalletServices
         {
             switch (apiProvider)
             {
-                case APIProvider.CoinPrism:
-                    return await GetAccountBalanceCoinPrism(walletAddress, assetId, network);
                 case APIProvider.QBitNinja:
                     return await GetAccountBalanceQBitNinja(walletAddress, assetId, network, getMinimumConfirmationNumber);
                 default:
@@ -1089,6 +1059,9 @@ namespace LykkeWalletServices
                     TransactionSendFeesInSatoshi = DefaultTransactionSendFeesInSatoshi;
                 }
             }
+
+            TransactionSendFeesInSatoshi = Math.Min(TransactionSendFeesInSatoshi,
+                MaximumTransactionSendFeesInSatoshi);
             return new FeeRate(new Money(TransactionSendFeesInSatoshi));
         }
 
@@ -1348,6 +1321,12 @@ namespace LykkeWalletServices
         {
             KeyStorage ret = null;
 
+            var base58Data = Base58Data.GetFromBase58Data(multiSigAddress);
+            if (base58Data is BitcoinColoredAddress)
+            {
+                multiSigAddress = (base58Data as BitcoinColoredAddress).Address.ToWif();
+            }
+
             if (PrivateKeyWillBeSubmitted)
             {
                 if (MultisigDictionary.ContainsKey(multiSigAddress))
@@ -1363,11 +1342,6 @@ namespace LykkeWalletServices
             }
             else
             {
-                var base58Data = Base58Data.GetFromBase58Data(multiSigAddress);
-                if (base58Data is BitcoinColoredAddress)
-                {
-                    multiSigAddress = (base58Data as BitcoinColoredAddress).Address.ToWif();
-                }
                 ret = await (from item in entities.KeyStorages
                              where item.MultiSigAddress.Equals(multiSigAddress)
                              select item).SingleOrDefaultAsync();
@@ -1732,6 +1706,9 @@ namespace LykkeWalletServices
 
             try
             {
+                QBitNinjaOutputResponse response = null;
+
+                /*
                 using (HttpClient client = new HttpClient())
                 {
                     url = QBitNinjaBalanceUrl + walletAddress;
@@ -1743,25 +1720,36 @@ namespace LykkeWalletServices
                     else
                     {
                         var webResponse = await result.Content.ReadAsStringAsync();
-                        QBitNinjaOutputResponse response = JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                        response = JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
                             (webResponse);
-                        if (response.operations != null && response.operations.Count > 0)
-                        {
-                            foreach (var item in response.operations)
-                            {
-                                response.operations.ForEach((o) =>
-                                {
-                                    balance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations >= getMinimumConfirmationNumber()).Select(c => c.quantity).Sum();
-                                    unconfirmedBalance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
-                                });
-                            }
-                        }
-                        else
-                        {
-                            errorOccured = true;
-                            errorMessage = "No coins found.";
-                        }
                     }
+                }
+                */
+                Tuple<float, bool, string> retValue = null;
+                response = await GetAddressBalance(walletAddress,
+                    (result) => { retValue = new Tuple<float, bool, string>(0, true, result.ReasonPhrase); }
+                    , true, true);
+                if (retValue != null)
+                {
+                    return retValue;
+                }
+
+
+                if (response.operations != null && response.operations.Count > 0)
+                {
+                    foreach (var item in response.operations)
+                    {
+                        response.operations.ForEach((o) =>
+                        {
+                            balance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations >= getMinimumConfirmationNumber()).Select(c => c.quantity).Sum();
+                            unconfirmedBalance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
+                        });
+                    }
+                }
+                else
+                {
+                    errorOccured = true;
+                    errorMessage = "No coins found.";
                 }
             }
             catch (Exception e)
@@ -1770,6 +1758,46 @@ namespace LykkeWalletServices
                 errorMessage = e.ToString();
             }
             return new Tuple<float, bool, string>(balance, errorOccured, errorMessage);
+        }
+
+        public static async Task<QBitNinjaOutputResponse> GetAddressBalance(string walletAddress, Action<HttpResponseMessage> onNotSuccessfulReturn,
+            bool colored = true, bool unspentonly = true)
+        {
+            string continuation = null;
+            List<QBitNinjaOperation> operations = new List<QBitNinjaOperation>();
+
+            do
+            {
+                QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
+                using (HttpClient client = new HttpClient())
+                {
+                    string url = null;
+                    url = string.Format("{0}?unspentonly={1}&colored={2}",
+                        QBitNinjaBalanceUrl + walletAddress, unspentonly.ToString().ToLower(), colored.ToString().ToLower()) ;
+                    if(!string.IsNullOrEmpty(continuation))
+                    {
+                        url += string.Format("&continuation={0}", continuation);
+                    }
+                    HttpResponseMessage result = await client.GetAsync(url);
+                    
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        onNotSuccessfulReturn.Invoke(result);
+                        return null;
+                    }
+                    else
+                    {
+                        var webResponse = await result.Content.ReadAsStringAsync();
+                        notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                            (webResponse);
+                        operations.AddRange(notProcessedUnspentOutputs.operations);
+                        continuation = notProcessedUnspentOutputs.continuation as string;
+                    }
+                }
+            }
+            while (!string.IsNullOrEmpty(continuation));
+
+            return new QBitNinjaOutputResponse { continuation = null, operations = operations };
         }
 
         public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
@@ -1784,6 +1812,8 @@ namespace LykkeWalletServices
 
             try
             {
+                QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
+                /*
                 using (HttpClient client = new HttpClient())
                 {
                     string url = null;
@@ -1797,32 +1827,37 @@ namespace LykkeWalletServices
                     else
                     {
                         var webResponse = await result.Content.ReadAsStringAsync();
-                        var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                        notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
                             (webResponse);
-                        if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
-                        {
-                            notProcessedUnspentOutputs.operations.ForEach((o) =>
-                            {
-                                var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
-                                {
-                                    confirmations = o.confirmations,
-                                    output_index = c.index,
-                                    transaction_hash = c.transactionId,
-                                    value = c.value,
-                                    script_hex = c.scriptPubKey,
-                                    asset_id = c.assetId,
-                                    asset_quantity = c.quantity
-                                });
-                                ((List<QBitNinjaUnspentOutput>)unspentOutputsList)
-                                .AddRange(convertResult.Where(u => u.confirmations >= getMinimumConfirmationNumber()));
-                            });
-                        }
-                        else
-                        {
-                            errorOccured = true;
-                            errorMessage = "No coins to retrieve.";
-                        }
                     }
+                }
+                */
+                notProcessedUnspentOutputs = await GetAddressBalance(walletAddress,
+                    (result) => { errorOccured = true; errorMessage = result.ReasonPhrase; }
+                    , true, true);
+
+                if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
+                {
+                    notProcessedUnspentOutputs.operations.ForEach((o) =>
+                    {
+                        var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
+                        {
+                            confirmations = o.confirmations,
+                            output_index = c.index,
+                            transaction_hash = c.transactionId,
+                            value = c.value,
+                            script_hex = c.scriptPubKey,
+                            asset_id = c.assetId,
+                            asset_quantity = c.quantity
+                        });
+                        ((List<QBitNinjaUnspentOutput>)unspentOutputsList)
+                        .AddRange(convertResult.Where(u => u.confirmations >= getMinimumConfirmationNumber()));
+                    });
+                }
+                else
+                {
+                    errorOccured = true;
+                    errorMessage = "No coins to retrieve.";
                 }
             }
             catch (Exception e)
@@ -1834,112 +1869,6 @@ namespace LykkeWalletServices
             return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
         }
 
-        #endregion
-
-        #region CoinprismFunctions
-        private static async Task<Tuple<CoinprismUnspentOutput[], bool, string>> GetWalletOutputsCoinPrism(string walletAddress,
-            Network network)
-        {
-            bool errorOccured = false;
-            string errorMessage = string.Empty;
-            CoinprismUnspentOutput[] unspentOutputs = null;
-
-            // ToDo - We currently use coinprism api, later we should replace
-            // with our self implementation
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    string url = null;
-                    if (network == Network.Main)
-                    {
-                        url = coinprismBaseUrl + walletAddress;
-                    }
-                    else
-                    {
-                        url = coinprismTestnetBaseUrl + walletAddress;
-                    }
-                    HttpResponseMessage result = await client.GetAsync(url + "/unspents");
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        errorOccured = true;
-                        errorMessage = result.ReasonPhrase;
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        unspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<CoinprismUnspentOutput[]>
-                            (webResponse);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
-
-            return new Tuple<CoinprismUnspentOutput[], bool, string>(unspentOutputs, errorOccured, errorMessage);
-        }
-
-        /// <summary>
-        /// Gets the asset balance for the wallet address
-        /// </summary>
-        /// <param name="walletAddress">The address of the wallet to check the balance for.</param>
-        /// <param name="assetId">The id of asset to check the balance.</param>
-        /// <returns>A tuple, first part is balance, second part is unconfirmed balance, third part is whether error has occured or not,
-        ///  forth part is the error message.</returns>
-        public static async Task<Tuple<float, bool, string>> GetAccountBalanceCoinPrism(string walletAddress,
-            string assetId, Network network)
-        {
-            float balance = 0;
-            float unconfirmedBalance = 0;
-            bool errorOccured = false;
-            string errorMessage = "";
-            string url;
-            // ToDo - We currently use coinprism api, later we should replace
-            // with our self implementation
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    if (network == Network.Main)
-                    {
-                        url = coinprismBaseUrl + walletAddress;
-                    }
-                    else
-                    {
-                        url = coinprismTestnetBaseUrl + walletAddress;
-                    }
-                    HttpResponseMessage result = await client.GetAsync(url);
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        return new Tuple<float, bool, string>(0, true, result.ReasonPhrase);
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        CoinprismGetBalanceResponse response = Newtonsoft.Json.JsonConvert.DeserializeObject<CoinprismGetBalanceResponse>
-                            (webResponse);
-                        foreach (var item in response.assets)
-                        {
-                            if (item.id.Equals(assetId))
-                            {
-                                balance = float.Parse(item.balance);
-                                unconfirmedBalance = float.Parse(item.unconfirmed_balance);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
-            return new Tuple<float, bool, string>(balance, errorOccured, errorMessage);
-        }
         #endregion
     }
 }
