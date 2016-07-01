@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -161,7 +162,30 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             {
                 // Updating the settings file
                 var settings = await SettingsReader.ReadAppSettins(false);
-                settings.AssetDefinitions = data.Assets;
+                foreach(var item in data.Assets)
+                {
+                    if(string.IsNullOrEmpty(item.Name))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        var matchedAsset = settings.AssetDefinitions.Where(c => c.Name.Equals(item.Name)).FirstOrDefault();
+                        if (matchedAsset != null)
+                        {
+                            matchedAsset.AssetAddress = item.AssetAddress ?? matchedAsset.AssetAddress;
+                            matchedAsset.AssetId = item.AssetId ?? matchedAsset.AssetId;
+                            matchedAsset.DefinitionUrl = item.DefinitionUrl ?? matchedAsset.DefinitionUrl;
+                            matchedAsset.Divisibility = item.Divisibility ?? matchedAsset.Divisibility;
+                            matchedAsset.PrivateKey = item.PrivateKey ?? matchedAsset.PrivateKey;
+                        }
+                        else
+                        {
+                            settings.AssetDefinitions = settings.AssetDefinitions.Concat(new AssetDefinition[] { item }).ToArray();
+                        }
+                    }
+                }
+
                 using (StreamWriter writer = new StreamWriter(SETTINGSFILEPATH))
                 {
                     await writer.WriteAsync(Newtonsoft.Json.JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented));

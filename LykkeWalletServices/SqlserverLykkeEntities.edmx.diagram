@@ -16,6 +16,10 @@
         <EntityTypeShape EntityType="SqlexpressLykkeModel.RefundTransaction" Width="1.5" PointX="7.375" PointY="1.5" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_RefundedOutputs_RefundTransactions" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.EmailMessage" Width="1.5" PointX="0.75" PointY="7.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.WholeRefund" Width="1.5" PointX="3.375" PointY="7.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.TransactionsWaitForConfirmation" Width="1.5" PointX="7.375" PointY="4.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.WholeRefundSpentOutput" Width="1.875" PointX="5.375" PointY="7.75" IsExpanded="true" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_WholeRefundSpentOutputs_WholeRefund" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

@@ -315,6 +315,35 @@ namespace LykkeWalletServices
             return builder;
         }
 
+        private static Coin GetCoinFromOutput(this UniversalUnspentOutput output)
+        {
+            return new Coin(new uint256(output.GetTransactionHash()), (uint)output.GetOutputIndex(),
+                    new Money(output.GetValue()), new Script(StringToByteArray(output.GetScriptHex())));
+        }
+
+        private static ColoredCoin[] GenerateWalletColoredCoins(UniversalUnspentOutput[] usableOutputs, string assetId)
+        {
+            ColoredCoin[] coins = new ColoredCoin[usableOutputs.Length];
+            for (int i = 0; i < usableOutputs.Length; i++)
+            {
+                Coin bearer = usableOutputs[i].GetCoinFromOutput();
+                coins[i] = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), (int)usableOutputs[i].GetAssetAmount()),
+                    bearer);
+            }
+            return coins;
+        }
+
+        private static Coin[] GenerateWalletUnColoredCoins(UniversalUnspentOutput[] usableOutputs)
+        {
+            Coin[] coins = new Coin[usableOutputs.Length];
+            for (int i = 0; i < usableOutputs.Length; i++)
+            {
+                coins[i] = usableOutputs[i].GetCoinFromOutput();
+            }
+            return coins;
+        }
+
+        /*
         private static ColoredCoin[] GenerateWalletColoredCoins(Transaction[] transactions, UniversalUnspentOutput[] usableOutputs, string assetId)
         {
             ColoredCoin[] coins = new ColoredCoin[transactions.Length];
@@ -335,6 +364,7 @@ namespace LykkeWalletServices
             }
             return coins;
         }
+        */
 
         public static UniversalUnspentOutput[] GetWalletOutputsUncolored(UniversalUnspentOutput[] input)
         {
@@ -373,10 +403,14 @@ namespace LykkeWalletServices
         {
             var walletAssetOutputs = GetWalletOutputsForAsset(walletOutputs, assetId);
             var walletUncoloredOutputs = GetWalletOutputsUncolored(walletOutputs);
+            /*
             var walletColoredTransactions = await GetTransactionsHex(walletAssetOutputs, network, username, password, ipAddress);
             var walletUncoloredTransactions = await GetTransactionsHex(walletUncoloredOutputs, network, username, password, ipAddress);
             var walletColoredCoins = GenerateWalletColoredCoins(walletColoredTransactions, walletAssetOutputs, assetId);
             var walletUncoloredCoins = GenerateWalletUnColoredCoins(walletUncoloredTransactions, walletUncoloredOutputs);
+            */
+            var walletColoredCoins = GenerateWalletColoredCoins(walletAssetOutputs, assetId);
+            var walletUncoloredCoins = GenerateWalletUnColoredCoins(walletUncoloredOutputs);
             return new Tuple<ColoredCoin[], Coin[]>(walletColoredCoins, walletUncoloredCoins);
         }
 
@@ -541,12 +575,22 @@ namespace LykkeWalletServices
             }
         }
 
+        public static long GetAssetBTCAmount(this string asset, float amount)
+        {
+            return !IsRealAsset(asset) ? Convert.ToInt64(amount * BTCToSathoshiMultiplicationFactor) : 0;
+        }
+
         public static async Task<GetCoinsForWalletReturnType> GetCoinsForWallet
             (string multiSigAddress, long requiredSatoshiAmount, float requiredAssetAmount, string asset, AssetDefinition[] assets,
             Network network, string username, string password, string ipAddress, string connectionString, SqlexpressLykkeEntities entities,
             bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true, Func<int> getMinimumConfirmationNumber = null)
         {
             GetCoinsForWalletReturnType ret;
+            if (!IsRealAsset(asset))
+            {
+                requiredSatoshiAmount = (long)Math.Max(requiredSatoshiAmount, requiredAssetAmount * BTCToSathoshiMultiplicationFactor);
+            }
+
             if (isOrdinaryReturnTypeRequired)
             {
                 ret = new GetOrdinaryCoinsForWalletReturnType();
@@ -666,6 +710,95 @@ namespace LykkeWalletServices
             return ret;
         }
 
+        internal class PrevOutput
+        {
+            public string Hash
+            {
+                get;
+                set;
+            }
+
+            public uint N
+            {
+                get;
+                set;
+            }
+        }
+
+        // ToDo: We shold have a clarification: What happens if
+        // 1- A transaction (T1) spends one of the inputs for Refund (R1)
+        // 2- We report R1 as unspendable because of this
+        // 3- T1 does not get confirmation and R1 becomes spendable.
+        // So in this case if we spend another input of R1, we may face double spend
+        // Although in our case we just will have swaps (as T1) what happens if 
+        // R1 becomes spendable with a swap
+        public static bool IsInputStillSpendable(TxIn input)
+        {
+            // We ha
+            var txId = input.PrevOut.Hash.ToString();
+            var outputNumber = input.PrevOut.N;
+
+            return true;
+        }
+
+        public static bool IsRefundSpendable(string transactionHex, DateTimeOffset locktime)
+        {
+            DateTimeOffset passedLocktime = DateTime.UtcNow.AddHours(-2);
+
+            if (locktime > passedLocktime)
+            {
+                if (transactionHex != null)
+                {
+                    Transaction tx = new Transaction(transactionHex);
+                    foreach (var input in tx.Inputs)
+                    {
+                        if (!IsInputStillSpendable(input))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+                else
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> DoesSpendRefund(this Transaction tx, SqlexpressLykkeEntities entities)
+        {
+            var prevOutputs = tx.Inputs.Select(i => new PrevOutput
+            {
+                Hash = i.PrevOut.Hash.ToString(),
+                N = i.PrevOut.N
+            });
+
+            return await Task.Run(() =>
+            {
+
+                var spendsAWholeRefund = (from prevOutput in prevOutputs
+                                          join spentOutput in entities.WholeRefundSpentOutputs on new { Hash = prevOutput.Hash, N = prevOutput.N }
+                                          equals new { Hash = spentOutput.SpentTransactionId, N = (uint)spentOutput.SpentTransactionOutputNumber }
+                                          select spentOutput)
+                 .Where(o => IsRefundSpendable(o.WholeRefund.TransactionHex, o.WholeRefund.LockTime)).Any();
+
+                var spendsAPartialRefund =
+                            (from prevOutput in prevOutputs
+                             join spentOutput in entities.RefundedOutputs on new { Hash = prevOutput.Hash, N = prevOutput.N }
+                             equals new { Hash = spentOutput.RefundedTxId, N = (uint)spentOutput.RefundedOutputNumber }
+                             select spentOutput)
+                             .Where(o => IsRefundSpendable(o.RefundTransaction.RefundTxHex, o.LockTime)).Any();
+
+                return spendsAWholeRefund || spendsAPartialRefund;
+            });
+        }
+
         // ToDo - Performance should be revisted by possible join operation
         public static async Task<Error> CheckTransactionForDoubleSpentThenSendIt(Transaction tx,
             string username, string password, string ipAddress, Network network, SqlexpressLykkeEntities entitiesContext, string connectionString,
@@ -725,6 +858,14 @@ namespace LykkeWalletServices
                     });
                 }
                 await entitiesContext.SaveChangesAsync();
+
+                // ToDo: Complete the whole refund function
+                /*
+                if (await tx.DoesSpendRefund(entitiesContext))
+                {
+
+                }
+                */
 
                 // Notifing the web api of the transaction
                 // The server should respond to: curl -X Post http://localhost:8088/HandledTx -H "Content-Type: application/json" -d "{\"TransactionId\" : \"transactionId\", \"BlockchainHash\" : \"blockchainHash\",\"Operation\" : \"Transfer\" }"
@@ -1128,6 +1269,7 @@ namespace LykkeWalletServices
             return builder;
         }
 
+        /*
         private static async Task<Transaction[]> GetTransactionsHex(UniversalUnspentOutput[] outputList, Network network,
             string username, string password, string ipAddress)
         {
@@ -1147,6 +1289,7 @@ namespace LykkeWalletServices
             }
             return walletTransactions;
         }
+        */
 
         public static string GetAddressFromScriptPubKey(Script scriptPubKey, Network network)
         {
@@ -1588,37 +1731,6 @@ namespace LykkeWalletServices
             public int fees { get; set; }
         }
 
-        public class CoinprismUnspentOutput : UniversalUnspentOutput
-        {
-            public string transaction_hash { get; set; }
-            public int output_index { get; set; }
-            public long value { get; set; }
-            public string asset_id { get; set; }
-            public int asset_quantity { get; set; }
-            public string[] addresses { get; set; }
-            public string script_hex { get; set; }
-            public bool spent { get; set; }
-            public int confirmations { get; set; }
-        }
-
-        private class CoinprismGetBalanceResponse
-        {
-            public string address { get; set; }
-            public string asset_address { get; set; }
-            public string bitcoin_address { get; set; }
-            public string issuable_asset { get; set; }
-            public float balance { get; set; }
-            public float unconfirmed_balance { get; set; }
-            public CoinprismColoredCoinBalance[] assets { get; set; }
-        }
-
-        private class CoinprismColoredCoinBalance
-        {
-            public string id { get; set; }
-            public string balance { get; set; }
-            public string unconfirmed_balance { get; set; }
-        }
-
         public class BlockCypherInput
         {
             public string prev_hash { get; set; }
@@ -1773,13 +1885,13 @@ namespace LykkeWalletServices
                 {
                     string url = null;
                     url = string.Format("{0}?unspentonly={1}&colored={2}",
-                        QBitNinjaBalanceUrl + walletAddress, unspentonly.ToString().ToLower(), colored.ToString().ToLower()) ;
-                    if(!string.IsNullOrEmpty(continuation))
+                        QBitNinjaBalanceUrl + walletAddress, unspentonly.ToString().ToLower(), colored.ToString().ToLower());
+                    if (!string.IsNullOrEmpty(continuation))
                     {
                         url += string.Format("&continuation={0}", continuation);
                     }
                     HttpResponseMessage result = await client.GetAsync(url);
-                    
+
                     if (!result.IsSuccessStatusCode)
                     {
                         onNotSuccessfulReturn.Invoke(result);

@@ -10,12 +10,12 @@ namespace Core
         public string Name { get; set; }
         public string PrivateKey { get; set; }
         public string DefinitionUrl { get; set; }
-        public int Divisibility { get; set; }
+        public int? Divisibility { get; set; }
         public long MultiplyFactor
         {
             get
             {
-                return (long)Math.Pow(10, Divisibility);
+                return (long)Math.Pow(10, Divisibility ?? 0);
             }
         }
     }
@@ -79,6 +79,7 @@ namespace Core
         public string MultisigAddress { get; set; }
         public uint timeoutInMinutes { get; set; }
         public string RefundAddress { get; set; }
+        public bool? JustRefundTheNonRefunded { get; set; }
     }
 
     public class TaskToDoGetInputWalletAddresses : TransactionToDoBase

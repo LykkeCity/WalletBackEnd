@@ -51,12 +51,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             OpenAssetsHelper.GetCoinsForWalletReturnType walletCoins = null;
                             if (sourceAddress is BitcoinPubKeyAddress)
                             {
-                                walletCoins = (OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.SourceAddress, 0, data.Amount, data.Asset,
+                                walletCoins = (OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.SourceAddress, data.Asset.GetAssetBTCAmount(data.Amount), data.Amount, data.Asset,
                                     Assets, Network, Username, Password, IpAddress, ConnectionString, entities, true, false);
                             }
                             else
                             {
-                                walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.SourceAddress, 0, data.Amount, data.Asset,
+                                walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.SourceAddress, data.Asset.GetAssetBTCAmount(data.Amount), data.Amount, data.Asset,
                                     Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
                             }
                             if (walletCoins.Error != null)

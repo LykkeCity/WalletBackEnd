@@ -87,6 +87,8 @@ When a call ends with an error, the error (in the following responses) will be a
         Sample request: UpdateAssets:{"TransactionId":"10","Assets": [{ "AssetId": "oDmVkVUHnrdSKASFWuHy6hxqTWFc9vdL9d", "AssetAddress": "n2JMZcG3dKuRN4c8K89TBwwwDpHshppQUr", "Name": "TestExchangeUSD", "PrivateKey": "xxx", "DefinitionUrl": "https://www.cpr.sm/-KDPVKLTlL","Divisibility": 2 }, { "AssetId": "oZTd8ZfoyRPkYFhbeLXvordpcpND2YpqPg", "AssetAddress": "n4XdhcAWoRBesY2gy5hnF6ht31rLG19kqy", "Name": "TestExchangeEUR","PrivateKey": "xxx","DefinitionUrl": "https://www.cpr.sm/SBi9SeNlyB","Divisibility": 2}]}
         Sample response: UpdateAssets:{"TransactionId":"10","Result":{"Success":true},"Error":null}
 
+Primary key for updating is the asset name. If a field is absent for an asset, the previous value is used. If a new asset name is provided, the asset will ne added to setting.json.
+
 *   Get Expired Unclaimed Refunding Transactions
 
         Sample request: GetExpiredUnclaimedRefundingTransactions:{"TransactionId":"10","MultisigAddress":"2Mz5iEcM7VT3aaGRhKaAdRzJtRJtDKoYMsL"}

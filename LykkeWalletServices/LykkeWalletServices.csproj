@@ -128,6 +128,9 @@
     <Compile Include="TransactionsToBeSigned.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="TransactionsWaitForConfirmation.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="Transactions\Responses\TaskResultBase.cs" />
     <Compile Include="Transactions\Responses\TaskResultReturnSignedTransaction.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetTransactionToSign.cs" />
@@ -158,6 +161,12 @@
     <Compile Include="Transactions\TaskHandlers\SrvNetworkBase.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetTransactionToSignTask.cs" />
+    <Compile Include="WholeRefund.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="WholeRefundSpentOutput.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.csproj">
