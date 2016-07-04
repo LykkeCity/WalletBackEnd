@@ -14,7 +14,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // This class handles the first scenario
     public class SrvCashOutSeparateSignaturesTask : SrvNetworkInvolvingExchangeBase
     {
-        public SrvCashOutSeparateSignaturesTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvCashOutSeparateSignaturesTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
         }
@@ -27,7 +27,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         // ToDo: Another approach would be to use .Net reflectin to pass the code to be executed, not
         // to have the problem to make both side sync
         private static async Task<Tuple<string, Error>> GenerateUncompleteTransactionWithOnlyOneSignature(string multisigAddress, float amount, string currency,
-            OpenAssetsHelper.AssetDefinition[] assets, Network network, string username, string password, string ipAddress, string connectionString,
+            AssetDefinition[] assets, Network network, string username, string password, string ipAddress, string connectionString,
             BitcoinSecret secret)
         {
             using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
@@ -106,8 +106,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 Error localerror = null;
                                 using (var transaction = entities.Database.BeginTransaction())
                                 {
+                                    var txHash = tx.GetHash().ToString();
+                                    
                                     localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
+                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString, null);
 
 
                                     if (localerror == null)
@@ -115,7 +117,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         result = new CashOutSeparateSignaturesTaskResult
                                         {
                                             TransactionHex = tx.ToHex(),
-                                            TransactionHash = tx.GetHash().ToString()
+                                            TransactionHash = txHash
                                         };
                                     }
                                     else

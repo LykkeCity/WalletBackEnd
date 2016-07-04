@@ -3,11 +3,10 @@ using LykkeWalletServices.Transactions.Responses;
 using NBitcoin;
 using NBitcoin.OpenAsset;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using System.Threading.Tasks;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -16,10 +15,17 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         Network network;
 
         long multiplicationFactor = 1;
-        public SrvReturnSignedTransactionTask(Network network, long multiplicationFactor)
+
+        private string ConnectionString
+        {
+            get;
+            set;
+        }
+        public SrvReturnSignedTransactionTask(Network network, long multiplicationFactor, string connectionString)
         {
             this.network = network;
             this.multiplicationFactor = multiplicationFactor;
+            ConnectionString = connectionString;
         }
         public async Task<TaskResultReturnSignedTransaction> ExecuteTask(TaskToDoReturnSignedTransaction data)
         {
@@ -73,7 +79,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     if (exchangeTransaction.FirstClientSigned == 1 && exchangeTransaction.SecondClientSigned == 1)
                     {
                         var tx = await GenerateTransactionHex(data.ExchangeId, entitiesContext, 
-                            network, multiplicationFactor);
+                            network, multiplicationFactor, ConnectionString);
 
 
                         var transactions = await (from t in entitiesContext.TransactionsToBeSigneds
@@ -107,8 +113,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         /// <param name="entitiesContext">The database context to read the transaction data from.</param>
         /// <returns>The transaction hex made for the exchange transaction.</returns>
         private static async Task<string> GenerateTransactionHex(string exchangeId, SqlexpressLykkeEntities entitiesContext, 
-            Network network, long multiplicationFactor)
+            Network network, long multiplicationFactor, string connectionString)
         {
+            Func<int> getMinimumConfirmationNumber = (() => { return 0; });
+
             var transaction = await (from tx in entitiesContext.ExchangeRequests
                                      where tx.ExchangeId == exchangeId
                                      select tx).FirstAsync();
@@ -123,32 +131,37 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
 
             // ToDo - Alert Unbalanced output is also included
-            if (!(await OpenAssetsHelper.IsAssetsEnough(transaction.WalletAddress01,
-                transaction.Asset01, (int)transaction.Amount01, network, multiplicationFactor, true)))
+            if (!(await IsAssetsEnough(transaction.WalletAddress01,
+                transaction.Asset01, (int)transaction.Amount01, network, multiplicationFactor, getMinimumConfirmationNumber)))
             {
                 throw new Exception("Not sufficient funds for asset: " + transaction.Asset01 +
                     " in wallet: " + transaction.WalletAddress01);
             }
             // ToDo - Alert Unbalanced output is also included
-            if (!(await OpenAssetsHelper.IsAssetsEnough(transaction.WalletAddress02,
-                transaction.Asset02, (int)transaction.Amount02, network, multiplicationFactor, true)))
+            if (!(await IsAssetsEnough(transaction.WalletAddress02,
+                transaction.Asset02, (int)transaction.Amount02, network, multiplicationFactor, getMinimumConfirmationNumber)))
             {
                 throw new Exception("Not sufficient funds for asset: " + transaction.Asset02 +
                     " in wallet: " + transaction.WalletAddress02);
             }
 
-            var wallet01Outputs = await OpenAssetsHelper.GetWalletOutputs(transaction.WalletAddress01, network);
-            if (wallet01Outputs.Item2)
-            {
-                throw new Exception("Could not get the wallet available outputs. The actual error message is: " + wallet01Outputs.Item3);
-            }
+            Tuple<UniversalUnspentOutput[], bool, string> wallet01Outputs = null;
+            Tuple<UniversalUnspentOutput[], bool, string> wallet02Outputs = null;
 
-            var wallet02Outputs = await OpenAssetsHelper.GetWalletOutputs(transaction.WalletAddress02, network);
-            if (wallet02Outputs.Item2)
+            using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
             {
-                throw new Exception("Could not get the wallet available outputs. The actual error message is: " + wallet02Outputs.Item3);
-            }
+                wallet01Outputs = await GetWalletOutputs(transaction.WalletAddress01, network, entities);
+                if (wallet01Outputs.Item2)
+                {
+                    throw new Exception("Could not get the wallet available outputs. The actual error message is: " + wallet01Outputs.Item3);
+                }
 
+                wallet02Outputs = await GetWalletOutputs(transaction.WalletAddress02, network, entities);
+                if (wallet02Outputs.Item2)
+                {
+                    throw new Exception("Could not get the wallet available outputs. The actual error message is: " + wallet02Outputs.Item3);
+                }
+            }
             // ToDo - Fix the credentials, probably it will be removed entirely
             var wallet01Coins = await OpenAssetsHelper.GetColoredUnColoredCoins
                 (wallet01Outputs.Item1, transaction.Asset01, network, null, null, null);
@@ -196,8 +209,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             return txToBroadcast.ToHex();
         }
-
-        
 
         public void Execute(TaskToDoReturnSignedTransaction data, Func<TaskResultReturnSignedTransaction, Task> invokeResult)
         {

@@ -23,6 +23,10 @@ namespace Core
         AssetNotFound,
         TransactionNotSignedProperly,
         BadInputParameter,
-        PersistantConcurrencyProblem
+        PersistantConcurrencyProblem,
+        NoCoinsToRefund,
+        NoCoinsFound,
+        InvalidAddress,
+        OperationNotSupported
     }
 }

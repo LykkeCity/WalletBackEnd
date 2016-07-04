@@ -11,7 +11,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     {
         // Sample input: GetIssuersOutputStatus:{"TransactionId":"10"}
         // Sample output: GetIssuersOutputStatus:{"TransactionId":"10","Result":{"ResultArray":[{"Asset":"bjkEUR","Amount":15000.0,"Count":1000},{"Asset":"bjkUSD","Amount":2730.0,"Count":30},{"Asset":"bjkUSD","Amount":15000.0,"Count":1000}]},"Error":null}
-        public SrvGetIssuersOutputStatusTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvGetIssuersOutputStatusTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string connectionString, string feeAddress) : base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
         }

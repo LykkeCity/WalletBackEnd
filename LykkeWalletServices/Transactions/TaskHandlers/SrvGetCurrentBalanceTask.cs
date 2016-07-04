@@ -4,14 +4,15 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
-    // Sample request: GetCurrentBalance:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B" }
+    // Sample request: GetCurrentBalance:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B", "MinimumConfirmation":0 }
     // Sample response: {"TransactionId":"10","Result":{"ResultArray":[{"Asset":"bjkUSD","Amount":9400.0},{"Asset":"bjkEUR","Amount":1300.0},{"Asset":"TestExchangeUSD","Amount":1300.0}]},"Error":null}
     public class SrvGetCurrentBalanceTask : SrvNetworkBase
     {
-        public SrvGetCurrentBalanceTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvGetCurrentBalanceTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string connectionString, string feeAddress) : base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
         }
@@ -23,9 +24,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             IList<GetCurrentBalanceTaskResultElement> resultElements
                 = new List<GetCurrentBalanceTaskResultElement>();
             Error error = null;
+
+            Func<int> getMinimumConfirmationNumber = (() => { return data.MinimumConfirmation; });
             try
             {
-                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(data.MultisigAddress, Network);
+                Tuple<UniversalUnspentOutput[], bool, string> walletOuputs = null;
+                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
+                {
+                    walletOuputs = await GetWalletOutputs(data.MultisigAddress, Network, entities, true, getMinimumConfirmationNumber);
+                }
                 if (walletOuputs.Item2)
                 {
                     error = new Error();
@@ -34,7 +41,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 }
                 else
                 {
-                    float tempValue = OpenAssetsHelper.GetAssetBalance(walletOuputs.Item1, "BTC", (long) OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+                    float tempValue = GetAssetBalance(walletOuputs.Item1, "BTC", (long)BTCToSathoshiMultiplicationFactor, getMinimumConfirmationNumber);
                     GetCurrentBalanceTaskResultElement element = new GetCurrentBalanceTaskResultElement();
                     element.Asset = "BTC";
                     element.Amount = tempValue;
@@ -42,7 +49,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                     foreach (var item in Assets)
                     {
-                        tempValue = OpenAssetsHelper.GetAssetBalance(walletOuputs.Item1, item.AssetId, item.MultiplyFactor);
+                        tempValue = OpenAssetsHelper.GetAssetBalance(walletOuputs.Item1, item.AssetId, item.MultiplyFactor, getMinimumConfirmationNumber);
                         element = new GetCurrentBalanceTaskResultElement();
                         element.Asset = item.Name;
                         element.Amount = tempValue;

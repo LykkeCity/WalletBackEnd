@@ -1,7 +1,25 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Core
 {
+    public class AssetDefinition
+    {
+        public string AssetId { get; set; }
+        public string AssetAddress { get; set; }
+        public string Name { get; set; }
+        public string PrivateKey { get; set; }
+        public string DefinitionUrl { get; set; }
+        public int? Divisibility { get; set; }
+        public long MultiplyFactor
+        {
+            get
+            {
+                return (long)Math.Pow(10, Divisibility ?? 0);
+            }
+        }
+    }
+
     public class TransactionToDoBase
     {
         public string TransactionId { get; set; }
@@ -51,11 +69,23 @@ namespace Core
         } 
     }
 
+    public class TaskToDoGetExpiredUnclaimedRefundingTransactions : TransactionToDoBase
+    {
+        public string MultisigAddress { get; set; }
+    }
+
     public class TaskToDoGenerateRefundingTransaction : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }
-        public string TransactionHash { get; set; }
         public uint timeoutInMinutes { get; set; }
+        public string RefundAddress { get; set; }
+        public bool? JustRefundTheNonRefunded { get; set; }
+    }
+
+    public class TaskToDoGetInputWalletAddresses : TransactionToDoBase
+    {
+        public string Asset { get; set;}
+        public string MultisigAddress { get; set; }
     }
 
     public class TaskToDoCashIn : TransactionToDoBase
@@ -69,6 +99,7 @@ namespace Core
     public class TaskToDoGetCurrentBalance : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }
+        public int MinimumConfirmation { get; set; }
     }
 
     public class TaskToDoGetFeeOutputsStatus : TransactionToDoBase
@@ -86,6 +117,15 @@ namespace Core
         public float Amount { get; set; }
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
+    }
+
+    public class TaskToDoUpdateAssets : TransactionToDoBase
+    {
+        public AssetDefinition[] Assets
+        {
+            get;
+            set;
+        }
     }
 
     public class TaskToDoCashOutSeparateSignatures : TransactionToDoBase
@@ -119,9 +159,9 @@ namespace Core
 
     public class TaskToDoTransfer : TransactionToDoBase
     {
-        public string SourceMultisigAddress { get; set; }
+        public string SourceAddress { get; set; }
         public string SourcePrivateKey { get; set; }
-        public string DestinationMultisigAddress { get; set; }
+        public string DestinationAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
         public float Amount { get; set; }
         public string Asset { get; set; }

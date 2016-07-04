@@ -1,6 +1,7 @@
 ﻿using System.Web.Http;
 using Microsoft.Owin.Cors;
 using Owin;
+using LykkeWalletServices.Transactions.TaskHandlers;
 
 namespace ServiceLykkeWallet
 {

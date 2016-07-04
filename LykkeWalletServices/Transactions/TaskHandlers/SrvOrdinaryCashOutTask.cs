@@ -3,6 +3,7 @@ using NBitcoin;
 using NBitcoin.OpenAsset;
 using System;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -10,7 +11,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample Output: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvOrdinaryCashOutTask : SrvNetworkInvolvingExchangeBase
     {
-        public SrvOrdinaryCashOutTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvOrdinaryCashOutTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
         }
@@ -32,53 +33,71 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     }
                     else
                     {
-                        using (var transaction = entities.Database.BeginTransaction())
+                        var dest = OpenAssetsHelper.GetBitcoinAddressFormBase58Date(data.PublicWallet);
+                        if (dest == null)
                         {
-                            TransactionBuilder builder = new TransactionBuilder();
-                            builder
-                                .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
-                            if (OpenAssetsHelper.IsRealAsset(data.Currency))
+                            error = new Error();
+                            error.Code = ErrorCode.InvalidAddress;
+                            error.Message = "Invalid address provided";
+                        }
+                        else
+                        {
+                            using (var transaction = entities.Database.BeginTransaction())
                             {
-                                builder.AddCoins(walletCoins.AssetScriptCoins);
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString()))
-                                    .SendAsset(new BitcoinPubKeyAddress(walletCoins.MatchingAddress.WalletAddress), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
-                            }
-                            else
-                            {
-                                builder.AddCoins(walletCoins.ScriptCoins);
-                                builder.Send(new BitcoinPubKeyAddress(walletCoins.MatchingAddress.WalletAddress),
-                                    Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
-                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network)).Then();
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), 0));
-                            }
-
-                            var tx = builder.SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi - OpenAssetsHelper.NBitcoinColoredCoinOutputInSatoshi))
-                            .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
-                            .BuildTransaction(true);
-
-                            Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
-
-                            if (localerror == null)
-                            {
-                                result = new OrdinaryCashOutTaskResult
+                                TransactionBuilder builder = new TransactionBuilder();
+                                builder
+                                    .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), ChangeType.Colored)
+                                    .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
+                                if (OpenAssetsHelper.IsRealAsset(data.Currency))
                                 {
-                                    TransactionHex = tx.ToHex(),
-                                    TransactionHash = tx.GetHash().ToString()
-                                };
-                            }
-                            else
-                            {
-                                error = localerror;
-                            }
+                                    builder.AddCoins(walletCoins.AssetScriptCoins).
+                                        SendAsset(dest, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
+                                    builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2));
+                                }
+                                else
+                                {
+                                    builder.AddCoins(walletCoins.ScriptCoins);
+                                    builder.SendWithChange(dest,
+                                        Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
+                                        walletCoins.ScriptCoins,
+                                        new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network));
+                                    builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 0));
+                                }
 
-                            if (error == null)
-                            {
-                                transaction.Commit();
-                            }
-                            else
-                            {
-                                transaction.Rollback();
+                                var tx = builder.BuildTransaction(true);
+
+                                var txHash = tx.GetHash().ToString();
+
+                                OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
+                                    new OpenAssetsHelper.LykkeJobsNotificationMessage();
+                                lykkeJobsNotificationMessage.Operation = "OrdinaryCashOut";
+                                lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
+                                lykkeJobsNotificationMessage.BlockchainHash = txHash;
+
+                                Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                    (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
+
+                                if (localerror == null)
+                                {
+                                    result = new OrdinaryCashOutTaskResult
+                                    {
+                                        TransactionHex = tx.ToHex(),
+                                        TransactionHash = txHash
+                                    };
+                                }
+                                else
+                                {
+                                    error = localerror;
+                                }
+
+                                if (error == null)
+                                {
+                                    transaction.Commit();
+                                }
+                                else
+                                {
+                                    transaction.Rollback();
+                                }
                             }
                         }
                     }

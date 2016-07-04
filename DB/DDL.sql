@@ -70,3 +70,37 @@ CREATE TABLE TransactionsToBeSigned (
 );
 
 ALTER TABLE [dbo].[SpentOutputs]  WITH CHECK ADD  CONSTRAINT [FK_SpentOutputs_SentTransactions] FOREIGN KEY([SentTransactionId]) REFERENCES [dbo].[SentTransactions] ([id])
+
+CREATE TABLE [dbo].[RefundedOutputs](
+	[id] [bigint] IDENTITY(1,1) NOT NULL,
+	[RefundedAddress] [varchar](35) NOT NULL,
+	[RefundedTxId] [varchar](64) NOT NULL,
+	[RefundedOutputNumber] [int] NOT NULL,
+	[RefundTxId] [bigint] NOT NULL,
+	[HasBeenSpent] [bit] NOT NULL,
+	[RefundInvalid] [bit] NOT NULL,
+	[LockTime] [datetime] NOT NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_RefundedOutputs] PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+CREATE TABLE [dbo].[RefundTransactions](
+	[id] [bigint] IDENTITY(1,1) NOT NULL,
+	[RefundTxId] [varchar](64) NOT NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_RefundTransactions] PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+ALTER TABLE [dbo].[RefundedOutputs]  WITH CHECK ADD  CONSTRAINT [FK_RefundedOutputs_RefundTransactions] FOREIGN KEY([RefundTxId])
+REFERENCES [dbo].[RefundTransactions] ([id])
+GO
+
+ALTER TABLE [dbo].[RefundedOutputs] CHECK CONSTRAINT [FK_RefundedOutputs_RefundTransactions]
+GO
+

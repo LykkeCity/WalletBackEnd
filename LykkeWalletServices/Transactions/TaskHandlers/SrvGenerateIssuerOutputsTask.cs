@@ -16,7 +16,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample response: GenerateIssuerOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
     public class SrvGenerateIssuerOutputsTask : SrvNetworkBase
     {
-        public SrvGenerateIssuerOutputsTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvGenerateIssuerOutputsTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string connectionString) :
             base(network, assets, username, password, ipAddress, connectionString, null)
         {
@@ -24,8 +24,11 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
         public async Task<Tuple<GenerateMassOutputsTaskResult, Error>> ExecuteTask(TaskToDoGenerateIssuerOutputs data)
         {
-            return await OpenAssetsHelper.GenerateMassOutputs(data, "asset:" + data.AssetName, Username, Password, IpAddress,
+            using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
+            {
+                return await OpenAssetsHelper.GenerateMassOutputs(data, "asset:" + data.AssetName, Username, Password, IpAddress,
                 Network, ConnectionString, Assets, null, null);
+            }
         }
 
         public void Execute(TaskToDoGenerateIssuerOutputs data, Func<Tuple<GenerateMassOutputsTaskResult, Error>, Task> invokeResult)

@@ -1,7 +1,5 @@
 #WalletBackEnd
 
-
-
 ## Running the project
 
 The main project to run is ServiceLykkeWallet of the solution file.
@@ -11,36 +9,38 @@ The main project to run is ServiceLykkeWallet of the solution file.
 All service are queue based
 
 Currently, due to implementation decisions, in the following methods whenever private key for the local wallet is documented in the call contract, it could be totally omitted; they are present to cover the future scenarios.
+
+When a call ends with an error, the error (in the following responses) will be a json string (instead of null) similar to "Error":{"Code":0,"Message":"..."} . The error code number could be get from ErrorCode enum.
  
 *   Generate New Wallet
 
-        Sample input: GenerateNewWallet:{"TransactionId":"10"}
-        Sample output: GenerateNewWallet:{"TransactionId":"10","Result":"WalletAddress":"xxxx","WalletPrivateKey":"xxxx","MultiSigAddress":"xxx"},"Error":null}
+        Sample request: GenerateNewWallet:{"TransactionId":"10"}
+        Sample response: GenerateNewWallet:{"TransactionId":"10","Result":{"WalletAddress":"mtNawPk9v3QaMaF3bfTBXzc4wVdJ6YrfS9","WalletPrivateKey":"xxx","MultiSigAddress":"2N23DbiKurkz9n9nd9kLgZpnUjHiGszq4BT","ColoredWalletAddress":"bX4LUBZZVPXJGDpQQeHZNBrWeH6oU6yvT3d","ColoredMultiSigAddress":"c7C16qt9FLEsqePwzCNSsDgh44ttSqGVyBE"},"Error":null}
    
 *   Cash In
 
-        Sample input: CashIn:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B","Amount":5000,"Currency":"bjkUSD"}
-        Sample output: CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
+        Sample request: CashIn:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B","Amount":5000,"Currency":"bjkUSD"}
+        Sample response: CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   Ordinary Cash In
 
-        Sample Input: OrdinaryCashIn:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
-        Sample Output: OrdinaryCashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
+        Sample request: OrdinaryCashIn:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
+        Sample response: OrdinaryCashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   Cash Out
 
-        Sample input: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx"}
-        Sample output: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
+        Sample request: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx"}
+        Sample response: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   Ordinary Cash Out
 
-        Sample Input: OrdinaryCashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
-        Sample Output: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
+        Sample request: OrdinaryCashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
+        Sample response: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   GetCurrentBalance
 
-        Sample input: GetCurrentBalance:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B" }
-        Sample input: GetCurrentBalance:{"TransactionId":"10","Result":{"ResultArray":[{"Asset":"bjkUSD","Amount":9400.0},{"Asset":"bjkEUR","Amount":1300.0},{"Asset":"TestExchangeUSD","Amount":1300.0}]},"Error":null}
+        Sample request: GetCurrentBalance:{"TransactionId":"10","MultisigAddress":"3NQ6FF3n8jPFyPewMqzi2qYp8Y4p3UEz9B", "MinimumConfirmation":0 }
+        Sample response: GetCurrentBalance:{"TransactionId":"10","Result":{"ResultArray":[{"Asset":"bjkUSD","Amount":9400.0},{"Asset":"bjkEUR","Amount":1300.0},{"Asset":"TestExchangeUSD","Amount":1300.0}]},"Error":null}
 
 *   Swap
 
@@ -49,18 +49,18 @@ Currently, due to implementation decisions, in the following methods whenever pr
 
 *   Transfer
 
-        Sample request: Transfer:{"SourceMultisigAddress":"2N5H4VU7R4s5CBsyq77HQ7Gu8ZXKDz3ZHVD","SourcePrivateKey":"???","DestinationMultisigAddress":"2N3e9ZNg6uFbVg7EwnSsaWPr6VAbnDfjkTo", "Amount":100, "Asset":"bjkUSD"}
-        Sample response: Transfer:{"TransactionId":null,"Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
+        Sample request: Transfer:{"TransactionId":"10","SourceAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU","SourcePrivateKey":"???","DestinationAddress":"2MxTYg5MsBANnTQVB88AtUmQw5zhj5gayxT", "Amount":2, "Asset":"TestExchangeUSD"}
+        Sample response: Transfer:{"TransactionId":"10","Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
 
 *   GenerateFeeOutputs
 
-        Sample request: GenerateFeeOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.00015,"Count":1000}
-        Sample request: GenerateFeeOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
+        Sample request: GenerateFeeOutputs:{"TransactionId":"10","WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.00015,"Count":1000}
+        Sample response: GenerateFeeOutputs:{"TransactionId":"10","Result":{"TransactionHash":"xxx"},"Error":null}
 
 *   GenerateIssuerOutputs
 
-        Sample request: GenerateIssuerOutputs:{"WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.0000273,"Count":10, "AssetName":"bjkUSD"}
-        Sample request: GenerateIssuerOutputs:{"TransactionId":null,"Result":{"TransactionHash":"xxx"},"Error":null}
+        Sample request: GenerateIssuerOutputs:{"TransactionId":"10","WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.0000273,"Count":10, "AssetName":"bjkUSD"}
+        Sample response: GenerateIssuerOutputs:{"TransactionId":"10","Result":{"TransactionHash":"xxx"},"Error":null}
 
 *   Getting fee outputs count
 
@@ -74,8 +74,27 @@ Currently, due to implementation decisions, in the following methods whenever pr
 
 *   Generating the refund transaction
 
-        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2MuKSMmP4iqdFj9uNpGxKs2wujmTvDotchG","TransactionHash":"b73d3ecaa546bd03fd5742b927211047e9ab508c4bfc407e8fd31f1d90cef244", "timeoutInMinutes":360}
+        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360}
         Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
+
+*   Getting correspondent wallet addresses
+
+        Sample request: GetInputWalletAddresses:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Asset":"TestExchangeUSD"}
+        Sample response: GetInputWalletAddresses:{"TransactionId":"10","Result":{"Addresses":["mhF3ghWGgAJxDcUC52ar5DCv56MVzpN94W","2Msbkk8AGbzrVnENqE3m8nk4n6FyTrdnNF4","2MyZey5YzZMnbuzfi3RuNqnkKAuMgwzRYRj"]},"Error":null}
+
+*   Updating asset definitions
+
+        Sample request: UpdateAssets:{"TransactionId":"10","Assets": [{ "AssetId": "oDmVkVUHnrdSKASFWuHy6hxqTWFc9vdL9d", "AssetAddress": "n2JMZcG3dKuRN4c8K89TBwwwDpHshppQUr", "Name": "TestExchangeUSD", "PrivateKey": "xxx", "DefinitionUrl": "https://www.cpr.sm/-KDPVKLTlL","Divisibility": 2 }, { "AssetId": "oZTd8ZfoyRPkYFhbeLXvordpcpND2YpqPg", "AssetAddress": "n4XdhcAWoRBesY2gy5hnF6ht31rLG19kqy", "Name": "TestExchangeEUR","PrivateKey": "xxx","DefinitionUrl": "https://www.cpr.sm/SBi9SeNlyB","Divisibility": 2}]}
+        Sample response: UpdateAssets:{"TransactionId":"10","Result":{"Success":true},"Error":null}
+
+Primary key for updating is the asset name. If a field is absent for an asset, the previous value is used. If a new asset name is provided, the asset will ne added to setting.json.
+
+*   Get Expired Unclaimed Refunding Transactions
+
+        Sample request: GetExpiredUnclaimedRefundingTransactions:{"TransactionId":"10","MultisigAddress":"2Mz5iEcM7VT3aaGRhKaAdRzJtRJtDKoYMsL"}
+        Sample response: GetExpiredUnclaimedRefundingTransactions:{"TransactionId":"10","Result":{"Elements":[{"TxId":"xxx","TxHex":"xxx"}]},"Error":null}
+
+If MultisigAddress is null (not passed), appropriate transactions for all addresses are returned.
 
 ## Some notes
 *   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.
@@ -86,6 +105,7 @@ Currently, due to implementation decisions, in the following methods whenever pr
 
 | Name | Defaul Value | Description |
 |------|--------------|-------------|
+|RestEndPoint|Nothing|The web endpoint used to submit requests|
 |InQueueConnectionString|UseDevelopmentStorage=true|The connection string for the input queue, the default is for the emulator|
 |OutQueueConnectionString|UseDevelopmentStorage=true|The connection string for the output queue, the default is for the emulator|
 |ConnectionString|Nothing|The connection string to sqlite database|
@@ -98,6 +118,13 @@ Currently, due to implementation decisions, in the following methods whenever pr
 |FeeAddress|Nothing|The address which is used to send the outputs for fee generation to, this outputs will later be used to pay transaction fee.|
 |FeeAddressPrivateKey|Nothing|The private key of the above address|
 |QBitNinjaBaseUrl|Nothing|The qbit ninja url used for querying bitcoin network|
+|PreGeneratedOutputMinimumCount|Nothing|Minimum number of pregenerated outptuts required, either for fee payment or coin issuance. When the number of pregenerated outputs fell below this number and such an output was required, an alert email would be sent (using emailsqueue)|
+|LykkeJobsUrl|Nothing|The url used by code, to post the notification for the new transaction before sending it (Like CashIn, CashOut and ...).|
+|DefaultNumberOfRequiredConfirmations|1|Minimum number of confirmations required to consider the transaction as final (optional).|
+|SwapMinimumConfirmationNumber|0|Minimum number of confirmations required to consider the transaction as final for the swap operation (optional).|
+|BroadcastGroup|400|The Broadcast Group used to send the email for insufficient fee outputs to (optional).|
+|EnvironmentName|null|The name environment in which the program is being runned, for example test or production.|
+|PrivateKeyWillBeSubmitted|false|If the private key will be submitted through POST via url [RestEndPoint]/PrivateKey/Add |
 
 The AssetDefinitions is an array of json, with the following fields:
 
@@ -110,18 +137,23 @@ The AssetDefinitions is an array of json, with the following fields:
 |Divisibility|Number of decimal places for the asset|
 
 
+
 *   The exchange private key could be generated using TestConsole project, Program.cs, function TestBitcoinScripts, for the configured Main or TestNet.
 
 *   For debug install latest [Microsoft Azure Storage Emulator](http://download.microsoft.com/download/0/F/E/0FE64840-9806-4D3C-9C11-84B743162618/MicrosoftAzureStorageEmulator.msi)
 
 ## Mixing signatures
 
-*   To check the method of how to mix signatures from different devices on a single transactions, please check the class LykkeWalletServices.Transactions.TaskHandlers.SrvCashOutSeparateSignaturesTask
+To check the method of how to mix signatures from different devices on a single transactions, please check the class LykkeWalletServices.Transactions.TaskHandlers.SrvCashOutSeparateSignaturesTask
 
 ## Development
 
-*   If the database has changed and the edmx was regenerated, special attention should be made to rowversion columns, please check here http://stackoverflow.com/questions/12732161/how-to-automate-setting-concurrencymode-fixed-on-all-rowversion-columns and run the tool FixVersionColumnConcurrencyMode.exe (the source is available in folder WalletBackEnd\LykkeWalletServices and should be compiled with csc)
+If the database has changed and the edmx was regenerated, special attention should be made to rowversion columns, please check here http://stackoverflow.com/questions/12732161/how-to-automate-setting-concurrencymode-fixed-on-all-rowversion-columns and run the tool FixVersionColumnConcurrencyMode.exe (the source is available in folder WalletBackEnd\LykkeWalletServices and should be compiled with csc)
 
 ## Database
 
-*   Database for the applicaion is currently sql server (developped with express version) and from DB folder the DDL.sql should be run to create the database
+Database for the applicaion is currently sql server (developped with express version) and from DB folder the DDL.sql should be run to create the database
+
+## Tests
+
+The details about tests is listed in the readme.md in tests folder

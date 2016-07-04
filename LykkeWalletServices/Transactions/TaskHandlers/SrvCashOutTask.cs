@@ -10,7 +10,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample output: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvCashOutTask : SrvNetworkInvolvingExchangeBase
     {
-        public SrvCashOutTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvCashOutTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
         }
@@ -35,23 +35,30 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         {
                             TransactionBuilder builder = new TransactionBuilder();
                             var tx = (await builder
+                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), ChangeType.Colored)
                                 .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
                                 .AddCoins(walletCoins.AssetScriptCoins)
-                                .AddEnoughPaymentFee(entities, Network.ToString()))
                                 .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                                .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi - OpenAssetsHelper.NBitcoinColoredCoinOutputInSatoshi)) // We have 2 colored coin outputs
-                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                .AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2))
                                 .BuildTransaction(true);
 
+                            var txHash = tx.GetHash().ToString();
+
+                            OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
+                                new OpenAssetsHelper.LykkeJobsNotificationMessage();
+                            lykkeJobsNotificationMessage.Operation = "CashOut";
+                            lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
+                            lykkeJobsNotificationMessage.BlockchainHash = txHash;
+
                             Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                (tx, Username, Password, IpAddress, Network, entities, ConnectionString);
+                                (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
 
                             if (localerror == null)
                             {
                                 result = new CashOutTaskResult
                                 {
                                     TransactionHex = tx.ToHex(),
-                                    TransactionHash = tx.GetHash().ToString()
+                                    TransactionHash = txHash
                                 };
                             }
                             else

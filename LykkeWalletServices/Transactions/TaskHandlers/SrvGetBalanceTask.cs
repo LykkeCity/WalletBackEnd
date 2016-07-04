@@ -27,9 +27,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             TaskResultGetBalance resultGetBalance = new TaskResultGetBalance();
             var ret = await OpenAssetsHelper.GetAccountBalance(data.WalletAddress, data.AssetID, network);
             resultGetBalance.Balance = ret.Item1;
-            resultGetBalance.UnconfirmedBalance = ret.Item2;
-            resultGetBalance.HasErrorOccurred = ret.Item3;
-            resultGetBalance.ErrorMessage = ret.Item4;
+            resultGetBalance.HasErrorOccurred = ret.Item2;
+            resultGetBalance.ErrorMessage = ret.Item3;
             resultGetBalance.SequenceNumber = -1;
             return resultGetBalance;
             /*

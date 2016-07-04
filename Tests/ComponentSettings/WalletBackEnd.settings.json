@@ -1,0 +1,55 @@
+{
+  "RestEndPoint": "http://+:8085",
+  "InQueueConnectionString": "UseDevelopmentStorage=true",
+  "OutQueueConnectionString": "UseDevelopmentStorage=true;",
+  "ConnectionString": "metadata=res://*/SqlserverLykkeEntities.csdl|res://*/SqlserverLykkeEntities.ssdl|res://*/SqlserverLykkeEntities.msl;provider=System.Data.SqlClient;provider connection string=\"data source=.\\SQLEXPRESS;initial catalog=LykkeTest;integrated security=True;MultipleActiveResultSets=True;App=EntityFramework\"", 
+  "NetworkType": "TestNet",
+  "exchangePrivateKey": "xxx",
+  "FeeAddress":"moTLjH5p8hxgEm7a7pKh2BsjqDWABRCHBm",
+  "FeeAddressPrivateKey":"xxx",
+  "LykkeCredentials": {
+    "PublicAddress": "xxxxxxxxx",
+    "PrivateKey": "xxxxxxxxx"
+  },
+   "RPCUsername":"bitcoinrpc",
+   "RPCPassword":"Hasht",
+   "RPCServerIpAddress":"127.0.0.1",
+   "QBitNinjaBaseUrl" : "http://localhost:85/",
+   "PreGeneratedOutputMinimumCount" :  5,
+   "LykkeJobsUrl": "http://localhost:8088/HandledTx/",
+  "AssetDefinitions": 
+    [
+      {
+        "AssetId": "oXjVb4XRo23tp53QFgVUxLhctPKPt6Q127",
+        "AssetAddress": "mi4VV7LsXcEg41gy2tUEE81diyPayhyRQD",
+        "Name": "bjkUSD",
+        "PrivateKey":"xxx",
+        "DefinitionUrl":"https://www.cpr.sm/XxASx1ojFD",
+        "Divisibility":2
+      },
+      {
+        "AssetId": "oKVtKPjuhsWHeR3eNSNJj7ubCzWrxKmexV",
+        "AssetAddress": "n4mFeShiepGwB5dhnWZNySrejnkWQLwfgD",
+        "Name": "bjkEUR",
+        "PrivateKey":"xxx",
+        "DefinitionUrl":"https://www.cpr.sm/xVMAMwAYvv",
+        "Divisibility":0
+      },
+      {
+        "AssetId": "ocmVkVUHnrdSKASFWuHy6hxqTWFc9vdL9d",
+        "AssetAddress": "n2JMZcG3dKuRN4c8K89TBwwwDpHshppQUr",
+        "Name": "TestExchangeUSD",
+        "PrivateKey":"xxx",
+        "DefinitionUrl":"https://www.cpr.sm/-KDPVKLTlL",
+        "Divisibility":2
+      },
+     {
+     "AssetId": "oZTd8ZfoyRPkYFhbeLXvordpcpND2YpqPg",
+     "AssetAddress": "n4XdhcAWoRBesY2gy5hnF6ht31rLG19kqy",
+     "Name": "TestExchangeEUR",
+     "PrivateKey":"xxx",
+     "DefinitionUrl":"https://www.cpr.sm/SBi9SeNlyB",
+     "Divisibility":2
+     }
+    ]
+}

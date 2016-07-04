@@ -10,7 +10,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     {
         // Sample input: GetFeeOutputsStatus:{"TransactionId":"10"}
         // Sample output: GetFeeOutputsStatus:{"TransactionId":"10","Result":{"ResultArray":[{"Amount":9999.0,"Count":30},{"Amount":15000.0,"Count":1000},{"Amount":10000.0,"Count":90}]},"Error":null}
-        public SrvGetFeeOutputsStatusTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvGetFeeOutputsStatusTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string connectionString, string feeAddress) : base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
         }

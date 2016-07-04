@@ -17,7 +17,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     {
         private string feeAddress = null;
         private string feeAddressPrivateKey = null;
-        public SrvGenerateFeeOutputsTask(Network network, OpenAssetsHelper.AssetDefinition[] assets, string username,
+        public SrvGenerateFeeOutputsTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string connectionString, string feeAddress, string feeAddressPrivateKey) :
             base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {

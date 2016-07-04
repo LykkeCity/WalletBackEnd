@@ -5,6 +5,13 @@
     <!-- SSDL content -->
     <edmx:StorageModels>
     <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="EmailMessages">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Message" Type="text" Nullable="false" />
+        </EntityType>
         <EntityType Name="ExchangeRequests">
           <Key>
             <PropertyRef Name="ExchangeId" />
@@ -49,6 +56,29 @@
           <Property Name="Network" Type="varchar" MaxLength="10" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
+        <EntityType Name="RefundedOutputs">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="RefundedAddress" Type="varchar" MaxLength="35" Nullable="false" />
+          <Property Name="RefundedTxId" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="RefundedOutputNumber" Type="int" Nullable="false" />
+          <Property Name="RefundTxId" Type="bigint" Nullable="false" />
+          <Property Name="HasBeenSpent" Type="bit" Nullable="false" />
+          <Property Name="RefundInvalid" Type="bit" Nullable="false" />
+          <Property Name="LockTime" Type="datetime" Nullable="false" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="RefundTransactions">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="RefundTxId" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+          <Property Name="RefundTxHex" Type="text" />
+        </EntityType>
         <EntityType Name="SentTransactions">
           <Key>
             <PropertyRef Name="id" />
@@ -78,6 +108,47 @@
           <Property Name="SignedTransaction" Type="varchar" MaxLength="100" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
+        <EntityType Name="TransactionsWaitForConfirmations">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="WholeRefundId" Type="bigint" Nullable="false" />
+          <Property Name="RefundedTxId" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="RefundedTxOutputNumber" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="WholeRefund">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="BitcoinAddress" Type="varchar" MaxLength="35" Nullable="false" />
+          <Property Name="TransactionHex" Type="text" Nullable="false" />
+          <Property Name="TransactionId" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="LockTime" Type="datetime" Nullable="false" />
+          <Property Name="CreationTime" Type="datetime" Nullable="false" />
+        </EntityType>
+        <EntityType Name="WholeRefundSpentOutputs">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="RefundTransactionId" Type="bigint" Nullable="false" />
+          <Property Name="SpentTransactionId" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="SpentTransactionOutputNumber" Type="int" Nullable="false" />
+        </EntityType>
+        <Association Name="FK_RefundedOutputs_RefundTransactions">
+          <End Role="RefundTransactions" Type="Self.RefundTransactions" Multiplicity="1" />
+          <End Role="RefundedOutputs" Type="Self.RefundedOutputs" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="RefundTransactions">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="RefundedOutputs">
+              <PropertyRef Name="RefundTxId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         <Association Name="FK_SpentOutputs_SentTransactions">
           <End Role="SentTransactions" Type="Self.SentTransactions" Multiplicity="0..1" />
           <End Role="SpentOutputs" Type="Self.SpentOutputs" Multiplicity="*" />
@@ -90,16 +161,42 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <Association Name="FK_WholeRefundSpentOutputs_WholeRefund">
+          <End Role="WholeRefund" Type="Self.WholeRefund" Multiplicity="1" />
+          <End Role="WholeRefundSpentOutputs" Type="Self.WholeRefundSpentOutputs" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="WholeRefund">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="WholeRefundSpentOutputs">
+              <PropertyRef Name="RefundTransactionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         <EntityContainer Name="SqlexpressLykkeModelStoreContainer">
+          <EntitySet Name="EmailMessages" EntityType="Self.EmailMessages" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="PreGeneratedOutput" EntityType="Self.PreGeneratedOutput" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="RefundedOutputs" EntityType="Self.RefundedOutputs" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="RefundTransactions" EntityType="Self.RefundTransactions" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="SentTransactions" EntityType="Self.SentTransactions" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="SpentOutputs" EntityType="Self.SpentOutputs" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="TransactionsToBeSigned" EntityType="Self.TransactionsToBeSigned" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TransactionsWaitForConfirmations" EntityType="Self.TransactionsWaitForConfirmations" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="WholeRefund" EntityType="Self.WholeRefund" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="WholeRefundSpentOutputs" EntityType="Self.WholeRefundSpentOutputs" Schema="dbo" store:Type="Tables" />
+          <AssociationSet Name="FK_RefundedOutputs_RefundTransactions" Association="Self.FK_RefundedOutputs_RefundTransactions">
+            <End Role="RefundTransactions" EntitySet="RefundTransactions" />
+            <End Role="RefundedOutputs" EntitySet="RefundedOutputs" />
+          </AssociationSet>
           <AssociationSet Name="FK_SpentOutputs_SentTransactions" Association="Self.FK_SpentOutputs_SentTransactions">
             <End Role="SentTransactions" EntitySet="SentTransactions" />
             <End Role="SpentOutputs" EntitySet="SpentOutputs" />
+          </AssociationSet>
+          <AssociationSet Name="FK_WholeRefundSpentOutputs_WholeRefund" Association="Self.FK_WholeRefundSpentOutputs_WholeRefund">
+            <End Role="WholeRefund" EntitySet="WholeRefund" />
+            <End Role="WholeRefundSpentOutputs" EntitySet="WholeRefundSpentOutputs" />
           </AssociationSet>
         </EntityContainer>
       </Schema></edmx:StorageModels>
@@ -117,6 +214,20 @@
             <End Role="SpentOutput" EntitySet="SpentOutputs" />
           </AssociationSet>
           <EntitySet Name="TransactionsToBeSigneds" EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" />
+          <EntitySet Name="RefundedOutputs" EntityType="SqlexpressLykkeModel.RefundedOutput" />
+          <EntitySet Name="RefundTransactions" EntityType="SqlexpressLykkeModel.RefundTransaction" />
+          <AssociationSet Name="FK_RefundedOutputs_RefundTransactions" Association="SqlexpressLykkeModel.FK_RefundedOutputs_RefundTransactions">
+            <End Role="RefundTransaction" EntitySet="RefundTransactions" />
+            <End Role="RefundedOutput" EntitySet="RefundedOutputs" />
+          </AssociationSet>
+          <EntitySet Name="EmailMessages" EntityType="SqlexpressLykkeModel.EmailMessage" />
+          <EntitySet Name="WholeRefunds" EntityType="SqlexpressLykkeModel.WholeRefund" />
+          <EntitySet Name="TransactionsWaitForConfirmations" EntityType="SqlexpressLykkeModel.TransactionsWaitForConfirmation" />
+          <EntitySet Name="WholeRefundSpentOutputs" EntityType="SqlexpressLykkeModel.WholeRefundSpentOutput" />
+          <AssociationSet Name="FK_WholeRefundSpentOutputs_WholeRefund" Association="SqlexpressLykkeModel.FK_WholeRefundSpentOutputs_WholeRefund">
+            <End Role="WholeRefund" EntitySet="WholeRefunds" />
+            <End Role="WholeRefundSpentOutput" EntitySet="WholeRefundSpentOutputs" />
+          </AssociationSet>
         </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -203,8 +314,95 @@
           <Property Name="WalletAddress" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="UnsignedTransaction" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="SignedTransaction" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
         </EntityType>
+        <EntityType Name="RefundedOutput">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RefundedAddress" Type="String" Nullable="false" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="RefundedTxId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="RefundedOutputNumber" Type="Int32" Nullable="false" />
+          <Property Name="RefundTxId" Type="Int64" Nullable="false" />
+          <Property Name="HasBeenSpent" Type="Boolean" Nullable="false" />
+          <Property Name="RefundInvalid" Type="Boolean" Nullable="false" />
+          <Property Name="LockTime" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <NavigationProperty Name="RefundTransaction" Relationship="SqlexpressLykkeModel.FK_RefundedOutputs_RefundTransactions" FromRole="RefundedOutput" ToRole="RefundTransaction" />
+        </EntityType>
+        <EntityType Name="RefundTransaction">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RefundTxId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <NavigationProperty Name="RefundedOutputs" Relationship="SqlexpressLykkeModel.FK_RefundedOutputs_RefundTransactions" FromRole="RefundTransaction" ToRole="RefundedOutput" />
+          <Property Name="RefundTxHex" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <Association Name="FK_RefundedOutputs_RefundTransactions">
+          <End Type="SqlexpressLykkeModel.RefundTransaction" Role="RefundTransaction" Multiplicity="1" />
+          <End Type="SqlexpressLykkeModel.RefundedOutput" Role="RefundedOutput" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="RefundTransaction">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="RefundedOutput">
+              <PropertyRef Name="RefundTxId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="EmailMessage">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" />
+          <Property Name="Message" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="WholeRefund">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" />
+          <Property Name="BitcoinAddress" Type="String" Nullable="false" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionHex" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="CreationTime" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="LockTime" Type="DateTime" Nullable="false" Precision="3" />
+          <NavigationProperty Name="WholeRefundSpentOutputs" Relationship="SqlexpressLykkeModel.FK_WholeRefundSpentOutputs_WholeRefund" FromRole="WholeRefund" ToRole="WholeRefundSpentOutput" />
+        </EntityType>
+        <EntityType Name="TransactionsWaitForConfirmation">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="WholeRefundId" Type="Int64" Nullable="false" />
+          <Property Name="RefundedTxId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="RefundedTxOutputNumber" Type="Int32" Nullable="false" />
+        </EntityType>
+        <EntityType Name="WholeRefundSpentOutput">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" />
+          <Property Name="RefundTransactionId" Type="Int64" Nullable="false" />
+          <Property Name="SpentTransactionId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="SpentTransactionOutputNumber" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="WholeRefund" Relationship="SqlexpressLykkeModel.FK_WholeRefundSpentOutputs_WholeRefund" FromRole="WholeRefundSpentOutput" ToRole="WholeRefund" />
+        </EntityType>
+        <Association Name="FK_WholeRefundSpentOutputs_WholeRefund">
+          <End Type="SqlexpressLykkeModel.WholeRefund" Role="WholeRefund" Multiplicity="1" />
+          <End Type="SqlexpressLykkeModel.WholeRefundSpentOutput" Role="WholeRefundSpentOutput" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="WholeRefund">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="WholeRefundSpentOutput">
+              <PropertyRef Name="RefundTransactionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -284,6 +482,71 @@
                 <ScalarProperty Name="UnsignedTransaction" ColumnName="UnsignedTransaction" />
                 <ScalarProperty Name="WalletAddress" ColumnName="WalletAddress" />
                 <ScalarProperty Name="ExchangeId" ColumnName="ExchangeId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="RefundedOutputs">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.RefundedOutput">
+              <MappingFragment StoreEntitySet="RefundedOutputs">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="LockTime" ColumnName="LockTime" />
+                <ScalarProperty Name="RefundInvalid" ColumnName="RefundInvalid" />
+                <ScalarProperty Name="HasBeenSpent" ColumnName="HasBeenSpent" />
+                <ScalarProperty Name="RefundTxId" ColumnName="RefundTxId" />
+                <ScalarProperty Name="RefundedOutputNumber" ColumnName="RefundedOutputNumber" />
+                <ScalarProperty Name="RefundedTxId" ColumnName="RefundedTxId" />
+                <ScalarProperty Name="RefundedAddress" ColumnName="RefundedAddress" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="RefundTransactions">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.RefundTransaction">
+              <MappingFragment StoreEntitySet="RefundTransactions">
+                <ScalarProperty Name="RefundTxHex" ColumnName="RefundTxHex" />
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="RefundTxId" ColumnName="RefundTxId" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EmailMessages">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.EmailMessage">
+              <MappingFragment StoreEntitySet="EmailMessages">
+                <ScalarProperty Name="Message" ColumnName="Message" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="WholeRefunds">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.WholeRefund">
+              <MappingFragment StoreEntitySet="WholeRefund">
+                <ScalarProperty Name="LockTime" ColumnName="LockTime" />
+                <ScalarProperty Name="CreationTime" ColumnName="CreationTime" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+                <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
+                <ScalarProperty Name="BitcoinAddress" ColumnName="BitcoinAddress" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TransactionsWaitForConfirmations">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.TransactionsWaitForConfirmation">
+              <MappingFragment StoreEntitySet="TransactionsWaitForConfirmations">
+                <ScalarProperty Name="RefundedTxOutputNumber" ColumnName="RefundedTxOutputNumber" />
+                <ScalarProperty Name="RefundedTxId" ColumnName="RefundedTxId" />
+                <ScalarProperty Name="WholeRefundId" ColumnName="WholeRefundId" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="WholeRefundSpentOutputs">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.WholeRefundSpentOutput">
+              <MappingFragment StoreEntitySet="WholeRefundSpentOutputs">
+                <ScalarProperty Name="SpentTransactionOutputNumber" ColumnName="SpentTransactionOutputNumber" />
+                <ScalarProperty Name="SpentTransactionId" ColumnName="SpentTransactionId" />
+                <ScalarProperty Name="RefundTransactionId" ColumnName="RefundTransactionId" />
+                <ScalarProperty Name="id" ColumnName="id" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Core
@@ -34,6 +35,8 @@ namespace Core
         public string WalletAddress { get; set; }
         public string WalletPrivateKey { get; set; }
         public string MultiSigAddress { get; set; }
+        public string ColoredWalletAddress { get; set; }
+        public string ColoredMultiSigAddress { get; set; }
     }
 
     public class TransactionSenderTaskResult : ITaskResult
@@ -42,9 +45,37 @@ namespace Core
         public string TransactionHash { get; set; }
     }
 
+    public class GetExpiredUnclaimedRefundingTransactionsTaskResultElement
+    {
+        public string TxId
+        {
+            get;
+            set;
+        }
+
+        public string TxHex
+        {
+            get;
+            set;
+        }
+    }
+    public class GetExpiredUnclaimedRefundingTransactionsTaskResult : ITaskResult
+    {
+        public GetExpiredUnclaimedRefundingTransactionsTaskResultElement[] Elements
+        {
+            get;
+            set;
+        }
+    }
+
     public class GenerateRefundingTransactionTaskResult : ITaskResult
     {
         public string RefundTransaction { get; set; }
+    }
+
+    public class GetInputWalletAddressesTaskResult : ITaskResult
+    {
+        public string[] Addresses { get; set; }
     }
 
     public class GenerateMassOutputsTaskResult : ITaskResult
@@ -79,6 +110,15 @@ namespace Core
     {
     }
 
+    public class UpdateAssetsTaskResult : ITaskResult
+    {
+        public bool Success
+        {
+            get;
+            set;
+        }
+    }
+
     public class GetCurrentBalanceTaskResult : ITaskResult
     {
         public GetCurrentBalanceTaskResultElement[] ResultArray;
@@ -99,13 +139,13 @@ namespace Core
     {
         public GetIssuersOutputStatusTaskResultElement[] ResultArray;
     }
-    
+
     public class GetIssuersOutputStatusTaskResultElement
     {
         public string Asset { get; set; }
         public float Amount { get; set; }
         public int Count { get; set; }
-        
+
     }
 
     public class GetFeeOutputsStatusTaskResultElement
