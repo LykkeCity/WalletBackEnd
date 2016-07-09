@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Threading.Tasks;
 
 namespace Core
@@ -11,6 +12,7 @@ namespace Core
         public string PrivateKey { get; set; }
         public string DefinitionUrl { get; set; }
         public int? Divisibility { get; set; }
+        [JsonIgnore]
         public long MultiplyFactor
         {
             get
