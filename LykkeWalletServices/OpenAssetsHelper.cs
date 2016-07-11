@@ -469,7 +469,7 @@ namespace LykkeWalletServices
             }
         }
 
-        public static float GetAssetBalance(UniversalUnspentOutput[] outputs,
+        public static double GetAssetBalance(UniversalUnspentOutput[] outputs,
             string assetId, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
             float total = 0;
@@ -554,11 +554,11 @@ namespace LykkeWalletServices
         }
 
         public static bool IsAssetsEnough(UniversalUnspentOutput[] outputs,
-            string assetId, float assetAmount, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
+            string assetId, double assetAmount, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
             if (!string.IsNullOrEmpty(assetId))
             {
-                float total = GetAssetBalance(outputs, assetId, multiplyFactor, getMinimumConfirmationNumber);
+                double total = GetAssetBalance(outputs, assetId, multiplyFactor, getMinimumConfirmationNumber);
 
                 if (Math.Abs(total - assetAmount) >= 0)
                 {
@@ -581,7 +581,7 @@ namespace LykkeWalletServices
         }
 
         public static async Task<GetCoinsForWalletReturnType> GetCoinsForWallet
-            (string multiSigAddress, long requiredSatoshiAmount, float requiredAssetAmount, string asset, AssetDefinition[] assets,
+            (string multiSigAddress, long requiredSatoshiAmount, double requiredAssetAmount, string asset, AssetDefinition[] assets,
             Network network, string username, string password, string ipAddress, string connectionString, SqlexpressLykkeEntities entities,
             bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true, Func<int> getMinimumConfirmationNumber = null)
         {
