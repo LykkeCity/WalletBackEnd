@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Threading.Tasks;
 
 namespace Core
@@ -11,6 +12,7 @@ namespace Core
         public string PrivateKey { get; set; }
         public string DefinitionUrl { get; set; }
         public int? Divisibility { get; set; }
+        [JsonIgnore]
         public long MultiplyFactor
         {
             get
@@ -56,7 +58,7 @@ namespace Core
             set;
         }
 
-        public float FeeAmount
+        public double FeeAmount
         {
             get;
             set;
@@ -92,7 +94,7 @@ namespace Core
     {
         public string MultisigAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
-        public float Amount { get; set; }
+        public double Amount { get; set; }
         public string Currency { get; set; }
     }
 
@@ -114,7 +116,7 @@ namespace Core
     {
         public string MultisigAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
-        public float Amount { get; set; }
+        public double Amount { get; set; }
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
     }
@@ -132,7 +134,7 @@ namespace Core
     {
         public string MultisigAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
-        public float Amount { get; set; }
+        public double Amount { get; set; }
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
     }
@@ -141,7 +143,7 @@ namespace Core
     {
         public string MultisigAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
-        public float Amount { get; set; }
+        public double Amount { get; set; }
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
         public string PublicWallet { get; set; }
@@ -151,7 +153,7 @@ namespace Core
     {
         public string MultisigAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
-        public float Amount { get; set; }
+        public double Amount { get; set; }
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
         public string PublicWallet { get; set; }
@@ -163,17 +165,17 @@ namespace Core
         public string SourcePrivateKey { get; set; }
         public string DestinationAddress { get; set; }
         // ToDo - At first we assume the currency is not divisable
-        public float Amount { get; set; }
+        public double Amount { get; set; }
         public string Asset { get; set; }
     }
 
     public class TaskToDoSwap : TransactionToDoBase
     {
         public string MultisigCustomer1 { get; set; }
-        public float Amount1 { get; set; }
+        public double Amount1 { get; set; }
         public string Asset1 { get; set; }
         public string MultisigCustomer2 { get; set; }
-        public float Amount2 { get; set; }
+        public double Amount2 { get; set; }
         public string Asset2 { get; set; }
     }
 
