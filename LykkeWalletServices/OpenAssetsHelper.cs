@@ -560,7 +560,7 @@ namespace LykkeWalletServices
             {
                 double total = GetAssetBalance(outputs, assetId, multiplyFactor, getMinimumConfirmationNumber);
 
-                if (Math.Abs(total - assetAmount) >= 0)
+                if (total - assetAmount >= 0)
                 {
                     return true;
                 }
@@ -575,7 +575,7 @@ namespace LykkeWalletServices
             }
         }
 
-        public static long GetAssetBTCAmount(this string asset, float amount)
+        public static long GetAssetBTCAmount(this string asset, double amount)
         {
             return !IsRealAsset(asset) ? Convert.ToInt64(amount * BTCToSathoshiMultiplicationFactor) : 0;
         }
@@ -987,7 +987,7 @@ namespace LykkeWalletServices
                         else
                         {
                             var uncoloredOutputs = GetWalletOutputsUncolored(outputs.Item1);
-                            float totalRequiredAmount = data.Count * data.FeeAmount * BTCToSathoshiMultiplicationFactor; // Convert to satoshi
+                            double totalRequiredAmount = data.Count * data.FeeAmount * BTCToSathoshiMultiplicationFactor; // Convert to satoshi
                             float minimumRequiredAmountForParticipation = Convert.ToInt64(0.001 * BTCToSathoshiMultiplicationFactor);
                             var output = uncoloredOutputs.Where(o => (o.GetValue() > minimumRequiredAmountForParticipation)).ToList();
                             if (output.Count == 0)
