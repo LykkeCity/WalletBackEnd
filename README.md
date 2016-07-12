@@ -74,8 +74,10 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   Generating the refund transaction
 
-        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360}
+        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360 , "JustRefundTheNonRefunded":true}
         Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
+
+JustRefundTheNonRefunded flag indicates the old refund method should be used. If false or omitted the new refunding method will be used. Old refund method is deprecated.
 
 *   Getting correspondent wallet addresses
 
@@ -122,6 +124,7 @@ If MultisigAddress is null (not passed), appropriate transactions for all addres
 |LykkeJobsUrl|Nothing|The url used by code, to post the notification for the new transaction before sending it (Like CashIn, CashOut and ...).|
 |DefaultNumberOfRequiredConfirmations|1|Minimum number of confirmations required to consider the transaction as final (optional).|
 |SwapMinimumConfirmationNumber|0|Minimum number of confirmations required to consider the transaction as final for the swap operation (optional).|
+|GenerateRefundingTransactionMinimumConfirmationNumber|1|Minimum number of confirmations required to consider the transaction as final for the generate refunding transaction operation|
 |BroadcastGroup|400|The Broadcast Group used to send the email for insufficient fee outputs to (optional).|
 |EnvironmentName|null|The name environment in which the program is being runned, for example test or production.|
 |PrivateKeyWillBeSubmitted|false|If the private key will be submitted through POST via url [RestEndPoint]/PrivateKey/Add |

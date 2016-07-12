@@ -15,8 +15,11 @@ namespace LykkeWalletServices
     public partial class TransactionsWaitForConfirmation
     {
         public long id { get; set; }
-        public long WholeRefundId { get; set; }
-        public string RefundedTxId { get; set; }
-        public int RefundedTxOutputNumber { get; set; }
+        public string txToBeWatched { get; set; }
+        public Nullable<long> WholeRefundId { get; set; }
+        public Nullable<long> OldRefundedTxId { get; set; }
+    
+        public virtual RefundTransaction RefundTransaction { get; set; }
+        public virtual WholeRefund WholeRefund { get; set; }
     }
 }

@@ -40,17 +40,15 @@
       <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="NBitcoin, Version=2.1.5.10, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.dll</HintPath>
+    <Reference Include="NBitcoin">
+      <HintPath>..\..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.dll</HintPath>
     </Reference>
-    <Reference Include="NBitcoin.BouncyCastle, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.BouncyCastle.dll</HintPath>
+    <Reference Include="NBitcoin.BouncyCastle">
+      <HintPath>..\..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.BouncyCastle.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.8.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -91,6 +89,7 @@
     <Compile Include="KeyStorage.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="LykkeExtenddedRPCClient.cs" />
     <Compile Include="OpenAssetsHelper.cs" />
     <Compile Include="PreGeneratedOutput.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>

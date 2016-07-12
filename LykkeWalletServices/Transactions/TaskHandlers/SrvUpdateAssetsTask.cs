@@ -71,6 +71,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             [DefaultValue(1)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int GenerateRefundingTransactionMinimumConfirmationNumber
+            {
+                get;
+                set;
+            }
+
+            [DefaultValue(1)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public int DefaultNumberOfRequiredConfirmations
             {
                 get;
