@@ -13,6 +13,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
 
 namespace LykkeWalletServices
 {
@@ -928,7 +929,7 @@ namespace LykkeWalletServices
 
                 var spentRefund =
                     await DoesSpendRefund(tx, entitiesContext, username, password, ipAddress, network);
-                if ((spentRefund.NewRefundId != null && spentRefund.NewRefundId.Length > 0)  ||
+                if ((spentRefund.NewRefundId != null && spentRefund.NewRefundId.Length > 0) ||
                     (spentRefund.OldRefundId != null && spentRefund.OldRefundId.Length > 0))
                 {
                     foreach (var item in spentRefund?.NewRefundId?.Distinct())
@@ -995,6 +996,7 @@ namespace LykkeWalletServices
                 // If the appearence does not take place after some retries, the
                 // current function returns successfuly, since the responsibility of
                 // the current function is to send the transaction and not the rest
+                /*
                 bool breakFor = false;
                 for (int i = 0; i < 10; i++)
                 {
@@ -1019,6 +1021,31 @@ namespace LykkeWalletServices
                     if (breakFor)
                     {
                         break;
+                    }
+                }
+                */
+                var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
+
+                try
+                {
+                    await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
+                        new string[] { tx.GetHash().ToString() }, null);
+                }
+                catch (Exception)
+                {
+
+                }
+
+                var destAddresses = tx.Outputs.Select(o => o.ScriptPubKey.GetDestinationAddress(network).ToWif()).Distinct();
+                foreach (var addr in destAddresses)
+                {
+                    try
+                    {
+                        await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
+                            new string[] { tx.GetHash().ToString() }, addr);
+                    }
+                    catch (Exception)
+                    {
                     }
                 }
             }
@@ -2160,6 +2187,120 @@ namespace LykkeWalletServices
             // return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
             return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputConcurrent.ToArray(),
                 errorOccured, errorMessage);
+        }
+
+        #endregion
+
+        #region PropagationVerification
+
+        public static async Task<bool> HasBalanceIndexed(TheSettings settings, string txId, string btcAddress)
+        {
+            return await HasBalanceIndexedInternal(settings, txId, btcAddress);
+        }
+
+        public static async Task<bool> HasBalanceIndexedZeroConfirmation(TheSettings settings, string txId, string btcAddress)
+        {
+            return await HasBalanceIndexedInternal(settings, txId, btcAddress, false);
+        }
+
+        public static async Task<bool> HasBalanceIndexedInternal(TheSettings settings, string txId, string btcAddress,
+            bool confirmationRequired = true)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                string url = null;
+                var exists = false;
+                url = settings.QBitNinjaBaseUrl + "balances/" + btcAddress + "?headeronly=true";
+                HttpResponseMessage result = await client.GetAsync(url);
+                if (!result.IsSuccessStatusCode)
+                {
+                    return false;
+                }
+                else
+                {
+                    var webResponse = await result.Content.ReadAsStringAsync();
+                    var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                        (webResponse);
+                    if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
+                    {
+                        notProcessedUnspentOutputs.operations.ForEach((o) =>
+                        {
+                            exists = o.receivedCoins
+                           .Where(c => c.transactionId.Equals(txId) && (!confirmationRequired | o.confirmations > 0))
+                           .Any() | exists;
+                            if (exists)
+                            {
+                                return;
+                            }
+                        });
+                    }
+
+                    return exists;
+                }
+            }
+        }
+
+        public static async Task<bool> IsUrlSuccessful(string url)
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+
+                    HttpResponseMessage result = await client.GetAsync(url);
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                return true;
+            }
+        }
+
+        public static async Task<bool> HasTransactionIndexed(TheSettings settings, string txId, string dummy)
+        {
+            string url = settings.QBitNinjaBaseUrl + "transactions/" + txId + "?headeronly=true";
+            return await IsUrlSuccessful(url);
+        }
+
+        public static async Task<bool> HasBlockIndexed(TheSettings settings, string blockId, string dummy)
+        {
+            string url = settings.QBitNinjaBaseUrl + "blocks/" + blockId + "?headeronly=true";
+            return await IsUrlSuccessful(url);
+        }
+
+        public static async Task WaitUntillQBitNinjaHasIndexed(TheSettings settings,
+            Func<TheSettings, string, string, Task<bool>> checkIndexed, IEnumerable<string> ids, string id2 = null)
+        {
+            var indexed = false;
+            foreach (var id in ids)
+            {
+                indexed = false;
+                for (int i = 0; i < 30; i++)
+                {
+                    if (await checkIndexed(settings, id, id2))
+                    {
+                        indexed = true;
+                        break;
+                    }
+                    else
+                    {
+                        await Task.Delay(1000);
+                    }
+                }
+
+                if (!indexed)
+                {
+                    throw new Exception(string.IsNullOrEmpty(id2) ? string.Format("Item with id: {0} did not get indexed yet.", id) : string.Format("Item with id: {0} did not get indexed yet. Provided id2 is {1}", id, id2));
+                }
+            }
         }
 
         #endregion
