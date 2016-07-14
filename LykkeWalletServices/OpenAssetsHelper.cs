@@ -1024,29 +1024,35 @@ namespace LykkeWalletServices
                     }
                 }
                 */
-                var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
-
                 try
                 {
-                    await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
-                        new string[] { tx.GetHash().ToString() }, null);
-                }
-                catch (Exception)
-                {
+                    var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
 
-                }
-
-                var destAddresses = tx.Outputs.Select(o => o.ScriptPubKey.GetDestinationAddress(network).ToWif()).Distinct();
-                foreach (var addr in destAddresses)
-                {
                     try
                     {
-                        await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
-                            new string[] { tx.GetHash().ToString() }, addr);
+                        await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
+                            new string[] { tx.GetHash().ToString() }, null);
                     }
                     catch (Exception)
                     {
                     }
+
+                    var destAddresses = tx.Outputs.Select(o => o.ScriptPubKey.GetDestinationAddress(network)?.ToWif()).Where(c => !string.IsNullOrEmpty(c)).Distinct();
+                    foreach (var addr in destAddresses)
+                    {
+                        try
+                        {
+                            await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
+                                new string[] { tx.GetHash().ToString() }, addr);
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // No exception should be thrown after tx has been sent to blockchain
                 }
             }
 
@@ -2206,37 +2212,40 @@ namespace LykkeWalletServices
         public static async Task<bool> HasBalanceIndexedInternal(TheSettings settings, string txId, string btcAddress,
             bool confirmationRequired = true)
         {
+            HttpResponseMessage result = null;
+            bool exists = false;
             using (HttpClient client = new HttpClient())
             {
                 string url = null;
-                var exists = false;
+                exists = false;
                 url = settings.QBitNinjaBaseUrl + "balances/" + btcAddress + "?headeronly=true";
-                HttpResponseMessage result = await client.GetAsync(url);
-                if (!result.IsSuccessStatusCode)
-                {
-                    return false;
-                }
-                else
-                {
-                    var webResponse = await result.Content.ReadAsStringAsync();
-                    var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                        (webResponse);
-                    if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
-                    {
-                        notProcessedUnspentOutputs.operations.ForEach((o) =>
-                        {
-                            exists = o.receivedCoins
-                           .Where(c => c.transactionId.Equals(txId) && (!confirmationRequired | o.confirmations > 0))
-                           .Any() | exists;
-                            if (exists)
-                            {
-                                return;
-                            }
-                        });
-                    }
+                result = await client.GetAsync(url);
+            }
 
-                    return exists;
+            if (!result.IsSuccessStatusCode)
+            {
+                return false;
+            }
+            else
+            {
+                var webResponse = await result.Content.ReadAsStringAsync();
+                var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                    (webResponse);
+                if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
+                {
+                    notProcessedUnspentOutputs.operations.ForEach((o) =>
+                    {
+                        exists = o.receivedCoins
+                       .Where(c => c.transactionId.Equals(txId) && (!confirmationRequired | o.confirmations > 0))
+                       .Any() | exists;
+                        if (exists)
+                        {
+                            return;
+                        }
+                    });
                 }
+
+                return exists;
             }
         }
 
