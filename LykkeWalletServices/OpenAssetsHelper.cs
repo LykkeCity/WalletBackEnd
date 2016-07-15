@@ -431,6 +431,7 @@ namespace LykkeWalletServices
                     throw new Exception("Not supported.");
             }
 
+            /*
             IList<UniversalUnspentOutput> retList = new List<UniversalUnspentOutput>();
             var joined = from output in ret.Item1
                          join refunded in entities.RefundedOutputs
@@ -457,6 +458,9 @@ namespace LykkeWalletServices
             {
                 return ret;
             }
+            */
+
+            return ret;
         }
 
         public static async Task<Tuple<float, bool, string>> GetAccountBalance(string walletAddress,
@@ -765,9 +769,20 @@ namespace LykkeWalletServices
             // So in this case if we spend another input of R1, we may face double spend
             // Although in our case we just will have swaps (as T1) what happens if 
             // R1 becomes spendable with a swap
-            DateTimeOffset passedLocktime = DateTime.UtcNow.AddHours(-24);
 
-            if (locktime > passedLocktime)
+            // Solution: We assume a broadcasted transaction gets confirmation 24 hours
+            DateTime now = DateTime.UtcNow;
+            if (now.AddHours(-24) <= locktime && (await GetNumberOfTransactionConfirmations(transactionHex) < 3))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            /*
+            DateTime now = DateTime.UtcNow;
+            if (now.AddHours(-2) <= locktime && locktime < now.AddHours(24))
             {
                 if (transactionHex != null)
                 {
@@ -791,6 +806,7 @@ namespace LykkeWalletServices
             {
                 return false;
             }
+            */
         }
 
         static async Task AddRange<T>(
