@@ -23,7 +23,7 @@ namespace Lykkex.WalletBackend.Tests
     [TestFixture]
     public class GetCurrentBalanceTests : TaskTestsCommon
     {
-        public async static Task<float> GetAssetBalanceForMultisig(string multisig, string assetName, int confirmationNamber,
+        public async static Task<double> GetAssetBalanceForMultisig(string multisig, string assetName, int confirmationNamber,
             AzureStorage.AzureQueueExt QueueReader, AzureStorage.AzureQueueExt QueueWriter)
         {
             GetCurrentBalanceModel getCurrentBalance = new GetCurrentBalanceModel { TransactionId = "10", MultisigAddress = multisig, MinimumConfirmation = confirmationNamber };

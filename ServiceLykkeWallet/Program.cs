@@ -52,6 +52,11 @@ namespace ServiceLykkeWallet
             {
                 OpenAssetsHelper.MinimumNumberOfRequiredConfirmations = settings.DefaultNumberOfRequiredConfirmations;
             }
+            if (settings.GenerateRefundingTransactionMinimumConfirmationNumber >= 0)
+            {
+                SrvGenerateRefundingTransactionTask.GenerateRefundingTransactionMinimumConfirmationNumber = 
+                    settings.GenerateRefundingTransactionMinimumConfirmationNumber;
+            }
             OpenAssetsHelper.PrivateKeyWillBeSubmitted = settings.PrivateKeyWillBeSubmitted;
             OpenAssetsHelper.ExchangePrivateKey = settings.exchangePrivateKey;
             OpenAssetsHelper.Network = settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet;

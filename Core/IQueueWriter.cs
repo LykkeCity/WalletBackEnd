@@ -127,7 +127,7 @@ namespace Core
     public class GetCurrentBalanceTaskResultElement
     {
         public string Asset { get; set; }
-        public float Amount { get; set; }
+        public double Amount { get; set; }
     }
 
     public class GetFeeOutputsStatusTaskResult : ITaskResult

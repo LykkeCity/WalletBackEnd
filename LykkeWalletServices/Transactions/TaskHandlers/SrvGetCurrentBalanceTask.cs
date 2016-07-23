@@ -41,7 +41,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 }
                 else
                 {
-                    float tempValue = GetAssetBalance(walletOuputs.Item1, "BTC", (long)BTCToSathoshiMultiplicationFactor, getMinimumConfirmationNumber);
+                    double tempValue = GetAssetBalance(walletOuputs.Item1, "BTC", (long)BTCToSathoshiMultiplicationFactor, getMinimumConfirmationNumber);
                     GetCurrentBalanceTaskResultElement element = new GetCurrentBalanceTaskResultElement();
                     element.Asset = "BTC";
                     element.Amount = tempValue;

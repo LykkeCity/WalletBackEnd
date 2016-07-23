@@ -18,6 +18,7 @@ namespace LykkeWalletServices
         public RefundTransaction()
         {
             this.RefundedOutputs = new HashSet<RefundedOutput>();
+            this.TransactionsWaitForConfirmations = new HashSet<TransactionsWaitForConfirmation>();
         }
     
         public long id { get; set; }
@@ -27,5 +28,7 @@ namespace LykkeWalletServices
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<RefundedOutput> RefundedOutputs { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<TransactionsWaitForConfirmation> TransactionsWaitForConfirmations { get; set; }
     }
 }

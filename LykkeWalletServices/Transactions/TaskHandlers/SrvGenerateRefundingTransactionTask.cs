@@ -8,11 +8,25 @@ using System.Threading.Tasks;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
-    // Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360}
+    // Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360, "JustRefundTheNonRefunded":true}
     // Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
     // If refund transaction is sent early, one gets "64: non-final (code -26)"
     public class SrvGenerateRefundingTransactionTask : SrvNetworkInvolvingExchangeBase
     {
+        private static int generateRefundingTransactionMinimumConfirmationNumber = 0;
+
+        public static int GenerateRefundingTransactionMinimumConfirmationNumber
+        {
+            get
+            {
+                return generateRefundingTransactionMinimumConfirmationNumber;
+            }
+            set
+            {
+                generateRefundingTransactionMinimumConfirmationNumber = value;
+            }
+        }
+
         public SrvGenerateRefundingTransactionTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string feeAddress, string feePrivateKey, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
@@ -26,10 +40,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             Transaction refundTx = null;
 
-            // This should be corrected, default means Whole refund
-            // Just not to change the default behaviour
-            // bool wholeRefund = !(data.JustRefundTheNonRefunded ?? false);
-            bool wholeRefund = !(data.JustRefundTheNonRefunded ?? true);
+            Func<int> getMinimumConfirmationNumber = (() => { return GenerateRefundingTransactionMinimumConfirmationNumber; });
+
+            bool wholeRefund = !(data.JustRefundTheNonRefunded ?? false);
+            
             try
             {
                 for (int retryCount = 0; retryCount < OpenAssetsHelper.ConcurrencyRetryCount; retryCount++)
@@ -47,7 +61,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 DateTimeOffset lockTimeValue = new DateTimeOffset(DateTime.UtcNow) + new TimeSpan(0, (int)data.timeoutInMinutes, 0);
                                 LockTime lockTime = new LockTime(lockTimeValue);
 
-                                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(multiSig.MultiSigAddress, Network, entities, false);
+                                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(multiSig.MultiSigAddress, Network, entities,
+                                    false, getMinimumConfirmationNumber);
                                 if (walletOuputs.Item2)
                                 {
                                     error = new Error();
@@ -127,8 +142,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     }
                                     else
                                     {
-                                        throw new NotImplementedException();
-
                                         toBeRefundedCoins.AddRange(coins.Item2);
                                     }
 
@@ -161,6 +174,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         TransactionBuilder builder = new TransactionBuilder();
                                         var feeAmount = OpenAssetsHelper.TransactionSendFeesInSatoshi;
                                         var destAmount = scriptCoinsToBeRefunded.Sum(c => c.Amount) - feeAmount;
+
+                                        if(destAmount < 0)
+                                        {
+                                            throw new Exception
+                                                ("The amount to be refunded is smaller than than the fee, no refund will be generated.");
+                                        }
 
                                         refundTx = builder
                                         .SetLockTime(lockTime)
@@ -199,8 +218,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         }
                                         else
                                         {
-                                            throw new NotImplementedException();
-
                                             var refund = new WholeRefund();
                                             refund.BitcoinAddress = multiSig.MultiSigAddress;
                                             refund.CreationTime = DateTime.UtcNow;

@@ -6,17 +6,61 @@ using NBitcoin.OpenAsset;
 using NBitcoin.RPC;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
 
 namespace LykkeWalletServices
 {
     public static class OpenAssetsHelper
     {
+        public class RPCConnectionParams
+        {
+            public string Username
+            {
+                get;
+                set;
+            }
+
+            public string Password
+            {
+                get;
+                set;
+            }
+
+            public string IpAddress
+            {
+                get;
+                set;
+            }
+
+            public string Network
+            {
+                get;
+                set;
+            }
+
+            public Network BitcoinNetwork
+            {
+                get
+                {
+                    switch (Network.ToLower())
+                    {
+                        case "main":
+                            return NBitcoin.Network.Main;
+                        case "testnet":
+                            return NBitcoin.Network.TestNet;
+                        default:
+                            throw new NotImplementedException(string.Format("Bitcoin network {0} is not supported.", Network));
+                    }
+                }
+            }
+        }
         public enum APIProvider
         {
             QBitNinja
@@ -260,7 +304,7 @@ namespace LykkeWalletServices
         }
 
         public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
-            string network, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1)
+            RPCConnectionParams connectionParams, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1)
         {
             builder.SetChange(BitcoinAddress.Create(feeAddress), ChangeType.Uncolored);
 
@@ -280,7 +324,7 @@ namespace LykkeWalletServices
                     }
                     catch (NotEnoughFundsException ex)
                     {
-                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, network);
+                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams);
                         Coin feePayerCoin = feePayer.GetCoin();
 
                         totalAddedFee += feePayer.Amount;
@@ -303,7 +347,7 @@ namespace LykkeWalletServices
                     break;
                 }
 
-                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, network);
+                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams);
                 Coin feePayerCoin = feePayer.GetCoin();
 
                 totalAddedFee += feePayer.Amount;
@@ -421,7 +465,7 @@ namespace LykkeWalletServices
             switch (apiProvider)
             {
                 case APIProvider.QBitNinja:
-                    var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, getMinimumConfirmationNumber);
+                    var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, entities, getMinimumConfirmationNumber);
                     ret = new Tuple<UniversalUnspentOutput[], bool, string>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
                         qbitResult.Item2, qbitResult.Item3);
                     break;
@@ -429,6 +473,7 @@ namespace LykkeWalletServices
                     throw new Exception("Not supported.");
             }
 
+            /*
             IList<UniversalUnspentOutput> retList = new List<UniversalUnspentOutput>();
             var joined = from output in ret.Item1
                          join refunded in entities.RefundedOutputs
@@ -455,6 +500,9 @@ namespace LykkeWalletServices
             {
                 return ret;
             }
+            */
+
+            return ret;
         }
 
         public static async Task<Tuple<float, bool, string>> GetAccountBalance(string walletAddress,
@@ -469,7 +517,7 @@ namespace LykkeWalletServices
             }
         }
 
-        public static float GetAssetBalance(UniversalUnspentOutput[] outputs,
+        public static double GetAssetBalance(UniversalUnspentOutput[] outputs,
             string assetId, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
             float total = 0;
@@ -554,13 +602,13 @@ namespace LykkeWalletServices
         }
 
         public static bool IsAssetsEnough(UniversalUnspentOutput[] outputs,
-            string assetId, float assetAmount, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
+            string assetId, double assetAmount, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
             if (!string.IsNullOrEmpty(assetId))
             {
-                float total = GetAssetBalance(outputs, assetId, multiplyFactor, getMinimumConfirmationNumber);
+                double total = GetAssetBalance(outputs, assetId, multiplyFactor, getMinimumConfirmationNumber);
 
-                if (Math.Abs(total - assetAmount) >= 0)
+                if (total - assetAmount >= 0)
                 {
                     return true;
                 }
@@ -575,13 +623,13 @@ namespace LykkeWalletServices
             }
         }
 
-        public static long GetAssetBTCAmount(this string asset, float amount)
+        public static long GetAssetBTCAmount(this string asset, double amount)
         {
             return !IsRealAsset(asset) ? Convert.ToInt64(amount * BTCToSathoshiMultiplicationFactor) : 0;
         }
 
         public static async Task<GetCoinsForWalletReturnType> GetCoinsForWallet
-            (string multiSigAddress, long requiredSatoshiAmount, float requiredAssetAmount, string asset, AssetDefinition[] assets,
+            (string multiSigAddress, long requiredSatoshiAmount, double requiredAssetAmount, string asset, AssetDefinition[] assets,
             Network network, string username, string password, string ipAddress, string connectionString, SqlexpressLykkeEntities entities,
             bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true, Func<int> getMinimumConfirmationNumber = null)
         {
@@ -725,34 +773,65 @@ namespace LykkeWalletServices
             }
         }
 
-        // ToDo: We shold have a clarification: What happens if
-        // 1- A transaction (T1) spends one of the inputs for Refund (R1)
-        // 2- We report R1 as unspendable because of this
-        // 3- T1 does not get confirmation and R1 becomes spendable.
-        // So in this case if we spend another input of R1, we may face double spend
-        // Although in our case we just will have swaps (as T1) what happens if 
-        // R1 becomes spendable with a swap
-        public static bool IsInputStillSpendable(TxIn input)
+
+        public static async Task<bool> IsInputStillSpendable(TxIn input, string username,
+            string password, string ipAddress, Network network)
         {
-            // We ha
             var txId = input.PrevOut.Hash.ToString();
             var outputNumber = input.PrevOut.N;
 
-            return true;
+            LykkeExtenddedRPCClient client = new LykkeExtenddedRPCClient(new System.Net.NetworkCredential(username, password),
+                            ipAddress, network);
+            if (string.IsNullOrEmpty(await client.GetTxOut
+                (input.PrevOut.Hash.ToString(), input.PrevOut.N)))
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
         }
 
-        public static bool IsRefundSpendable(string transactionHex, DateTimeOffset locktime)
+        public static async Task<bool> IsRefundSpendable(string transactionHex, DateTimeOffset locktime, string username,
+            string password, string ipAddress, Network network)
         {
-            DateTimeOffset passedLocktime = DateTime.UtcNow.AddHours(-2);
+            // We set the time for 24 hours since
+            // 1- A transaction may be broadcasted but not get confirmed
+            // 2- Then a refund gets broadcasted and gets confirmation
+            // 3- Any transaction based on 1 is now could not get conirmation 
+            // So we assume each transaction spending inputs of refund
+            // before 24 hours of refund become spendable is in competition with
+            // refund and should be waited for conirmation
+            // In other words, This is to cover the following:
+            // What happens if
+            // 1- A transaction (T1) spends one of the inputs for Refund (R1)
+            // 2- We report R1 as unspendable because of this
+            // 3- T1 does not get confirmation and R1 becomes spendable.
+            // So in this case if we spend another input of R1, we may face double spend
+            // Although in our case we just will have swaps (as T1) what happens if 
+            // R1 becomes spendable with a swap
 
-            if (locktime > passedLocktime)
+            // Solution: We assume a broadcasted transaction gets confirmation 24 hours
+            DateTime now = DateTime.UtcNow;
+            if (now.AddHours(-24) <= locktime && (await GetNumberOfTransactionConfirmations(transactionHex) < 3))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            /*
+            DateTime now = DateTime.UtcNow;
+            if (now.AddHours(-2) <= locktime && locktime < now.AddHours(24))
             {
                 if (transactionHex != null)
                 {
                     Transaction tx = new Transaction(transactionHex);
                     foreach (var input in tx.Inputs)
                     {
-                        if (!IsInputStillSpendable(input))
+                        if (!(await IsInputStillSpendable(input, username, password, ipAddress, network)))
                         {
                             return false;
                         }
@@ -769,9 +848,49 @@ namespace LykkeWalletServices
             {
                 return false;
             }
+            */
         }
 
-        public static async Task<bool> DoesSpendRefund(this Transaction tx, SqlexpressLykkeEntities entities)
+        static async Task AddRange<T>(
+            this List<T> source, Task<IEnumerable<T>> destination)
+        {
+            source.AddRange(await destination);
+        }
+
+        // From http://stackoverflow.com/questions/14889988/how-can-i-use-where-with-an-async-predicate
+        static async Task<IEnumerable<T>> Where<T>(
+            this IEnumerable<T> source, Func<T, Task<bool>> predicate)
+        {
+            var results = new ConcurrentQueue<T>();
+            var tasks = source.Select(
+                async x =>
+                {
+                    if (await predicate(x))
+                        results.Enqueue(x);
+                });
+            await Task.WhenAll(tasks);
+            return results;
+        }
+
+
+        public class SpentRefund
+        {
+            public long[] NewRefundId
+            {
+                get;
+                set;
+            }
+
+            public long[] OldRefundId
+            {
+                get;
+                set;
+            }
+        }
+
+        public static async Task<SpentRefund> DoesSpendRefund(this Transaction tx,
+            SqlexpressLykkeEntities entities, string username, string password,
+            string ipAddress, Network network)
         {
             var prevOutputs = tx.Inputs.Select(i => new PrevOutput
             {
@@ -779,23 +898,30 @@ namespace LykkeWalletServices
                 N = i.PrevOut.N
             });
 
-            return await Task.Run(() =>
+            return await Task.Run(async () =>
             {
+                SpentRefund spentRefund = new SpentRefund();
 
-                var spendsAWholeRefund = (from prevOutput in prevOutputs
-                                          join spentOutput in entities.WholeRefundSpentOutputs on new { Hash = prevOutput.Hash, N = prevOutput.N }
-                                          equals new { Hash = spentOutput.SpentTransactionId, N = (uint)spentOutput.SpentTransactionOutputNumber }
-                                          select spentOutput)
-                 .Where(o => IsRefundSpendable(o.WholeRefund.TransactionHex, o.WholeRefund.LockTime)).Any();
+                var spendsAWholeRefund =
+                (await ((from prevOutput in prevOutputs
+                         join spentOutput in entities.WholeRefundSpentOutputs on new { Hash = prevOutput.Hash, N = prevOutput.N }
+                         equals new { Hash = spentOutput.SpentTransactionId, N = (uint)spentOutput.SpentTransactionOutputNumber }
+                         select spentOutput)
+                         .Where(async (o) => await IsRefundSpendable(o.WholeRefund.TransactionHex, o.WholeRefund.LockTime, username, password, ipAddress, network)))).Select(r => r.WholeRefund.id)?.Distinct();
+
+
+                spentRefund.NewRefundId = spendsAWholeRefund?.ToArray();
 
                 var spendsAPartialRefund =
-                            (from prevOutput in prevOutputs
-                             join spentOutput in entities.RefundedOutputs on new { Hash = prevOutput.Hash, N = prevOutput.N }
-                             equals new { Hash = spentOutput.RefundedTxId, N = (uint)spentOutput.RefundedOutputNumber }
-                             select spentOutput)
-                             .Where(o => IsRefundSpendable(o.RefundTransaction.RefundTxHex, o.LockTime)).Any();
+                (await (from prevOutput in prevOutputs
+                        join spentOutput in entities.RefundedOutputs on new { Hash = prevOutput.Hash, N = prevOutput.N }
+                        equals new { Hash = spentOutput.RefundedTxId, N = (uint)spentOutput.RefundedOutputNumber }
+                        select spentOutput)
+                        .Where(async (o) => await IsRefundSpendable(o.RefundTransaction.RefundTxHex, o.LockTime, username, password, ipAddress, network))).Select(r => r.RefundTransaction.id)?.Distinct();
 
-                return spendsAWholeRefund || spendsAPartialRefund;
+                spentRefund.OldRefundId = spendsAPartialRefund?.ToArray();
+
+                return spentRefund;
             });
         }
 
@@ -859,6 +985,28 @@ namespace LykkeWalletServices
                 }
                 await entitiesContext.SaveChangesAsync();
 
+                var spentRefund =
+                    await DoesSpendRefund(tx, entitiesContext, username, password, ipAddress, network);
+                if ((spentRefund.NewRefundId != null && spentRefund.NewRefundId.Length > 0) ||
+                    (spentRefund.OldRefundId != null && spentRefund.OldRefundId.Length > 0))
+                {
+                    foreach (var item in spentRefund?.NewRefundId?.Distinct())
+                    {
+                        entitiesContext.TransactionsWaitForConfirmations.Add
+                            (new TransactionsWaitForConfirmation
+                            { txToBeWatched = tx.GetHash().ToString(), OldRefundedTxId = null, WholeRefundId = item });
+                    }
+
+                    foreach (var item in spentRefund?.OldRefundId?.Distinct())
+                    {
+                        entitiesContext.TransactionsWaitForConfirmations.Add
+                            (new TransactionsWaitForConfirmation
+                            { txToBeWatched = tx.GetHash().ToString(), OldRefundedTxId = item, WholeRefundId = null });
+                    }
+                }
+                await entitiesContext.SaveChangesAsync();
+
+
                 // ToDo: Complete the whole refund function
                 /*
                 if (await tx.DoesSpendRefund(entitiesContext))
@@ -906,6 +1054,7 @@ namespace LykkeWalletServices
                 // If the appearence does not take place after some retries, the
                 // current function returns successfuly, since the responsibility of
                 // the current function is to send the transaction and not the rest
+                /*
                 bool breakFor = false;
                 for (int i = 0; i < 10; i++)
                 {
@@ -931,6 +1080,37 @@ namespace LykkeWalletServices
                     {
                         break;
                     }
+                }
+                */
+                try
+                {
+                    var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
+
+                    try
+                    {
+                        await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
+                            new string[] { tx.GetHash().ToString() }, null);
+                    }
+                    catch (Exception)
+                    {
+                    }
+
+                    var destAddresses = tx.Outputs.Select(o => o.ScriptPubKey.GetDestinationAddress(network)?.ToWif()).Where(c => !string.IsNullOrEmpty(c)).Distinct();
+                    foreach (var addr in destAddresses)
+                    {
+                        try
+                        {
+                            await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
+                                new string[] { tx.GetHash().ToString() }, addr);
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // No exception should be thrown after tx has been sent to blockchain
                 }
             }
 
@@ -987,7 +1167,7 @@ namespace LykkeWalletServices
                         else
                         {
                             var uncoloredOutputs = GetWalletOutputsUncolored(outputs.Item1);
-                            float totalRequiredAmount = data.Count * data.FeeAmount * BTCToSathoshiMultiplicationFactor; // Convert to satoshi
+                            double totalRequiredAmount = data.Count * data.FeeAmount * BTCToSathoshiMultiplicationFactor; // Convert to satoshi
                             float minimumRequiredAmountForParticipation = Convert.ToInt64(0.001 * BTCToSathoshiMultiplicationFactor);
                             var output = uncoloredOutputs.Where(o => (o.GetValue() > minimumRequiredAmountForParticipation)).ToList();
                             if (output.Count == 0)
@@ -1396,32 +1576,56 @@ namespace LykkeWalletServices
             //await EmailQueueWriter.PutMessageAsync();
         }
 
-        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
-            string network, string assetId = null)
+        public static async Task<bool> PregeneratedHasBeenSpentInBlockchain(PreGeneratedOutput p, RPCConnectionParams connectionParams)
         {
-            var coins = from item in entities.PreGeneratedOutputs
-                        where item.Consumed.Equals(0) && item.Network.Equals(network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString()))
-                        select item;
-
-            int count = await coins.CountAsync();
-
-            if (count < PreGeneratedOutputMinimumCount)
+            LykkeExtenddedRPCClient client = new LykkeExtenddedRPCClient(new System.Net.NetworkCredential(connectionParams.Username, connectionParams.Password),
+                            connectionParams.IpAddress, connectionParams.BitcoinNetwork);
+            if (string.IsNullOrEmpty(await client.GetTxOut(p.TransactionId, (uint)p.OutputNumber)))
             {
-                await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount, entities);
-            }
-
-            if (count == 0)
-            {
-                throw new Exception("There is no coins to use for fee payment");
+                return true;
             }
             else
             {
-                int index = new Random().Next(coins.Count());
-                PreGeneratedOutput f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
-                f.Consumed = 1;
-                await entities.SaveChangesAsync();
-                return f;
+                return false;
             }
+        }
+
+        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
+            RPCConnectionParams connectionParams, string assetId = null)
+        {
+            var coins = from item in entities.PreGeneratedOutputs
+                        where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString()))
+                        select item;
+
+            int count = await coins.CountAsync();
+            bool pregeneratedCoinFound = false;
+            PreGeneratedOutput f = null;
+
+            while (!pregeneratedCoinFound)
+            {
+                if (count < PreGeneratedOutputMinimumCount)
+                {
+                    await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount, entities);
+                }
+
+                if (count == 0)
+                {
+                    throw new Exception("There is no coins to use for fee payment");
+                }
+                else
+                {
+                    int index = new Random().Next(coins.Count());
+                    f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
+                    f.Consumed = 1;
+                    await entities.SaveChangesAsync();
+                    if (!await PregeneratedHasBeenSpentInBlockchain(f, connectionParams))
+                    {
+                        pregeneratedCoinFound = true;
+                    }
+                }
+            }
+
+            return f;
         }
 
         public static string GetPrivateKeyForAddress(string address)
@@ -1912,12 +2116,69 @@ namespace LykkeWalletServices
             return new QBitNinjaOutputResponse { continuation = null, operations = operations };
         }
 
+        public static async Task<int> GetNumberOfTransactionConfirmations(string txId)
+        {
+            string url = null;
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    url = QBitNinjaTransactionUrl + txId;
+                    HttpResponseMessage result = await client.GetAsync(url);
+
+                    if (result.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        var webResponse = await result.Content.ReadAsStringAsync();
+                        var response = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaTransactionResponse>
+                                (webResponse);
+                        return response.block.confirmations;
+                    }
+                    else
+                    {
+                        return -1;
+                    }
+                }
+            }
+            catch (Exception exp)
+            {
+                return -1;
+            }
+        }
+
+        public static async Task<bool> HasTransactionPassedItsWaitTime(string txId,
+            SqlexpressLykkeEntities entitiesContext)
+        {
+            var found = (from item in entitiesContext.TransactionsWaitForConfirmations
+                         where item.txToBeWatched == txId
+                         select item).FirstOrDefault();
+
+            if (found != null)
+            {
+                if (await GetNumberOfTransactionConfirmations(txId) > 2)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        delegate Task PopulateUnspentOupt(QBitNinjaOperation operation);
+
         public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
-            Network network, Func<int> getMinimumConfirmationNumber = null)
+            Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null)
         {
             bool errorOccured = false;
             string errorMessage = string.Empty;
-            IList<QBitNinjaUnspentOutput> unspentOutputsList = new List<QBitNinjaUnspentOutput>();
+            // List is not thread safe to be runned in parallel
+            //IList<QBitNinjaUnspentOutput> unspentOutputsList = new List<QBitNinjaUnspentOutput>();
+            ConcurrentQueue<QBitNinjaUnspentOutput> unspentOutputConcurrent = new ConcurrentQueue<QBitNinjaUnspentOutput>();
 
             getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
             var minimumConfirmationNumber = getMinimumConfirmationNumber();
@@ -1950,7 +2211,7 @@ namespace LykkeWalletServices
 
                 if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
                 {
-                    notProcessedUnspentOutputs.operations.ForEach((o) =>
+                    PopulateUnspentOupt t = async (o) =>
                     {
                         var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
                         {
@@ -1962,9 +2223,42 @@ namespace LykkeWalletServices
                             asset_id = c.assetId,
                             asset_quantity = c.quantity
                         });
-                        ((List<QBitNinjaUnspentOutput>)unspentOutputsList)
-                        .AddRange(convertResult.Where(u => u.confirmations >= getMinimumConfirmationNumber()));
+
+                        /*
+                        await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
+                            convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
+                            */
+
+                        (await convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))))
+                        .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));
+                    };
+                    var tasks = notProcessedUnspentOutputs.operations.Select(o => t(o));
+                    await Task.WhenAll(tasks);
+                    /*
+                    notProcessedUnspentOutputs.operations.ForEach(async (o) =>
+                    {
+                        var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
+                        {
+                            confirmations = o.confirmations,
+                            output_index = c.index,
+                            transaction_hash = c.transactionId,
+                            value = c.value,
+                            script_hex = c.scriptPubKey,
+                            asset_id = c.assetId,
+                            asset_quantity = c.quantity
+                        });
+
+                        try
+                        {
+                            await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
+                                convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
+                        }
+                        catch (Exception)
+                        {
+                            throw;
+                        }
                     });
+                    */
                 }
                 else
                 {
@@ -1978,7 +2272,126 @@ namespace LykkeWalletServices
                 errorMessage = e.ToString();
             }
 
-            return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
+            // return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
+            return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputConcurrent.ToArray(),
+                errorOccured, errorMessage);
+        }
+
+        #endregion
+
+        #region PropagationVerification
+
+        public static async Task<bool> HasBalanceIndexed(TheSettings settings, string txId, string btcAddress)
+        {
+            return await HasBalanceIndexedInternal(settings, txId, btcAddress);
+        }
+
+        public static async Task<bool> HasBalanceIndexedZeroConfirmation(TheSettings settings, string txId, string btcAddress)
+        {
+            return await HasBalanceIndexedInternal(settings, txId, btcAddress, false);
+        }
+
+        public static async Task<bool> HasBalanceIndexedInternal(TheSettings settings, string txId, string btcAddress,
+            bool confirmationRequired = true)
+        {
+            HttpResponseMessage result = null;
+            bool exists = false;
+            using (HttpClient client = new HttpClient())
+            {
+                string url = null;
+                exists = false;
+                url = settings.QBitNinjaBaseUrl + "balances/" + btcAddress + "?headeronly=true";
+                result = await client.GetAsync(url);
+            }
+
+            if (!result.IsSuccessStatusCode)
+            {
+                return false;
+            }
+            else
+            {
+                var webResponse = await result.Content.ReadAsStringAsync();
+                var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                    (webResponse);
+                if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
+                {
+                    notProcessedUnspentOutputs.operations.ForEach((o) =>
+                    {
+                        exists = o.receivedCoins
+                       .Where(c => c.transactionId.Equals(txId) && (!confirmationRequired | o.confirmations > 0))
+                       .Any() | exists;
+                        if (exists)
+                        {
+                            return;
+                        }
+                    });
+                }
+
+                return exists;
+            }
+        }
+
+        public static async Task<bool> IsUrlSuccessful(string url)
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+
+                    HttpResponseMessage result = await client.GetAsync(url);
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                return true;
+            }
+        }
+
+        public static async Task<bool> HasTransactionIndexed(TheSettings settings, string txId, string dummy)
+        {
+            string url = settings.QBitNinjaBaseUrl + "transactions/" + txId + "?headeronly=true";
+            return await IsUrlSuccessful(url);
+        }
+
+        public static async Task<bool> HasBlockIndexed(TheSettings settings, string blockId, string dummy)
+        {
+            string url = settings.QBitNinjaBaseUrl + "blocks/" + blockId + "?headeronly=true";
+            return await IsUrlSuccessful(url);
+        }
+
+        public static async Task WaitUntillQBitNinjaHasIndexed(TheSettings settings,
+            Func<TheSettings, string, string, Task<bool>> checkIndexed, IEnumerable<string> ids, string id2 = null)
+        {
+            var indexed = false;
+            foreach (var id in ids)
+            {
+                indexed = false;
+                for (int i = 0; i < 30; i++)
+                {
+                    if (await checkIndexed(settings, id, id2))
+                    {
+                        indexed = true;
+                        break;
+                    }
+                    else
+                    {
+                        await Task.Delay(1000);
+                    }
+                }
+
+                if (!indexed)
+                {
+                    throw new Exception(string.IsNullOrEmpty(id2) ? string.Format("Item with id: {0} did not get indexed yet.", id) : string.Format("Item with id: {0} did not get indexed yet. Provided id2 is {1}", id, id2));
+                }
+            }
         }
 
         #endregion

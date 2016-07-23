@@ -6,7 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
-namespace Tests
+namespace LykkeWalletServices
 {
     public class LykkeExtenddedRPCClient : RPCClient
     {
@@ -30,6 +30,19 @@ namespace Tests
             else
             {
                 return response.Result.Select(c => (string)c);
+            }
+        }
+
+        public async Task<string> GetTxOut(string txid, uint n)
+        {
+            RPCResponse response = await SendCommandAsync("gettxout", new object[] { txid, n });
+            if (response.Error != null)
+            {
+                throw new RPCException(response.Error.Code, response.Error.Message, response);
+            }
+            else
+            {
+                return response.Result.Select(c => (string)c).FirstOrDefault();
             }
         }
     }

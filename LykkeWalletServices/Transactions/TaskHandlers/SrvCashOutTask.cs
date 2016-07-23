@@ -3,6 +3,7 @@ using NBitcoin;
 using NBitcoin.OpenAsset;
 using System;
 using System.Threading.Tasks;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -19,60 +20,71 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         {
             CashOutTaskResult result = null;
             Error error = null;
+
             try
             {
-                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
+                if (!OpenAssetsHelper.IsRealAsset(data.Currency))
                 {
-                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, 0, data.Amount, data.Currency,
-                        Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
-                    if (walletCoins.Error != null)
+                    error = new Error();
+                    error.Code = ErrorCode.AssetNotFound;
+                    error.Message = "Real asset should be requested.";
+                }
+                else
+                {
+                    using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                     {
-                        error = walletCoins.Error;
-                    }
-                    else
-                    {
-                        using (var transaction = entities.Database.BeginTransaction())
+                        OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, 0, data.Amount, data.Currency,
+                            Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
+                        if (walletCoins.Error != null)
                         {
-                            TransactionBuilder builder = new TransactionBuilder();
-                            var tx = (await builder
-                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), ChangeType.Colored)
-                                .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
-                                .AddCoins(walletCoins.AssetScriptCoins)
-                                .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                                .AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2))
-                                .BuildTransaction(true);
-
-                            var txHash = tx.GetHash().ToString();
-
-                            OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
-                                new OpenAssetsHelper.LykkeJobsNotificationMessage();
-                            lykkeJobsNotificationMessage.Operation = "CashOut";
-                            lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
-                            lykkeJobsNotificationMessage.BlockchainHash = txHash;
-
-                            Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
-
-                            if (localerror == null)
+                            error = walletCoins.Error;
+                        }
+                        else
+                        {
+                            using (var transaction = entities.Database.BeginTransaction())
                             {
-                                result = new CashOutTaskResult
+                                TransactionBuilder builder = new TransactionBuilder();
+                                var tx = (await builder
+                                    .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), ChangeType.Colored)
+                                    .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
+                                    .AddCoins(walletCoins.AssetScriptCoins)
+                                    .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
+                                    .AddEnoughPaymentFee(entities, new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                    FeeAddress, 2))
+                                    .BuildTransaction(true);
+
+                                var txHash = tx.GetHash().ToString();
+
+                                OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
+                                    new OpenAssetsHelper.LykkeJobsNotificationMessage();
+                                lykkeJobsNotificationMessage.Operation = "CashOut";
+                                lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
+                                lykkeJobsNotificationMessage.BlockchainHash = txHash;
+
+                                Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                    (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
+
+                                if (localerror == null)
                                 {
-                                    TransactionHex = tx.ToHex(),
-                                    TransactionHash = txHash
-                                };
-                            }
-                            else
-                            {
-                                error = localerror;
-                            }
+                                    result = new CashOutTaskResult
+                                    {
+                                        TransactionHex = tx.ToHex(),
+                                        TransactionHash = txHash
+                                    };
+                                }
+                                else
+                                {
+                                    error = localerror;
+                                }
 
-                            if (error == null)
-                            {
-                                transaction.Commit();
-                            }
-                            else
-                            {
-                                transaction.Rollback();
+                                if (error == null)
+                                {
+                                    transaction.Commit();
+                                }
+                                else
+                                {
+                                    transaction.Rollback();
+                                }
                             }
                         }
                     }

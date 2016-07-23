@@ -26,7 +26,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         // the other parameters should be made available
         // ToDo: Another approach would be to use .Net reflectin to pass the code to be executed, not
         // to have the problem to make both side sync
-        private static async Task<Tuple<string, Error>> GenerateUncompleteTransactionWithOnlyOneSignature(string multisigAddress, float amount, string currency,
+        private static async Task<Tuple<string, Error>> GenerateUncompleteTransactionWithOnlyOneSignature(string multisigAddress, double amount, string currency,
             AssetDefinition[] assets, Network network, string username, string password, string ipAddress, string connectionString,
             BitcoinSecret secret)
         {
