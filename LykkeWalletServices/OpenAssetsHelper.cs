@@ -19,6 +19,48 @@ namespace LykkeWalletServices
 {
     public static class OpenAssetsHelper
     {
+        public class RPCConnectionParams
+        {
+            public string Username
+            {
+                get;
+                set;
+            }
+
+            public string Password
+            {
+                get;
+                set;
+            }
+
+            public string IpAddress
+            {
+                get;
+                set;
+            }
+
+            public string Network
+            {
+                get;
+                set;
+            }
+
+            public Network BitcoinNetwork
+            {
+                get
+                {
+                    switch (Network.ToLower())
+                    {
+                        case "main":
+                            return NBitcoin.Network.Main;
+                        case "testnet":
+                            return NBitcoin.Network.TestNet;
+                        default:
+                            throw new NotImplementedException(string.Format("Bitcoin network {0} is not supported.", Network));
+                    }
+                }
+            }
+        }
         public enum APIProvider
         {
             QBitNinja
@@ -262,7 +304,7 @@ namespace LykkeWalletServices
         }
 
         public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
-            string network, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1)
+            RPCConnectionParams connectionParams, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1)
         {
             builder.SetChange(BitcoinAddress.Create(feeAddress), ChangeType.Uncolored);
 
@@ -282,7 +324,7 @@ namespace LykkeWalletServices
                     }
                     catch (NotEnoughFundsException ex)
                     {
-                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, network);
+                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams);
                         Coin feePayerCoin = feePayer.GetCoin();
 
                         totalAddedFee += feePayer.Amount;
@@ -305,7 +347,7 @@ namespace LykkeWalletServices
                     break;
                 }
 
-                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, network);
+                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams);
                 Coin feePayerCoin = feePayer.GetCoin();
 
                 totalAddedFee += feePayer.Amount;
@@ -1534,32 +1576,56 @@ namespace LykkeWalletServices
             //await EmailQueueWriter.PutMessageAsync();
         }
 
-        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
-            string network, string assetId = null)
+        public static async Task<bool> PregeneratedHasBeenSpentInBlockchain(PreGeneratedOutput p, RPCConnectionParams connectionParams)
         {
-            var coins = from item in entities.PreGeneratedOutputs
-                        where item.Consumed.Equals(0) && item.Network.Equals(network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString()))
-                        select item;
-
-            int count = await coins.CountAsync();
-
-            if (count < PreGeneratedOutputMinimumCount)
+            LykkeExtenddedRPCClient client = new LykkeExtenddedRPCClient(new System.Net.NetworkCredential(connectionParams.Username, connectionParams.Password),
+                            connectionParams.IpAddress, connectionParams.BitcoinNetwork);
+            if (string.IsNullOrEmpty(await client.GetTxOut(p.TransactionId, (uint)p.OutputNumber)))
             {
-                await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount, entities);
-            }
-
-            if (count == 0)
-            {
-                throw new Exception("There is no coins to use for fee payment");
+                return true;
             }
             else
             {
-                int index = new Random().Next(coins.Count());
-                PreGeneratedOutput f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
-                f.Consumed = 1;
-                await entities.SaveChangesAsync();
-                return f;
+                return false;
             }
+        }
+
+        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
+            RPCConnectionParams connectionParams, string assetId = null)
+        {
+            var coins = from item in entities.PreGeneratedOutputs
+                        where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString()))
+                        select item;
+
+            int count = await coins.CountAsync();
+            bool pregeneratedCoinFound = false;
+            PreGeneratedOutput f = null;
+
+            while (!pregeneratedCoinFound)
+            {
+                if (count < PreGeneratedOutputMinimumCount)
+                {
+                    await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount, entities);
+                }
+
+                if (count == 0)
+                {
+                    throw new Exception("There is no coins to use for fee payment");
+                }
+                else
+                {
+                    int index = new Random().Next(coins.Count());
+                    f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
+                    f.Consumed = 1;
+                    await entities.SaveChangesAsync();
+                    if (!await PregeneratedHasBeenSpentInBlockchain(f, connectionParams))
+                    {
+                        pregeneratedCoinFound = true;
+                    }
+                }
+            }
+
+            return f;
         }
 
         public static string GetPrivateKeyForAddress(string address)

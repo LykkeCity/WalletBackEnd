@@ -4,6 +4,7 @@ using NBitcoin.OpenAsset;
 using System;
 using System.Threading.Tasks;
 using System.Linq;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -44,7 +45,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             {
                                 builder = builder.AddCoins(walletCoins.AssetCoins)
                                     .SendAsset(new Script(MultisigAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2));
+                                builder = (await builder.AddEnoughPaymentFee(entities, new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                    FeeAddress, 2));
                             }
                             else
                             {
@@ -53,7 +55,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
                                     walletCoins.Coins,
                                     BitcoinAddress.Create(MultisigAddress.WalletAddress));
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 0));
+                                builder = (await builder.AddEnoughPaymentFee(entities, new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                    FeeAddress, 0));
                             }
 
                             var tx = builder

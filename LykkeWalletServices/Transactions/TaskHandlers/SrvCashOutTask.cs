@@ -3,6 +3,7 @@ using NBitcoin;
 using NBitcoin.OpenAsset;
 using System;
 using System.Threading.Tasks;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -48,7 +49,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
                                     .AddCoins(walletCoins.AssetScriptCoins)
                                     .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
-                                    .AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2))
+                                    .AddEnoughPaymentFee(entities, new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                    FeeAddress, 2))
                                     .BuildTransaction(true);
 
                                 var txHash = tx.GetHash().ToString();

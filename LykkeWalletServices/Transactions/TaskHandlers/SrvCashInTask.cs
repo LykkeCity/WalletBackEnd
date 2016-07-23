@@ -7,6 +7,7 @@ using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
 using System.Linq;
 using System.Threading.Tasks;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -37,13 +38,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             {
                                 using (var transaction = entities.Database.BeginTransaction())
                                 {
-                                    PreGeneratedOutput issuancePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, Network.ToString(), asset.AssetId);
+                                    PreGeneratedOutput issuancePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                        asset.AssetId);
                                     Coin issuancePayerCoin = issuancePayer.GetCoin();
                                     IssuanceCoin issueCoin = new IssuanceCoin(issuancePayerCoin);
                                     issueCoin.DefinitionUrl = new Uri(asset.AssetDefinitionUrl);
 
                                     var multiSigScript = new Script((await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities)).MultiSigScript);
-                                    
+
                                     // Issuing the asset
                                     TransactionBuilder builder = new TransactionBuilder();
                                     builder = builder
@@ -53,7 +55,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                             new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, Network)),
                                             Convert.ToInt64(data.Amount * asset.AssetMultiplicationFactor)));
 
-                                    var tx = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress))
+                                    var tx = (await builder.AddEnoughPaymentFee(entities,new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                        FeeAddress))
                                         .BuildTransaction(true);
 
                                     var txHash = tx.GetHash().ToString();

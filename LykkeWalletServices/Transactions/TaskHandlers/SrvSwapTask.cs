@@ -3,6 +3,7 @@ using NBitcoin;
 using NBitcoin.OpenAsset;
 using System;
 using System.Threading.Tasks;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -96,8 +97,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 builder.BuildHalfOfSwap(secret, uncoloredCoins, coloredCoins, destAddress, changeAddress, coloredAmount,
                                     uncoloredAmount, asset, out coloredCoinCount2);
 
-                                var tx = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, coloredCoinCount1 + coloredCoinCount2))
-                                    .BuildTransaction(true);
+                                var tx = (await builder.AddEnoughPaymentFee(entities, new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                    FeeAddress, coloredCoinCount1 + coloredCoinCount2)).BuildTransaction(true);
 
                                 var txHash = tx.GetHash().ToString();
 
