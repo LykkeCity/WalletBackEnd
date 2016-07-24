@@ -34,7 +34,7 @@ namespace ServiceLykkeWallet
             // ToDo - Local Azure Emulator could not be started yet
 
             var queueReader = new AzureQueueReader(new AzureQueueExt(settings.InQueueConnectionString, "indata"));
-            var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, "outdata"));
+            var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, settings.OutdataQueueName));
             var emailQueueWriter = new AzureQueueExt(settings.OutQueueConnectionString, "emailsqueue");
             var lykkeAccountReader = new LykkeAccountReader(settings.LykkeCredentials);
 

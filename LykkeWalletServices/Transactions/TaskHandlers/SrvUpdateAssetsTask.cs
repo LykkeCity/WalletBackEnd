@@ -45,6 +45,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             public string LykkeJobsUrl { get; set; }
 
+            [DefaultValue("outdata")]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public string OutdataQueueName
+            {
+                get;
+                set;
+            }
+
             [DefaultValue(null)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public string EnvironmentName
