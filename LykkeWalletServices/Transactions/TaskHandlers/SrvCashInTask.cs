@@ -44,14 +44,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     IssuanceCoin issueCoin = new IssuanceCoin(issuancePayerCoin);
                                     issueCoin.DefinitionUrl = new Uri(asset.AssetDefinitionUrl);
 
-                                    var multiSigScript = new Script((await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities)).MultiSigScript);
-
                                     // Issuing the asset
                                     TransactionBuilder builder = new TransactionBuilder();
                                     builder = builder
                                         .AddKeys(new BitcoinSecret(issuancePayer.PrivateKey, Network))
                                         .AddCoins(issueCoin)
-                                        .IssueAsset(multiSigScript.GetScriptAddress(Network), new NBitcoin.OpenAsset.AssetMoney(
+                                        .IssueAsset(Base58Data.GetFromBase58Data(data.MultisigAddress) as BitcoinAddress, new NBitcoin.OpenAsset.AssetMoney(
                                             new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, Network)),
                                             Convert.ToInt64(data.Amount * asset.AssetMultiplicationFactor)));
 
