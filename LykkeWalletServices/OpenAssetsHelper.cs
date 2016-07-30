@@ -925,14 +925,32 @@ namespace LykkeWalletServices
             });
         }
 
+        internal class SentTransactionReturnValue
+        {
+            public Error Error
+            {
+                get;
+                set;
+            }
+
+            public long SentTransactionId
+            {
+                get;
+                set;
+            }
+        }
+
         // ToDo - Performance should be revisted by possible join operation
-        public static async Task<Error> CheckTransactionForDoubleSpentThenSendIt(Transaction tx,
+        internal static async Task<SentTransactionReturnValue> CheckTransactionForDoubleSpentThenSendIt(Transaction tx,
             string username, string password, string ipAddress, Network network, SqlexpressLykkeEntities entitiesContext, string connectionString,
             LykkeJobsNotificationMessage lykkeJobsNotificationMessage,
             Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
-            APIProvider apiProvider = APIProvider.QBitNinja)
+            APIProvider apiProvider = APIProvider.QBitNinja, bool isCompletelySignedTransaction = true)
         {
             Error error = null;
+
+            long sentTransactionId = 0;
+
             // Checking if the inputs has been already spent
             // ToDo - Performance should be revisted by possible join operation
             foreach (var item in tx.Inputs)
@@ -973,6 +991,7 @@ namespace LykkeWalletServices
                 };
                 entitiesContext.SentTransactions.Add(dbSentTransaction);
                 await entitiesContext.SaveChangesAsync();
+                sentTransactionId = dbSentTransaction.id;
 
                 foreach (var item in tx.Inputs)
                 {
@@ -1015,106 +1034,110 @@ namespace LykkeWalletServices
                 }
                 */
 
-                // Notifing the web api of the transaction
-                // The server should respond to: curl -X Post http://localhost:8088/HandledTx -H "Content-Type: application/json" -d "{\"TransactionId\" : \"transactionId\", \"BlockchainHash\" : \"blockchainHash\",\"Operation\" : \"Transfer\" }"
-                if (lykkeJobsNotificationMessage != null)
+                if (isCompletelySignedTransaction)
                 {
-                    var values = new Dictionary<string, string>();
-                    values.Add("json", JsonConvert.SerializeObject(lykkeJobsNotificationMessage).ToString());
-                    using (HttpClient webClient = new HttpClient())
+                    // Notifing the web api of the transaction
+                    // The server should respond to: curl -X Post http://localhost:8088/HandledTx -H "Content-Type: application/json" -d "{\"TransactionId\" : \"transactionId\", \"BlockchainHash\" : \"blockchainHash\",\"Operation\" : \"Transfer\" }"
+                    if (lykkeJobsNotificationMessage != null)
                     {
-                        //var response = await webClient.PostAsync(LykkeJobsUrl, new FormUrlEncodedContent(values));
-                        var response = await webClient.PostAsJsonAsync(LykkeJobsUrl, lykkeJobsNotificationMessage);
-                        if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                        var values = new Dictionary<string, string>();
+                        values.Add("json", JsonConvert.SerializeObject(lykkeJobsNotificationMessage).ToString());
+                        using (HttpClient webClient = new HttpClient())
                         {
-                            var notificationResponse = JsonConvert.DeserializeObject<LykkeJobsNotificationResponse>
-                                (await response.Content.ReadAsStringAsync());
-                            if (notificationResponse.Error != null)
+                            //var response = await webClient.PostAsync(LykkeJobsUrl, new FormUrlEncodedContent(values));
+                            var response = await webClient.PostAsJsonAsync(LykkeJobsUrl, lykkeJobsNotificationMessage);
+                            if (response.StatusCode == System.Net.HttpStatusCode.OK)
                             {
-                                throw new Exception(string.Format("Error while notifing Lykke Jobs. Erro code: {0} and Error Message: {1}",
-                                    notificationResponse.Error.Code, notificationResponse.Error.Message));
-                            }
-                        }
-                        else
-                        {
-                            throw new Exception("Not a valid http response from Lykke Jobs.");
-                        }
-                    }
-                }
-
-                // Database is successful, only the commit has remained. Broadcating the transaction
-                RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
-                    ipAddress, network);
-
-                await client.SendRawTransactionAsync(tx);
-
-                // Waiting until the transaction has appeared in block explorer
-                // This is because some consequent operaions like generating refund may instantly
-                // be called and the new transaction has not been propagaed
-                // If the appearence does not take place after some retries, the
-                // current function returns successfuly, since the responsibility of
-                // the current function is to send the transaction and not the rest
-                /*
-                bool breakFor = false;
-                for (int i = 0; i < 10; i++)
-                {
-                    switch (apiProvider)
-                    {
-                        case APIProvider.QBitNinja:
-                            bool isPresent = await IsTransactionPresentInQBitNinja(tx);
-                            if (isPresent)
-                            {
-                                breakFor = true;
-                                break;
+                                var notificationResponse = JsonConvert.DeserializeObject<LykkeJobsNotificationResponse>
+                                    (await response.Content.ReadAsStringAsync());
+                                if (notificationResponse.Error != null)
+                                {
+                                    throw new Exception(string.Format("Error while notifing Lykke Jobs. Erro code: {0} and Error Message: {1}",
+                                        notificationResponse.Error.Code, notificationResponse.Error.Message));
+                                }
                             }
                             else
                             {
-                                System.Threading.Thread.Sleep(500);
+                                throw new Exception("Not a valid http response from Lykke Jobs.");
                             }
-                            break;
-                        default:
-                            breakFor = true;
-                            break;
+                        }
                     }
-                    if (breakFor)
-                    {
-                        break;
-                    }
-                }
-                */
-                try
-                {
-                    var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
 
+
+                    // Database is successful, only the commit has remained. Broadcating the transaction
+                    RPCClient client = new RPCClient(new System.Net.NetworkCredential(username, password),
+                        ipAddress, network);
+
+                    await client.SendRawTransactionAsync(tx);
+
+                    // Waiting until the transaction has appeared in block explorer
+                    // This is because some consequent operaions like generating refund may instantly
+                    // be called and the new transaction has not been propagaed
+                    // If the appearence does not take place after some retries, the
+                    // current function returns successfuly, since the responsibility of
+                    // the current function is to send the transaction and not the rest
+                    /*
+                    bool breakFor = false;
+                    for (int i = 0; i < 10; i++)
+                    {
+                        switch (apiProvider)
+                        {
+                            case APIProvider.QBitNinja:
+                                bool isPresent = await IsTransactionPresentInQBitNinja(tx);
+                                if (isPresent)
+                                {
+                                    breakFor = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    System.Threading.Thread.Sleep(500);
+                                }
+                                break;
+                            default:
+                                breakFor = true;
+                                break;
+                        }
+                        if (breakFor)
+                        {
+                            break;
+                        }
+                    }
+                    */
                     try
                     {
-                        await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
-                            new string[] { tx.GetHash().ToString() }, null);
-                    }
-                    catch (Exception)
-                    {
-                    }
+                        var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
 
-                    var destAddresses = tx.Outputs.Select(o => o.ScriptPubKey.GetDestinationAddress(network)?.ToWif()).Where(c => !string.IsNullOrEmpty(c)).Distinct();
-                    foreach (var addr in destAddresses)
-                    {
                         try
                         {
-                            await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
-                                new string[] { tx.GetHash().ToString() }, addr);
+                            await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
+                                new string[] { tx.GetHash().ToString() }, null);
                         }
                         catch (Exception)
                         {
                         }
+
+                        var destAddresses = tx.Outputs.Select(o => o.ScriptPubKey.GetDestinationAddress(network)?.ToWif()).Where(c => !string.IsNullOrEmpty(c)).Distinct();
+                        foreach (var addr in destAddresses)
+                        {
+                            try
+                            {
+                                await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
+                                    new string[] { tx.GetHash().ToString() }, addr);
+                            }
+                            catch (Exception)
+                            {
+                            }
+                        }
                     }
-                }
-                catch (Exception)
-                {
-                    // No exception should be thrown after tx has been sent to blockchain
+                    catch (Exception)
+                    {
+                        // No exception should be thrown after tx has been sent to blockchain
+                    }
                 }
             }
 
-            return error;
+            return new SentTransactionReturnValue { Error = error, SentTransactionId = sentTransactionId };
         }
 
         public static async Task<Tuple<GenerateMassOutputsTaskResult, Error>> GenerateMassOutputs(TaskToDoGenerateMassOutputs data, string purpose,
@@ -1215,7 +1238,7 @@ namespace LykkeWalletServices
 
                                     using (var transaction = entities.Database.BeginTransaction())
                                     {
-                                        Error localerror = await CheckTransactionForDoubleSpentThenSendIt
+                                        Error localerror = (await CheckTransactionForDoubleSpentThenSendIt
                                                     (tx, username, password, ipAddress, network, entities, connectionString, null,
                                                     null, (entitiesContext) =>
                                                    {
@@ -1241,7 +1264,7 @@ namespace LykkeWalletServices
                                                        }
 
                                                        entitiesContext.PreGeneratedOutputs.AddRange(preGeneratedOutputs);
-                                                   });
+                                                   })).Error;
                                         if (localerror == null)
                                         {
                                             result = new GenerateMassOutputsTaskResult
@@ -1511,11 +1534,12 @@ namespace LykkeWalletServices
             return new Tuple<bool, string, string>(errorOccured, errorMessage, transactionHex);
         }
 
-        public static async Task PerformFunctionEndJobs(string connectionString, ILog log)
+        public static async Task PerformFunctionEndJobs(string connectionString, ILog log,
+            string inputMessage, string outputMessage)
         {
             try
             {
-                await SendPendingEmails(connectionString);
+                await SendPendingEmailsAndLogInputOutput(connectionString, inputMessage, outputMessage);
             }
             catch (Exception e)
             {
@@ -1526,7 +1550,7 @@ namespace LykkeWalletServices
             }
         }
 
-        public static async Task SendPendingEmails(string connectionString)
+        public static async Task SendPendingEmailsAndLogInputOutput(string connectionString, string inputMessage, string outputMessage)
         {
             using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
             {
@@ -1541,8 +1565,17 @@ namespace LykkeWalletServices
                     }
 
                     entities.EmailMessages.RemoveRange(emails);
+
                     await entities.SaveChangesAsync();
                 }
+
+                entities.InputOutputMessageLogs.Add(new InputOutputMessageLog
+                {
+                    InputMessage = inputMessage,
+                    OutputMessage = outputMessage,
+                    CreationDate = DateTime.UtcNow
+                });
+                await entities.SaveChangesAsync();
             }
         }
 

@@ -132,8 +132,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
                                     lykkeJobsNotificationMessage.BlockchainHash = txHash;
 
-                                    Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
+                                    Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage)).Error;
 
                                     if (localerror == null)
                                     {

@@ -42,5 +42,6 @@ namespace LykkeWalletServices
         public virtual DbSet<WholeRefundSpentOutput> WholeRefundSpentOutputs { get; set; }
         public virtual DbSet<WholeRefund> WholeRefunds { get; set; }
         public virtual DbSet<TransactionsWaitForConfirmation> TransactionsWaitForConfirmations { get; set; }
+        public virtual DbSet<InputOutputMessageLog> InputOutputMessageLogs { get; set; }
     }
 }

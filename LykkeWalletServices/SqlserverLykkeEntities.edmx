@@ -28,6 +28,15 @@
           <Property Name="SecondClientSigned" Type="int" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
+        <EntityType Name="InputOutputMessageLog">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="InputMessage" Type="text" />
+          <Property Name="OutputMessage" Type="text" />
+          <Property Name="CreationDate" Type="datetime" />
+        </EntityType>
         <EntityType Name="KeyStorage">
           <Key>
             <PropertyRef Name="WalletAddress" />
@@ -200,6 +209,7 @@
         <EntityContainer Name="SqlexpressLykkeModelStoreContainer">
           <EntitySet Name="EmailMessages" EntityType="Self.EmailMessages" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="InputOutputMessageLog" EntityType="Self.InputOutputMessageLog" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="PreGeneratedOutput" EntityType="Self.PreGeneratedOutput" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="RefundedOutputs" EntityType="Self.RefundedOutputs" Schema="dbo" store:Type="Tables" />
@@ -268,6 +278,7 @@
             <End Role="WholeRefund" EntitySet="WholeRefunds" />
             <End Role="TransactionsWaitForConfirmation" EntitySet="TransactionsWaitForConfirmations" />
           </AssociationSet>
+          <EntitySet Name="InputOutputMessageLogs" EntityType="SqlexpressLykkeModel.InputOutputMessageLog" />
           </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -471,6 +482,15 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <EntityType Name="InputOutputMessageLog">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" />
+          <Property Name="InputMessage" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="OutputMessage" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="CreationDate" Type="DateTime" Precision="3" />
+        </EntityType>
         </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -614,6 +634,16 @@
                 <ScalarProperty Name="OldRefundedTxId" ColumnName="OldRefundedTxId" />
                 <ScalarProperty Name="WholeRefundId" ColumnName="WholeRefundId" />
                 <ScalarProperty Name="txToBeWatched" ColumnName="txToBeWatched" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="InputOutputMessageLogs">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.InputOutputMessageLog">
+              <MappingFragment StoreEntitySet="InputOutputMessageLog">
+                <ScalarProperty Name="CreationDate" ColumnName="CreationDate" />
+                <ScalarProperty Name="OutputMessage" ColumnName="OutputMessage" />
+                <ScalarProperty Name="InputMessage" ColumnName="InputMessage" />
                 <ScalarProperty Name="id" ColumnName="id" />
               </MappingFragment>
             </EntityTypeMapping>

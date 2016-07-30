@@ -3,6 +3,7 @@ using Common.Log;
 using Core;
 using LykkeWalletServices.Transactions.TaskHandlers;
 using NBitcoin;
+using System;
 using System.Threading.Tasks;
 
 namespace LykkeWalletServices
@@ -47,6 +48,24 @@ namespace LykkeWalletServices
             _feeAddressPrivateKey = feeAddressPrivateKey;
         }
 
+        private async Task ProcessTaskResult(TransactionToDoBase @event, TransactionResultModel resultModel)
+        {
+            await _queueWriter.WriteQueue(resultModel);
+
+            try
+            {
+                string inputMessage = @event.ToJson();
+                string outputMessage = resultModel.OperationName + ":" +
+                    Newtonsoft.Json.JsonConvert.SerializeObject(resultModel);
+                await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log, inputMessage, outputMessage);
+            }
+            catch(Exception e)
+            {
+                await _log.WriteFatalError("SrvQueueReader", string.Empty, string.Empty, e,
+                    DateTime.UtcNow);
+            }
+        }
+
         protected override async Task Execute()
         {
             bool knownTaskType = false;
@@ -62,9 +81,13 @@ namespace LykkeWalletServices
                 var service = new SrvGenerateNewWalletTask(_network, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionGenerateNewWallet, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(
                         TransactionResultModel.Create("GenerateNewWallet", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event,
+                        TransactionResultModel.Create("GenerateNewWallet", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -75,9 +98,13 @@ namespace LykkeWalletServices
                 var service = new SrvCashInTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _connectionString, _feeAddress);
                 service.Execute(transactionCashIn, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("CashIn", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("CashIn", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -88,9 +115,13 @@ namespace LykkeWalletServices
                 var service = new SrvOrdinaryCashInTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _connectionString, _feeAddress);
                 service.Execute(transactionOrdinaryCashIn, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("OrdinaryCashIn", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("OrdinaryCashIn", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -101,9 +132,13 @@ namespace LykkeWalletServices
                 var service = new SrvCashOutTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionCashOut, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("CashOut", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("CashOut", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -114,9 +149,13 @@ namespace LykkeWalletServices
                 var service = new SrvCashOutSeparateSignaturesTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionCashOutSeparateSignatures, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("CashOutSeparateSignatures", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("CashOutSeparateSignatures", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -127,9 +166,14 @@ namespace LykkeWalletServices
                 var service = new SrvOrdinaryCashOutTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionOrdinaryCashOut, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("OrdinaryCashOut", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("OrdinaryCashOut", @event.TransactionId, result.Item1, result.Item2));
+                   
                 });
                 knownTaskType = true;
             }
@@ -141,9 +185,13 @@ namespace LykkeWalletServices
                     _rpcPassword, _rpcServer, _connectionString, _feeAddress);
                 service.Execute(transactionGetCurrentBalance, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetCurrentBalance", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("GetCurrentBalance", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -155,9 +203,13 @@ namespace LykkeWalletServices
                     _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionSwap, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("Swap", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("Swap", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -169,9 +221,13 @@ namespace LykkeWalletServices
                     _rpcPassword, _rpcServer, _connectionString, _feeAddress, _feeAddressPrivateKey);
                 service.Execute(transactionRechargeFeeWallet, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GenerateFeeOutputs", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("GenerateFeeOutputs", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -183,9 +239,13 @@ namespace LykkeWalletServices
                     _rpcPassword, _rpcServer, _connectionString);
                 service.Execute(transactionRechargeIssuerWallet, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GenerateIssuerOutputs", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("GenerateIssuerOutputs", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -197,9 +257,13 @@ namespace LykkeWalletServices
                     _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionTransfer, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("Transfer", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    *////
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("Transfer", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -211,9 +275,13 @@ namespace LykkeWalletServices
                     _rpcPassword, _rpcServer, _connectionString, _feeAddress);
                 service.Execute(transactionGetIssuerOutputStatus, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetIssuersOutputStatus", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("GetIssuersOutputStatus", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -225,9 +293,13 @@ namespace LykkeWalletServices
                     _rpcPassword, _rpcServer, _connectionString, _feeAddress);
                 service.Execute(transactionGetFeeOutputsStatus, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetFeeOutputsStatus", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("GetFeeOutputsStatus", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -239,9 +311,14 @@ namespace LykkeWalletServices
                     _feeAddress, _feeAddressPrivateKey, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionGenerateRefundingTransaction, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GenerateRefundingTransaction", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("GenerateRefundingTransaction", @event.TransactionId, result.Item1, result.Item2));
+                     
                 });
                 knownTaskType = true;
             }
@@ -253,9 +330,13 @@ namespace LykkeWalletServices
                     _connectionString, _feeAddress);
                 service.Execute(transactionGetInputWalletAddresses, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetInputWalletAddresses", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("GetInputWalletAddresses", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
@@ -267,9 +348,14 @@ namespace LykkeWalletServices
                     _feeAddress, _feeAddressPrivateKey, _exchangePrivateKey, _connectionString);
                 service.Execute(transactionGetExpiredUnclaimedRefundingTransactions, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("GetExpiredUnclaimedRefundingTransactions", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("GetExpiredUnclaimedRefundingTransactions", @event.TransactionId, result.Item1, result.Item2));
+                     
                 });
                 knownTaskType = true;
             }
@@ -280,9 +366,13 @@ namespace LykkeWalletServices
                 var service = new SrvUpdateAssetsTask(this);
                 service.Execute(transactionUpdateAssets, async result =>
                 {
+                    /*
                     await _queueWriter.WriteQueue(TransactionResultModel.Create
                         ("UpdateAssets", @event.TransactionId, result.Item1, result.Item2));
                     await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    */
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("UpdateAssets", @event.TransactionId, result.Item1, result.Item2));
                 });
                 knownTaskType = true;
             }
