@@ -1,6 +1,3 @@
-USE [LykkeDev]
-GO
-
 /****** Object:  Table [dbo].[InputOutputMessageLog]    Script Date: 7/30/2016 7:52:19 AM ******/
 SET ANSI_NULLS ON
 GO

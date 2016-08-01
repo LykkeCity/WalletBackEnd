@@ -32,7 +32,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                 if (!(data.Asset?.ToUpper()?.Equals("BTC") ?? false))
                 {
-                    assetId = GetAssetFromName(Assets, data.Asset, Network)?.AssetId;
+                    assetId = GetAssetFromName(Assets, data.Asset, connectionParams.BitcoinNetwork)?.AssetId;
                     if (assetId == null)
                     {
                         error = new Error();
@@ -45,13 +45,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 {
                     try
                     {
-                        var validation = BitcoinAddress.Create(data.MultisigAddress, Network);
+                        var validation = BitcoinAddress.Create(data.MultisigAddress, connectionParams.BitcoinNetwork);
                     }
                     catch (Exception)
                     {
                         error = new Error();
                         error.Code = ErrorCode.InvalidAddress;
-                        error.Message = string.Format("{0} is not a valid address for network: {1}", data.MultisigAddress, Network.ToString());
+                        error.Message = string.Format("{0} is not a valid address for network: {1}", data.MultisigAddress, connectionParams.Network);
                     }
 
                     if (error == null)
@@ -66,8 +66,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 {
                                     IList<string> rcvCoin = new List<string>();
                                     IList<string> sndCoin = new List<string>();
-                                    transaction.Item2[0].receivedCoins.Where(c => (c.assetId == assetId)).ToList().ForEach(c => rcvCoin.Add(GetAddressFromScriptPubKey(new Script(StringToByteArray(c.scriptPubKey)), Network)));
-                                    transaction.Item2[0].spentCoins.Where(c => (c.assetId == assetId)).ToList().ForEach(c => sndCoin.Add(GetAddressFromScriptPubKey(new Script(StringToByteArray(c.scriptPubKey)), Network)));
+                                    transaction.Item2[0].receivedCoins.Where(c => (c.assetId == assetId)).ToList().ForEach(c => rcvCoin.Add(GetAddressFromScriptPubKey(new Script(StringToByteArray(c.scriptPubKey)), connectionParams.BitcoinNetwork)));
+                                    transaction.Item2[0].spentCoins.Where(c => (c.assetId == assetId)).ToList().ForEach(c => sndCoin.Add(GetAddressFromScriptPubKey(new Script(StringToByteArray(c.scriptPubKey)), connectionParams.BitcoinNetwork)));
                                     if (rcvCoin.Contains(data.MultisigAddress))
                                     {
                                         repeatedAddress.AddRange(sndCoin);

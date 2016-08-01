@@ -210,6 +210,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                 // Updating the currently used settings
                 QueueReaderInstance._assets = settings.AssetDefinitions;
+                WebSettings.Assets = settings.AssetDefinitions;
 
                 result = new UpdateAssetsTaskResult();
                 result.Success = true;

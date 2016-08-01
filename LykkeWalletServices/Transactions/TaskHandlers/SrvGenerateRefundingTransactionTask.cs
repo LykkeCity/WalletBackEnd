@@ -50,7 +50,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 {
                     try
                     {
-                        PubKey exchangePubKey = (new BitcoinSecret(ExchangePrivateKey, Network)).PubKey;
+                        PubKey exchangePubKey = (new BitcoinSecret(ExchangePrivateKey, connectionParams.BitcoinNetwork)).PubKey;
 
                         using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                         {
@@ -61,7 +61,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 DateTimeOffset lockTimeValue = new DateTimeOffset(DateTime.UtcNow) + new TimeSpan(0, (int)data.timeoutInMinutes, 0);
                                 LockTime lockTime = new LockTime(lockTimeValue);
 
-                                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(multiSig.MultiSigAddress, Network, entities,
+                                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(multiSig.MultiSigAddress, connectionParams.BitcoinNetwork, entities,
                                     false, getMinimumConfirmationNumber);
                                 if (walletOuputs.Item2)
                                 {
@@ -73,8 +73,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 {
                                     var toBeRefundedCoins = new List<Coin>();
 
-                                    var coins = await OpenAssetsHelper.GetColoredUnColoredCoins(walletOuputs.Item1, null,
-                                        Network, Username, Password, IpAddress);
+                                    var coins = OpenAssetsHelper.GetColoredUnColoredCoins(walletOuputs.Item1, null);
 
                                     if (!wholeRefund)
                                     {
@@ -125,7 +124,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                             {
                                                 cr.RefundInvalid = true;
                                                 var getTransactionRetValue = await OpenAssetsHelper.GetTransactionHex
-                                                    (cr.RefundedTxId, Network, Username, Password, IpAddress);
+                                                    (cr.RefundedTxId, connectionParams);
                                                 if (getTransactionRetValue.Item1)
                                                 {
                                                     error = new Error();

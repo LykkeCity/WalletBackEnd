@@ -95,6 +95,14 @@
           <Property Name="id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="TransactionHex" Type="text" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+          <Property Name="CreationDate" Type="datetime" />
+          <Property Name="IsClientSignatureRequired" Type="bit" />
+          <Property Name="ClientSignedTransaction" Type="text" />
+          <Property Name="IsExchangeSignatureRequired" Type="bit" />
+          <Property Name="ExchangeSignedTransactionAfterClient" Type="text" />
+          <Property Name="TransactionId" Type="varchar" MaxLength="64" />
+          <Property Name="TransactionSendingSuccessful" Type="bit" />
+          <Property Name="TransactionSendingError" Type="text" />
         </EntityType>
         <EntityType Name="SpentOutputs">
           <Key>
@@ -249,12 +257,7 @@
           <EntitySet Name="ExchangeRequests" EntityType="SqlexpressLykkeModel.ExchangeRequest" />
           <EntitySet Name="KeyStorages" EntityType="SqlexpressLykkeModel.KeyStorage" />
           <EntitySet Name="PreGeneratedOutputs" EntityType="SqlexpressLykkeModel.PreGeneratedOutput" />
-          <EntitySet Name="SentTransactions" EntityType="SqlexpressLykkeModel.SentTransaction" />
           <EntitySet Name="SpentOutputs" EntityType="SqlexpressLykkeModel.SpentOutput" />
-          <AssociationSet Name="FK_SpentOutputs_SentTransactions" Association="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions">
-            <End Role="SentTransaction" EntitySet="SentTransactions" />
-            <End Role="SpentOutput" EntitySet="SpentOutputs" />
-          </AssociationSet>
           <EntitySet Name="TransactionsToBeSigneds" EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" />
           <EntitySet Name="RefundedOutputs" EntityType="SqlexpressLykkeModel.RefundedOutput" />
           <EntitySet Name="RefundTransactions" EntityType="SqlexpressLykkeModel.RefundTransaction" />
@@ -279,6 +282,11 @@
             <End Role="TransactionsWaitForConfirmation" EntitySet="TransactionsWaitForConfirmations" />
           </AssociationSet>
           <EntitySet Name="InputOutputMessageLogs" EntityType="SqlexpressLykkeModel.InputOutputMessageLog" />
+          <EntitySet Name="SentTransactions" EntityType="SqlexpressLykkeModel.SentTransaction" />
+          <AssociationSet Name="FK_SpentOutputs_SentTransactions" Association="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions">
+            <End Role="SentTransaction" EntitySet="SentTransactions" />
+            <End Role="SpentOutput" EntitySet="SpentOutputs" />
+          </AssociationSet>
           </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -324,15 +332,6 @@
           <Property Name="Network" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
         </EntityType>
-        <EntityType Name="SentTransaction">
-          <Key>
-            <PropertyRef Name="id" />
-          </Key>
-          <Property Name="id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
-          <Property Name="TransactionHex" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
-          <NavigationProperty Name="SpentOutputs" Relationship="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions" FromRole="SentTransaction" ToRole="SpentOutput" />
-        </EntityType>
         <EntityType Name="SpentOutput">
           <Key>
             <PropertyRef Name="PrevHash" />
@@ -344,18 +343,6 @@
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
           <NavigationProperty Name="SentTransaction" Relationship="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions" FromRole="SpentOutput" ToRole="SentTransaction" />
         </EntityType>
-        <Association Name="FK_SpentOutputs_SentTransactions">
-          <End Type="SqlexpressLykkeModel.SentTransaction" Role="SentTransaction" Multiplicity="0..1" />
-          <End Type="SqlexpressLykkeModel.SpentOutput" Role="SpentOutput" Multiplicity="*" />
-          <ReferentialConstraint>
-            <Principal Role="SentTransaction">
-              <PropertyRef Name="id" />
-            </Principal>
-            <Dependent Role="SpentOutput">
-              <PropertyRef Name="SentTransactionId" />
-            </Dependent>
-          </ReferentialConstraint>
-        </Association>
         <EntityType Name="TransactionsToBeSigned">
           <Key>
             <PropertyRef Name="ExchangeId" />
@@ -491,6 +478,35 @@
           <Property Name="OutputMessage" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="CreationDate" Type="DateTime" Precision="3" />
         </EntityType>
+        <EntityType Name="SentTransaction">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="TransactionHex" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <Property Name="CreationDate" Type="DateTime" Precision="3" />
+          <Property Name="IsClientSignatureRequired" Type="Boolean" />
+          <Property Name="ClientSignedTransaction" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="IsExchangeSignatureRequired" Type="Boolean" />
+          <Property Name="ExchangeSignedTransactionAfterClient" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionId" Type="String" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionSendingSuccessful" Type="Boolean" />
+          <Property Name="TransactionSendingError" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="SpentOutputs" Relationship="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions" FromRole="SentTransaction" ToRole="SpentOutput" />
+        </EntityType>
+        <Association Name="FK_SpentOutputs_SentTransactions">
+          <End Type="SqlexpressLykkeModel.SentTransaction" Role="SentTransaction" Multiplicity="0..1" />
+          <End Type="SqlexpressLykkeModel.SpentOutput" Role="SpentOutput" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="SentTransaction">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="SpentOutput">
+              <PropertyRef Name="SentTransactionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -540,15 +556,6 @@
                 <ScalarProperty Name="Amount" ColumnName="Amount" />
                 <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
                 <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
-          <EntitySetMapping Name="SentTransactions">
-            <EntityTypeMapping TypeName="SqlexpressLykkeModel.SentTransaction">
-              <MappingFragment StoreEntitySet="SentTransactions">
-                <ScalarProperty Name="Version" ColumnName="Version" />
-                <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
-                <ScalarProperty Name="id" ColumnName="id" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
@@ -644,6 +651,23 @@
                 <ScalarProperty Name="CreationDate" ColumnName="CreationDate" />
                 <ScalarProperty Name="OutputMessage" ColumnName="OutputMessage" />
                 <ScalarProperty Name="InputMessage" ColumnName="InputMessage" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="SentTransactions">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.SentTransaction">
+              <MappingFragment StoreEntitySet="SentTransactions">
+                <ScalarProperty Name="TransactionSendingError" ColumnName="TransactionSendingError" />
+                <ScalarProperty Name="TransactionSendingSuccessful" ColumnName="TransactionSendingSuccessful" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+                <ScalarProperty Name="ExchangeSignedTransactionAfterClient" ColumnName="ExchangeSignedTransactionAfterClient" />
+                <ScalarProperty Name="IsExchangeSignatureRequired" ColumnName="IsExchangeSignatureRequired" />
+                <ScalarProperty Name="ClientSignedTransaction" ColumnName="ClientSignedTransaction" />
+                <ScalarProperty Name="IsClientSignatureRequired" ColumnName="IsClientSignatureRequired" />
+                <ScalarProperty Name="CreationDate" ColumnName="CreationDate" />
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
                 <ScalarProperty Name="id" ColumnName="id" />
               </MappingFragment>
             </EntityTypeMapping>

@@ -27,7 +27,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 {
                     OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)
                         await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, !OpenAssetsHelper.IsRealAsset(data.Currency) ? Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount, data.Currency,
-                        Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
+                        Assets, connectionParams, ConnectionString, entities, false);
                     if (walletCoins.Error != null)
                     {
                         error = walletCoins.Error;
@@ -47,13 +47,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             {
                                 TransactionBuilder builder = new TransactionBuilder();
                                 builder
-                                    .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network), ChangeType.Colored)
+                                    .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork), ChangeType.Colored)
                                     .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
                                 if (OpenAssetsHelper.IsRealAsset(data.Currency))
                                 {
                                     builder.AddCoins(walletCoins.AssetScriptCoins).
-                                        SendAsset(dest, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
-                                    builder = (await builder.AddEnoughPaymentFee(entities, new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                        SendAsset(dest, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
+                                    builder = (await builder.AddEnoughPaymentFee(entities, connectionParams,
                                         FeeAddress, 2));
                                 }
                                 else
@@ -62,8 +62,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     builder.SendWithChange(dest,
                                         Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
                                         walletCoins.ScriptCoins,
-                                        new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network));
-                                    builder = (await builder.AddEnoughPaymentFee(entities, new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                        new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork));
+                                    builder = (await builder.AddEnoughPaymentFee(entities, connectionParams,
                                         FeeAddress, 0));
                                 }
 
@@ -78,7 +78,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 lykkeJobsNotificationMessage.BlockchainHash = txHash;
 
                                 Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                    (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage)).Error;
+                                    (tx, connectionParams, entities, ConnectionString, lykkeJobsNotificationMessage)).Error;
 
                                 if (localerror == null)
                                 {

@@ -43,9 +43,6 @@
     <Reference Include="NBitcoin">
       <HintPath>..\..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.dll</HintPath>
     </Reference>
-    <Reference Include="NBitcoin.BouncyCastle">
-      <HintPath>..\..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.BouncyCastle.dll</HintPath>
-    </Reference>
     <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\Newtonsoft.Json.dll</HintPath>
@@ -84,6 +81,9 @@
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="ExchangeRequest.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="InputOutputMessageLog.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="KeyStorage.cs">
@@ -160,6 +160,7 @@
     <Compile Include="Transactions\TaskHandlers\SrvNetworkBase.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetTransactionToSignTask.cs" />
+    <Compile Include="WebSettings.cs" />
     <Compile Include="WholeRefund.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>

@@ -26,7 +26,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             try
             {
-                var asset = OpenAssetsHelper.GetAssetFromName(Assets, data.Currency, Network);
+                var asset = OpenAssetsHelper.GetAssetFromName(Assets, data.Currency, connectionParams.BitcoinNetwork);
 
                 if (asset != null)
                 {
@@ -38,7 +38,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             {
                                 using (var transaction = entities.Database.BeginTransaction())
                                 {
-                                    PreGeneratedOutput issuancePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
+                                    PreGeneratedOutput issuancePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, connectionParams,
                                         asset.AssetId);
                                     Coin issuancePayerCoin = issuancePayer.GetCoin();
                                     IssuanceCoin issueCoin = new IssuanceCoin(issuancePayerCoin);
@@ -47,14 +47,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     // Issuing the asset
                                     TransactionBuilder builder = new TransactionBuilder();
                                     builder = builder
-                                        .AddKeys(new BitcoinSecret(issuancePayer.PrivateKey, Network))
+                                        .AddKeys(new BitcoinSecret(issuancePayer.PrivateKey, connectionParams.BitcoinNetwork))
                                         .AddCoins(issueCoin)
                                         .IssueAsset(Base58Data.GetFromBase58Data(data.MultisigAddress) as BitcoinAddress, new NBitcoin.OpenAsset.AssetMoney(
-                                            new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, Network)),
+                                            new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, connectionParams.BitcoinNetwork)),
                                             Convert.ToInt64(data.Amount * asset.AssetMultiplicationFactor)));
 
-                                    var tx = (await builder.AddEnoughPaymentFee(entities,new RPCConnectionParams { Username = Username, Password = Password, Network = Network.ToString(), IpAddress = IpAddress },
-                                        FeeAddress))
+                                    var tx = (await builder.AddEnoughPaymentFee(entities, connectionParams, FeeAddress))
                                         .BuildTransaction(true);
 
                                     var txHash = tx.GetHash().ToString();
@@ -66,7 +65,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     lykkeJobsNotificationMessage.BlockchainHash = txHash;
 
                                     Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage)).Error;
+                                        (tx, connectionParams, entities, ConnectionString, lykkeJobsNotificationMessage)).Error;
 
                                     if (localerror == null)
                                     {

@@ -5,41 +5,25 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 {
     public class SrvNetworkBase
     {
-        protected Network Network
-        {
-            get; set;
-        }
         protected AssetDefinition[] Assets
         {
             get; set;
         }
-        protected string Username
-        {
-            get; set;
-        }
-        protected string Password
-        {
-            get; set;
-        }
-        protected string IpAddress
-        {
-            get; set;
-        }
-
+        
         protected string FeeAddress
         {
             get; set;
         }
 
         protected string ConnectionString { get; set; }
+
+        protected OpenAssetsHelper.RPCConnectionParams connectionParams = null;
         public SrvNetworkBase(Network network, AssetDefinition[] assets,
             string username, string password, string ipAddress, string connectionString, string feeAddress)
         {
-            this.Network = network;
             this.Assets = assets;
-            this.Username = username;
-            this.Password = password;
-            this.IpAddress = ipAddress;
+            this.connectionParams = new OpenAssetsHelper.RPCConnectionParams
+            { Username = username, Password = password, IpAddress = ipAddress, Network = network.ToString() };
             this.ConnectionString = connectionString;
             this.FeeAddress = feeAddress;
         }

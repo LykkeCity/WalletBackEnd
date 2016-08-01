@@ -33,7 +33,6 @@ namespace LykkeWalletServices
         public virtual DbSet<ExchangeRequest> ExchangeRequests { get; set; }
         public virtual DbSet<KeyStorage> KeyStorages { get; set; }
         public virtual DbSet<PreGeneratedOutput> PreGeneratedOutputs { get; set; }
-        public virtual DbSet<SentTransaction> SentTransactions { get; set; }
         public virtual DbSet<SpentOutput> SpentOutputs { get; set; }
         public virtual DbSet<TransactionsToBeSigned> TransactionsToBeSigneds { get; set; }
         public virtual DbSet<RefundedOutput> RefundedOutputs { get; set; }
@@ -43,5 +42,6 @@ namespace LykkeWalletServices
         public virtual DbSet<WholeRefund> WholeRefunds { get; set; }
         public virtual DbSet<TransactionsWaitForConfirmation> TransactionsWaitForConfirmations { get; set; }
         public virtual DbSet<InputOutputMessageLog> InputOutputMessageLogs { get; set; }
+        public virtual DbSet<SentTransaction> SentTransactions { get; set; }
     }
 }

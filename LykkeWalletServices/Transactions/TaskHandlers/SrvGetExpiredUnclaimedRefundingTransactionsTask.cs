@@ -39,7 +39,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     foreach(var tx in records)
                     {
                         var txHexResult = await OpenAssetsHelper.GetTransactionHex
-                            (tx.TxId, Network, Username, Password, IpAddress);
+                            (tx.TxId, connectionParams);
                         if (txHexResult.Item1)
                         {
                             // In case of error, we consider it unbroadcasted, since we do not know actually it is or not
