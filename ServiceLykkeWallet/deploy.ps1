@@ -1,1 +1,2 @@
+C:\Configs\ServiceLykkeWalletConfigCopy.bat
 Start-Service ServiceLykkeWallet
