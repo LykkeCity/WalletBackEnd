@@ -3,6 +3,9 @@ using NBitcoin;
 using NBitcoin.OpenAsset;
 using System;
 using System.Threading.Tasks;
+using Core.LykkeIntegration;
+using Core.LykkeIntegration.Services;
+using LykkeIntegrationServices;
 using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
@@ -11,6 +14,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample Response: Swap:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvSwapTask : SrvNetworkInvolvingExchangeBase
     {
+        private readonly string _lykkeSettingsConnString;
         private static int swapMinimumConfirmationNumber = 0;
 
         public static int SwapMinimumConfirmationNumber
@@ -26,8 +30,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         }
 
         public SrvSwapTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString, string lykkeSettingsConnString) :
+                base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
+            _lykkeSettingsConnString = lykkeSettingsConnString;
         }
 
         // in order to pay from each address separately we can build two transactions for each
@@ -102,14 +108,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                                 var txHash = tx.GetHash().ToString();
 
-                                OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
-                                    new OpenAssetsHelper.LykkeJobsNotificationMessage();
-                                lykkeJobsNotificationMessage.Operation = "Swap";
-                                lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
-                                lykkeJobsNotificationMessage.BlockchainHash = txHash;
+                                var handledTxRequest = new HandleTxRequest
+                                {
+                                    Operation = "Swap",
+                                    TransactionId = data.TransactionId,
+                                    BlockchainHash = txHash
+                                };
 
                                 Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, connectionParams, entities, ConnectionString, lykkeJobsNotificationMessage)).Error;
+                                        (tx, connectionParams, entities, ConnectionString, handledTxRequest, new PreBroadcastHandler(_lykkeSettingsConnString))).Error;
 
                                 if (localerror == null)
                                 {

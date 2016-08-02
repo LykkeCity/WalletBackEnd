@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceLykkeWallet", "ServiceLykkeWallet\ServiceLykkeWallet.csproj", "{51AF88B9-966F-4209-825A-E0FD2E5CCCE3}"
 EndProject
@@ -28,6 +28,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "04. Tests", "04. Tests", "{49FD0B2A-1D69-4DE9-A6A8-3F3021963D48}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NonBitcoinTests", "NonBitcoinTests\NonBitcoinTests.csproj", "{3CB5C3D0-4B3F-4024-9037-BCDB02DAAB7A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LykkeIntegrationServices", "LykkeIntegrationServices\LykkeIntegrationServices.csproj", "{DB455119-E9A9-4249-BC92-08B004E60185}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -117,6 +119,14 @@ Global
 		{3CB5C3D0-4B3F-4024-9037-BCDB02DAAB7A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3CB5C3D0-4B3F-4024-9037-BCDB02DAAB7A}.Release|x64.ActiveCfg = Release|Any CPU
 		{3CB5C3D0-4B3F-4024-9037-BCDB02DAAB7A}.Release|x64.Build.0 = Release|Any CPU
+		{DB455119-E9A9-4249-BC92-08B004E60185}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB455119-E9A9-4249-BC92-08B004E60185}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB455119-E9A9-4249-BC92-08B004E60185}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DB455119-E9A9-4249-BC92-08B004E60185}.Debug|x64.Build.0 = Debug|Any CPU
+		{DB455119-E9A9-4249-BC92-08B004E60185}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB455119-E9A9-4249-BC92-08B004E60185}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB455119-E9A9-4249-BC92-08B004E60185}.Release|x64.ActiveCfg = Release|Any CPU
+		{DB455119-E9A9-4249-BC92-08B004E60185}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -131,5 +141,6 @@ Global
 		{07F9D233-0C03-4F7A-B5B9-C3E1F5C893FE} = {49FD0B2A-1D69-4DE9-A6A8-3F3021963D48}
 		{8C609EE4-4F0C-44F7-B420-C495BC4C0F6F} = {49FD0B2A-1D69-4DE9-A6A8-3F3021963D48}
 		{3CB5C3D0-4B3F-4024-9037-BCDB02DAAB7A} = {49FD0B2A-1D69-4DE9-A6A8-3F3021963D48}
+		{DB455119-E9A9-4249-BC92-08B004E60185} = {D818076B-3774-4B36-83EE-7F716B5398D5}
 	EndGlobalSection
 EndGlobal

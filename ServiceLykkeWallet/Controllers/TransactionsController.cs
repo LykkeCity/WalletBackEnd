@@ -495,17 +495,16 @@ namespace ServiceLykkeWallet.Controllers
 
                                     var txHash = tx.GetHash().ToString();
 
-
                                     OpenAssetsHelper.SentTransactionReturnValue transactionResult = null;
                                     if (!isExchangeSignatureRequired)
                                     {
                                         transactionResult = await OpenAssetsHelper.CheckTransactionForDoubleSpentClientSignatureRequired
-                                        (tx, WebSettings.ConnectionParams, entities, WebSettings.ConnectionString, null);
+                                        (tx, WebSettings.ConnectionParams, entities, WebSettings.ConnectionString, null, null);
                                     }
                                     else
                                     {
                                         transactionResult = await OpenAssetsHelper.CheckTransactionForDoubleSpentBothSignaturesRequired
-                                            (tx, WebSettings.ConnectionParams, entities, WebSettings.ConnectionString, null);
+                                            (tx, WebSettings.ConnectionParams, entities, WebSettings.ConnectionString, null, null);
                                     }
 
                                     if (transactionResult.Error == null)

@@ -13,6 +13,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Core.LykkeIntegration.Services;
 using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
 
 namespace LykkeWalletServices
@@ -933,44 +934,45 @@ namespace LykkeWalletServices
 
         public static async Task<SentTransactionReturnValue> CheckTransactionForDoubleSpentBothSignaturesRequired(Transaction tx,
             RPCConnectionParams connectionParams, SqlexpressLykkeEntities entitiesContext, string connectionString,
-            LykkeJobsNotificationMessage lykkeJobsNotificationMessage,
-            Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
+            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler, Action outsideTransactionBeforeBroadcast = null, 
+            Action<SqlexpressLykkeEntities> databaseCommitableAction = null, 
             APIProvider apiProvider = APIProvider.QBitNinja, bool isCompletelySignedTransaction = true)
         {
             return await CheckTransactionForDoubleSpentThenSendItCore(tx, connectionParams, entitiesContext, connectionString,
-                lykkeJobsNotificationMessage, outsideTransactionBeforeBroadcast, databaseCommitableAction, apiProvider,
-                true, true);
+                handleTxRequest, outsideTransactionBeforeBroadcast, databaseCommitableAction, apiProvider,
+                true, true, preBroadcastHandler);
         }
 
         public static async Task<SentTransactionReturnValue> CheckTransactionForDoubleSpentClientSignatureRequired(Transaction tx,
             RPCConnectionParams connectionParams, SqlexpressLykkeEntities entitiesContext, string connectionString,
-            LykkeJobsNotificationMessage lykkeJobsNotificationMessage,
+            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler, 
             Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
             APIProvider apiProvider = APIProvider.QBitNinja, bool isCompletelySignedTransaction = true)
         {
             return await CheckTransactionForDoubleSpentThenSendItCore(tx, connectionParams, entitiesContext, connectionString,
-                lykkeJobsNotificationMessage, outsideTransactionBeforeBroadcast, databaseCommitableAction, apiProvider,
-                true, false);
+                handleTxRequest, outsideTransactionBeforeBroadcast, databaseCommitableAction, apiProvider,
+                true, false, preBroadcastHandler);
         }
 
         public static async Task<SentTransactionReturnValue> CheckTransactionForDoubleSpentThenSendIt(Transaction tx,
             RPCConnectionParams connectionParams, SqlexpressLykkeEntities entitiesContext, string connectionString,
-            LykkeJobsNotificationMessage lykkeJobsNotificationMessage,
-            Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
+            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler, Action outsideTransactionBeforeBroadcast = null,
+            Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
             APIProvider apiProvider = APIProvider.QBitNinja)
         {
             return await CheckTransactionForDoubleSpentThenSendItCore(tx, connectionParams, entitiesContext, connectionString,
-                lykkeJobsNotificationMessage, outsideTransactionBeforeBroadcast, databaseCommitableAction, apiProvider,
-                false, false);
+                handleTxRequest, outsideTransactionBeforeBroadcast, databaseCommitableAction, apiProvider,
+                false, false, preBroadcastHandler);
         }
 
         // ToDo - Performance should be revisted by possible join operation
         internal static async Task<SentTransactionReturnValue> CheckTransactionForDoubleSpentThenSendItCore(Transaction tx,
             RPCConnectionParams connectionParams, SqlexpressLykkeEntities entitiesContext, string connectionString,
-            LykkeJobsNotificationMessage lykkeJobsNotificationMessage,
-            Action outsideTransactionBeforeBroadcast, Action<SqlexpressLykkeEntities> databaseCommitableAction,
+            HandleTxRequest handleTxRequest, Action outsideTransactionBeforeBroadcast,
+            Action<SqlexpressLykkeEntities> databaseCommitableAction,
             APIProvider apiProvider, bool isClientSignatureRequiredOnTransaction,
-            bool isExchangeSignatureRequiredOnTransaction)
+            bool isExchangeSignatureRequiredOnTransaction,
+            IPreBroadcastHandler preBroadcastHandler)
         {
             Error error = null;
 
@@ -1069,28 +1071,14 @@ namespace LykkeWalletServices
                 {
                     // Notifing the web api of the transaction
                     // The server should respond to: curl -X Post http://localhost:8088/HandledTx -H "Content-Type: application/json" -d "{\"TransactionId\" : \"transactionId\", \"BlockchainHash\" : \"blockchainHash\",\"Operation\" : \"Transfer\" }"
-                    if (lykkeJobsNotificationMessage != null)
+                    if (handleTxRequest != null && preBroadcastHandler != null)
                     {
-                        var values = new Dictionary<string, string>();
-                        values.Add("json", JsonConvert.SerializeObject(lykkeJobsNotificationMessage).ToString());
-                        using (HttpClient webClient = new HttpClient())
+                        var errResponse = await preBroadcastHandler.HandleTx(handleTxRequest);
+
+                        if (errResponse != null)
                         {
-                            //var response = await webClient.PostAsync(LykkeJobsUrl, new FormUrlEncodedContent(values));
-                            var response = await webClient.PostAsJsonAsync(LykkeJobsUrl, lykkeJobsNotificationMessage);
-                            if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                            {
-                                var notificationResponse = JsonConvert.DeserializeObject<LykkeJobsNotificationResponse>
-                                    (await response.Content.ReadAsStringAsync());
-                                if (notificationResponse.Error != null)
-                                {
-                                    throw new Exception(string.Format("Error while notifing Lykke Jobs. Erro code: {0} and Error Message: {1}",
-                                        notificationResponse.Error.Code, notificationResponse.Error.Message));
-                                }
-                            }
-                            else
-                            {
-                                throw new Exception("Not a valid http response from Lykke Jobs.");
-                            }
+                            throw new Exception(string.Format("Error while notifing Lykke Jobs. Error code: {0} and Error Message: {1}",
+                                errResponse.ErrorCode, errResponse.ErrorMessage));
                         }
                     }
 
@@ -1271,7 +1259,7 @@ namespace LykkeWalletServices
                                     {
                                         Error localerror = (await CheckTransactionForDoubleSpentThenSendIt
                                                     (tx, connectionParams, entities, connectionString, null,
-                                                    null, (entitiesContext) =>
+                                                    null, null, (entitiesContext) =>
                                                    {
                                                        var tId = tx.GetHash().ToString();
                                                        preGeneratedOutputs = new List<PreGeneratedOutput>();
@@ -1873,51 +1861,51 @@ namespace LykkeWalletServices
         }
         #endregion
 
-        #region LykkeJobsNotificationStructures
-        public class LykkeJobsNotificationMessage
-        {
-            public string TransactionId
-            {
-                get;
-                set;
-            }
+        //#region LykkeJobsNotificationStructures
+        //public class LykkeJobsNotificationMessage
+        //{
+        //    public string TransactionId
+        //    {
+        //        get;
+        //        set;
+        //    }
 
-            public string BlockchainHash
-            {
-                get;
-                set;
-            }
+        //    public string BlockchainHash
+        //    {
+        //        get;
+        //        set;
+        //    }
 
-            public string Operation
-            {
-                get;
-                set;
-            }
-        }
+        //    public string Operation
+        //    {
+        //        get;
+        //        set;
+        //    }
+        //}
 
-        public class LykkeJobsNotificationResponseError
-        {
-            public int Code
-            {
-                get;
-                set;
-            }
+        //public class LykkeJobsNotificationResponseError
+        //{
+        //    public int Code
+        //    {
+        //        get;
+        //        set;
+        //    }
 
-            public string Message
-            {
-                get;
-                set;
-            }
-        }
-        public class LykkeJobsNotificationResponse
-        {
-            public LykkeJobsNotificationResponseError Error
-            {
-                get;
-                set;
-            }
-        }
-        #endregion
+        //    public string Message
+        //    {
+        //        get;
+        //        set;
+        //    }
+        //}
+        //public class LykkeJobsNotificationResponse
+        //{
+        //    public LykkeJobsNotificationResponseError Error
+        //    {
+        //        get;
+        //        set;
+        //    }
+        //}
+        //#endregion
 
         #region BitcoinApiReturnStructure
         public class UniversalUnspentOutput

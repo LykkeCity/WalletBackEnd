@@ -178,6 +178,10 @@
       <Project>{ab96ba47-c6d1-4b08-9e24-1cceb723be39}</Project>
       <Name>Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\LykkeIntegrationServices\LykkeIntegrationServices.csproj">
+      <Project>{db455119-e9a9-4249-bc92-08b004e60185}</Project>
+      <Name>LykkeIntegrationServices</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config">

@@ -28,6 +28,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             public string OutQueueConnectionString { get; set; }
 
             public string ConnectionString { get; set; }
+            public string LykkeSettingsConnectionString { get; set; }
 
             public LykkeCredentials LykkeCredentials { get; set; }
 
