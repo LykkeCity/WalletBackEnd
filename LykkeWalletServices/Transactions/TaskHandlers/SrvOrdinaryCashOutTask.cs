@@ -4,6 +4,9 @@ using NBitcoin.OpenAsset;
 using System;
 using System.Threading.Tasks;
 using System.Linq;
+using Core.LykkeIntegration;
+using Core.LykkeIntegration.Services;
+using LykkeIntegrationServices;
 using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
@@ -12,9 +15,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample Output: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvOrdinaryCashOutTask : SrvNetworkInvolvingExchangeBase
     {
+        private readonly IPreBroadcastHandler _preBroadcastHandler;
+
         public SrvOrdinaryCashOutTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString, IPreBroadcastHandler preBroadcastHandler) : 
+                base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
         {
+            _preBroadcastHandler = preBroadcastHandler;
         }
 
         public async Task<Tuple<OrdinaryCashOutTaskResult, Error>> ExecuteTask(TaskToDoOrdinaryCashOut data)
@@ -71,14 +78,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                                 var txHash = tx.GetHash().ToString();
 
-                                OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
-                                    new OpenAssetsHelper.LykkeJobsNotificationMessage();
-                                lykkeJobsNotificationMessage.Operation = "OrdinaryCashOut";
-                                lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
-                                lykkeJobsNotificationMessage.BlockchainHash = txHash;
+                                var handledTxRequest = new HandleTxRequest
+                                {
+                                    Operation = "OrdinaryCashOut",
+                                    TransactionId = data.TransactionId,
+                                    BlockchainHash = txHash
+                                };
 
                                 Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                    (tx, connectionParams, entities, ConnectionString, lykkeJobsNotificationMessage)).Error;
+                                    (tx, connectionParams, entities, ConnectionString, handledTxRequest, _preBroadcastHandler)).Error;
 
                                 if (localerror == null)
                                 {

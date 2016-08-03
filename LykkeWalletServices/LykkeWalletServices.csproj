@@ -63,7 +63,6 @@
       <HintPath>..\packages\System.Data.SQLite.Linq.1.0.99.0\lib\net451\System.Data.SQLite.Linq.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="System.Net.Http.Formatting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security" />
@@ -177,6 +176,10 @@
     <ProjectReference Include="..\Core\Core.csproj">
       <Project>{ab96ba47-c6d1-4b08-9e24-1cceb723be39}</Project>
       <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LykkeIntegrationServices\LykkeIntegrationServices.csproj">
+      <Project>{db455119-e9a9-4249-bc92-08b004e60185}</Project>
+      <Name>LykkeIntegrationServices</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
