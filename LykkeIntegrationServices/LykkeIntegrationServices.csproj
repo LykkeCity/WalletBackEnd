@@ -60,6 +60,7 @@
   <ItemGroup>
     <Compile Include="Models\ContextData.cs" />
     <Compile Include="PreBroadcastHandler.cs" />
+    <Compile Include="SrvBinder.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />

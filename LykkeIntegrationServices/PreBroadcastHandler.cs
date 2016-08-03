@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using AzureRepositories;
-using Common.IocContainer;
-using Common.Log;
-using Core;
 using Core.LykkeIntegration.Repositories;
 using Core.LykkeIntegration.Services;
 using LykkeIntegrationServices.Models.Core.BitCoin;
@@ -18,17 +14,15 @@ namespace LykkeIntegrationServices
         readonly IClientTradesRepository _clientTradesRepository;
         readonly ITransferEventsRepository _transferEventsRepository;
 
-        public PreBroadcastHandler(string connString)
+        public PreBroadcastHandler(IBitCoinTransactionsRepository bitCoinTransactionsRepository,
+            ICashOperationsRepository cashOperationsRepository,
+            IClientTradesRepository clientTradesRepository,
+            ITransferEventsRepository transferEventsRepository)
         {
-            var settings = GeneralSettingsReader.ReadGeneralSettings<BaseSettings>(connString);
-            var logger = new LogToConsole();
-            var ioc = new IoC();
-            ioc.BindAzureRepositories(settings.Db, logger);
-
-            _bitCoinTransactionsRepository = ioc.GetObject<IBitCoinTransactionsRepository>();
-            _cashOperationsRepository = ioc.GetObject<ICashOperationsRepository>();
-            _clientTradesRepository = ioc.GetObject<IClientTradesRepository>();
-            _transferEventsRepository = ioc.GetObject<ITransferEventsRepository>();
+            _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
+            _cashOperationsRepository = cashOperationsRepository;
+            _clientTradesRepository = clientTradesRepository;
+            _transferEventsRepository = transferEventsRepository;
 
             RegisterHandler("CashIn", HandleCashInAsync);
             RegisterHandler("CashOut", HandleCashOutAsync);

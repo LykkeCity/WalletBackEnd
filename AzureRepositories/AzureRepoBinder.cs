@@ -5,6 +5,7 @@ using Common.IocContainer;
 using Common.Log;
 using Core;
 using Core.LykkeIntegration.Repositories;
+using Core.LykkeIntegration.Services;
 
 namespace AzureRepositories
 {

@@ -18,13 +18,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample response CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvCashInTask : SrvNetworkBase
     {
-        private readonly string _lykkeSettingsConnString;
+        private readonly IPreBroadcastHandler _preBroadcastHandler;
 
         public SrvCashInTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string connectionString, string feeAddress, string lykkeSettingsConnString) : 
+            string password, string ipAddress, string connectionString, string feeAddress, IPreBroadcastHandler preBroadcastHandler) : 
                 base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
-            _lykkeSettingsConnString = lykkeSettingsConnString;
+            _preBroadcastHandler = preBroadcastHandler;
         }
 
         public async Task<Tuple<CashInTaskResult, Error>> ExecuteTask(TaskToDoCashIn data)
@@ -73,7 +73,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     };
 
                                     Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, connectionParams, entities, ConnectionString, handledTxRequest, new PreBroadcastHandler(_lykkeSettingsConnString))).Error;
+                                        (tx, connectionParams, entities, ConnectionString, handledTxRequest, _preBroadcastHandler)).Error;
 
                                     if (localerror == null)
                                     {
