@@ -1,13 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceLykkeWallet", "ServiceLykkeWallet\ServiceLykkeWallet.csproj", "{51AF88B9-966F-4209-825A-E0FD2E5CCCE3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "Core\Core.csproj", "{AB96BA47-C6D1-4B08-9E24-1CCEB723BE39}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LykkeWalletServices", "LykkeWalletServices\LykkeWalletServices.csproj", "{EB01DCB3-5DE9-4DA6-86D1-46F50A3B4AE7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DB455119-E9A9-4249-BC92-08B004E60185} = {DB455119-E9A9-4249-BC92-08B004E60185}
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "01. Infrastructure", "01. Infrastructure", "{A9F33BD2-D2E1-465D-A080-65E8431FCE81}"
 EndProject
@@ -30,6 +33,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NonBitcoinTests", "NonBitcoinTests\NonBitcoinTests.csproj", "{3CB5C3D0-4B3F-4024-9037-BCDB02DAAB7A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LykkeIntegrationServices", "LykkeIntegrationServices\LykkeIntegrationServices.csproj", "{DB455119-E9A9-4249-BC92-08B004E60185}"
+	ProjectSection(ProjectDependencies) = postProject
+		{1E08675A-D5FF-4424-94F5-E5D20B007B3F} = {1E08675A-D5FF-4424-94F5-E5D20B007B3F}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

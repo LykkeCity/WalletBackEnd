@@ -9,7 +9,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Core.LykkeIntegration;
 using Core.LykkeIntegration.Services;
-using LykkeIntegrationServices;
 using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
