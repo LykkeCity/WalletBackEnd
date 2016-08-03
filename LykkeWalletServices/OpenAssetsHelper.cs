@@ -808,6 +808,9 @@ namespace LykkeWalletServices
             DateTime now = DateTime.UtcNow;
             if (now.AddHours(-24) <= locktime && (await GetNumberOfTransactionConfirmations(transactionHex) < 3))
             {
+                // Probably if we reach here GetNumberOfTransactionConfirmations(transactionHex) will always return 0 and second condition
+                // will always be ture; Because if the refund is broadcasted its spent coins is not returned as free coins, so actual transactionHex
+                // may not be required and transaction could be signed by exchange and returned to the client.
                 return true;
             }
             else
