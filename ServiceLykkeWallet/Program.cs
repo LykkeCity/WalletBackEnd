@@ -9,6 +9,9 @@ using LykkeWalletServices.Accounts;
 using Microsoft.Owin.Hosting;
 using System.Threading.Tasks;
 using System.Text;
+using Common.IocContainer;
+using Core.LykkeIntegration.Services;
+using LykkeIntegrationServices;
 using NBitcoin;
 using LykkeWalletServices.Transactions.TaskHandlers;
 
@@ -34,7 +37,7 @@ namespace ServiceLykkeWallet
             // ToDo - Local Azure Emulator could not be started yet
 
             var queueReader = new AzureQueueReader(new AzureQueueExt(settings.InQueueConnectionString, "indata"));
-            var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, "outdata"));
+            var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, settings.OutdataQueueName));
             var emailQueueWriter = new AzureQueueExt(settings.OutQueueConnectionString, "emailsqueue");
             var lykkeAccountReader = new LykkeAccountReader(settings.LykkeCredentials);
 
@@ -61,10 +64,24 @@ namespace ServiceLykkeWallet
             OpenAssetsHelper.ExchangePrivateKey = settings.exchangePrivateKey;
             OpenAssetsHelper.Network = settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet;
 
+            WebSettings.Assets = settings.AssetDefinitions;
+            WebSettings.ConnectionParams = new OpenAssetsHelper.RPCConnectionParams { Username = settings.RPCUsername,
+                Password = settings.RPCPassword, IpAddress = settings.RPCServerIpAddress, Network = settings.NetworkType.ToString() };
+            WebSettings.ExchangePrivateKey = settings.exchangePrivateKey;
+            WebSettings.ConnectionString = settings.ConnectionString;
+            WebSettings.FeeAddress = settings.FeeAddress;
+
+            var lykkeSettings = GeneralSettingsReader.ReadGeneralSettings<BaseSettings>(settings.LykkeSettingsConnectionString);
+            var logger = new LogToConsole();
+            var ioc = new IoC();
+            ioc.BindAzureRepositories(lykkeSettings.Db, logger);
+            ioc.BindLykkeServices();
+            
             srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
                 settings.exchangePrivateKey, settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
-                settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress, settings.FeeAddressPrivateKey);
+                settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress, settings.FeeAddressPrivateKey,
+                ioc.GetObject<IPreBroadcastHandler>());
 
             srvQueueReader.Start();
 

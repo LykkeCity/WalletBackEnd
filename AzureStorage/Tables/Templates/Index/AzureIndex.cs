@@ -52,6 +52,17 @@ namespace AzureStorage.Tables.Templates.Index
                 PrimaryRowKey = tableEntity.RowKey
             };
         }
+
+        public static AzureIndex Create(string partitionKey, string rowKey, string primaryPartitionKey, string primaryRowKey)
+        {
+            return new AzureIndex
+            {
+                PartitionKey = partitionKey,
+                RowKey = rowKey,
+                PrimaryPartitionKey = primaryPartitionKey,
+                PrimaryRowKey = primaryRowKey
+            };
+        }
     }
 
     public static class AzureIndexUtils

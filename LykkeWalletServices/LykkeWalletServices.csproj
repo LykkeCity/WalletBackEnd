@@ -40,15 +40,13 @@
       <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="NBitcoin">
-      <HintPath>..\..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.dll</HintPath>
+    <Reference Include="NBitcoin, Version=3.0.0.41, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NBitcoin.3.0.0.41\lib\net45\NBitcoin.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="NBitcoin.BouncyCastle">
-      <HintPath>..\..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.BouncyCastle.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -65,7 +63,6 @@
       <HintPath>..\packages\System.Data.SQLite.Linq.1.0.99.0\lib\net451\System.Data.SQLite.Linq.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="System.Net.Http.Formatting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security" />
@@ -84,6 +81,9 @@
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="ExchangeRequest.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="InputOutputMessageLog.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="KeyStorage.cs">
@@ -160,6 +160,7 @@
     <Compile Include="Transactions\TaskHandlers\SrvNetworkBase.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetTransactionToSignTask.cs" />
+    <Compile Include="WebSettings.cs" />
     <Compile Include="WholeRefund.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
@@ -175,6 +176,10 @@
     <ProjectReference Include="..\Core\Core.csproj">
       <Project>{ab96ba47-c6d1-4b08-9e24-1cceb723be39}</Project>
       <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LykkeIntegrationServices\LykkeIntegrationServices.csproj">
+      <Project>{db455119-e9a9-4249-bc92-08b004e60185}</Project>
+      <Name>LykkeIntegrationServices</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

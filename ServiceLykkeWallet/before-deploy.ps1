@@ -1,0 +1,1 @@
+Stop-Service ServiceLykkeWallet

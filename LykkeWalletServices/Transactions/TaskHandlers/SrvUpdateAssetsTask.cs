@@ -28,6 +28,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             public string OutQueueConnectionString { get; set; }
 
             public string ConnectionString { get; set; }
+            public string LykkeSettingsConnectionString { get; set; }
 
             public LykkeCredentials LykkeCredentials { get; set; }
 
@@ -44,6 +45,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             public int PreGeneratedOutputMinimumCount { get; set; }
 
             public string LykkeJobsUrl { get; set; }
+
+            [DefaultValue("outdata")]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public string OutdataQueueName
+            {
+                get;
+                set;
+            }
 
             [DefaultValue(null)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
@@ -146,7 +155,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvUpdateAssetsTask
     {
 #if DEBUG
-        public const string SETTINGSFILEPATH = "F:\\Lykkex\\settings.json";
+        public const string SETTINGSFILEPATH = "D:\\settings.json";
 #else
         public const string SETTINGSFILEPATH = "settings.json";
 #endif
@@ -202,6 +211,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                 // Updating the currently used settings
                 QueueReaderInstance._assets = settings.AssetDefinitions;
+                WebSettings.Assets = settings.AssetDefinitions;
 
                 result = new UpdateAssetsTaskResult();
                 result.Success = true;

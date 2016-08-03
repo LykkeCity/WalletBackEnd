@@ -163,10 +163,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 }
             }
             // ToDo - Fix the credentials, probably it will be removed entirely
-            var wallet01Coins = await OpenAssetsHelper.GetColoredUnColoredCoins
-                (wallet01Outputs.Item1, transaction.Asset01, network, null, null, null);
-            var wallet02Coins = await OpenAssetsHelper.GetColoredUnColoredCoins
-                (wallet02Outputs.Item1, transaction.Asset02, network, null, null, null);
+            var wallet01Coins = OpenAssetsHelper.GetColoredUnColoredCoins
+                (wallet01Outputs.Item1, transaction.Asset01);
+            var wallet02Coins = OpenAssetsHelper.GetColoredUnColoredCoins
+                (wallet02Outputs.Item1, transaction.Asset02);
                 
             /*
             var wallet01AssetOutputs = OpenAssetsHelper.GetWalletOutputsForAsset(wallet01Outputs.Item1, transaction.Asset01);

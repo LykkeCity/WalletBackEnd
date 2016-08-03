@@ -27,13 +27,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         // ToDo: Another approach would be to use .Net reflectin to pass the code to be executed, not
         // to have the problem to make both side sync
         private static async Task<Tuple<string, Error>> GenerateUncompleteTransactionWithOnlyOneSignature(string multisigAddress, double amount, string currency,
-            AssetDefinition[] assets, Network network, string username, string password, string ipAddress, string connectionString,
+            AssetDefinition[] assets, OpenAssetsHelper.RPCConnectionParams connectionParams, string connectionString,
             BitcoinSecret secret)
         {
             using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
             {
                 OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(multisigAddress,0, amount, currency,
-                        assets, network, username, password, ipAddress, connectionString, entities, false);
+                        assets, connectionParams, connectionString, entities, false);
                 if (walletCoins.Error != null)
                 {
                     return new Tuple<string, Error>(null, walletCoins.Error);
@@ -44,9 +44,9 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 .AddCoins(walletCoins.ScriptCoins)
                 .AddCoins(walletCoins.AssetScriptCoins)
                 .AddKeys(secret)
-                .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, network)), Convert.ToInt64((amount * walletCoins.Asset.AssetMultiplicationFactor))))
+                .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((amount * walletCoins.Asset.AssetMultiplicationFactor))))
                 .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(network))
+                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork))
                 .BuildTransaction(true);
                 return new Tuple<string, Error>(tx.ToHex(), null);
             }
@@ -63,7 +63,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 {
                     var clientAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities);
                     var txSignedByClient = await GenerateUncompleteTransactionWithOnlyOneSignature(data.MultisigAddress, data.Amount, data.Currency,
-                        Assets, Network, Username, Password, IpAddress, ConnectionString, new BitcoinSecret(clientAddress.WalletPrivateKey));
+                        Assets, connectionParams, ConnectionString, new BitcoinSecret(clientAddress.WalletPrivateKey));
                     if (txSignedByClient.Item2 != null)
                     {
                         error = txSignedByClient.Item2;
@@ -71,7 +71,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     else
                     {
                         var txSignedByExchange = await GenerateUncompleteTransactionWithOnlyOneSignature(data.MultisigAddress, data.Amount, data.Currency,
-                            Assets, Network, Username, Password, IpAddress, ConnectionString, new BitcoinSecret(ExchangePrivateKey));
+                            Assets, connectionParams, ConnectionString, new BitcoinSecret(ExchangePrivateKey));
                         if (txSignedByExchange.Item2 != null)
                         {
                             error = txSignedByExchange.Item2;
@@ -79,7 +79,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                         OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = 
                             (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress,0, data.Amount, data.Currency,
-                            Assets, Network, Username, Password, IpAddress, ConnectionString, entities, false);
+                            Assets, connectionParams, ConnectionString, entities, false);
                         if (walletCoins.Error != null)
                         {
                             error = walletCoins.Error;
@@ -90,9 +90,9 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             var txCommon = builder
                                 .AddCoins(walletCoins.ScriptCoins)
                                 .AddCoins(walletCoins.AssetScriptCoins)
-                                .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
+                                .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
                                 .SendFees(new Money(OpenAssetsHelper.TransactionSendFeesInSatoshi))
-                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(Network))
+                                .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork))
                                 .BuildTransaction(true);
                             Transaction tx = builder.CombineSignatures(new Transaction[] { txCommon, new Transaction(txSignedByClient.Item1), new Transaction(txSignedByExchange.Item1) });
                             if (!builder.Verify(tx))
@@ -108,8 +108,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 {
                                     var txHash = tx.GetHash().ToString();
                                     
-                                    localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString, null);
+                                    localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                        (tx, connectionParams, entities, ConnectionString, null, null)).Error;
 
 
                                     if (localerror == null)
