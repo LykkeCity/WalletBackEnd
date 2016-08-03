@@ -81,7 +81,7 @@ namespace ServiceLykkeWallet
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
                 settings.exchangePrivateKey, settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
                 settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress, settings.FeeAddressPrivateKey,
-                ioc.CreateInstance<IPreBroadcastHandler>());
+                ioc.GetObject<IPreBroadcastHandler>());
 
             srvQueueReader.Start();
 
