@@ -109,7 +109,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     var txHash = tx.GetHash().ToString();
                                     
                                     localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, connectionParams, entities, ConnectionString, null)).Error;
+                                        (tx, connectionParams, entities, ConnectionString, null, null)).Error;
 
 
                                     if (localerror == null)
