@@ -5,9 +5,16 @@ namespace LykkeIntegrationServices
 {
     public static class SrvBinder
     {
-        public static void BindLykkeServices(this IoC ioc)
+        public static void BindLykkeServices(this IoC ioc, bool useMockAsLykkeNotification)
         {
-            ioc.RegisterSingleTone<IPreBroadcastHandler, PreBroadcastHandler>();
+            if (useMockAsLykkeNotification)
+            {
+                ioc.RegisterSingleTone<IPreBroadcastHandler, MockBroadcastHandler>();
+            }
+            else
+            {
+                ioc.RegisterSingleTone<IPreBroadcastHandler, PreBroadcastHandler>();
+            }
         }
     }
 }
