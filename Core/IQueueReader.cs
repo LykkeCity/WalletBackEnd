@@ -79,6 +79,7 @@ namespace Core
     public class TaskToDoGenerateRefundingTransaction : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }
+        public string PubKey { get; set; }
         public uint timeoutInMinutes { get; set; }
         public string RefundAddress { get; set; }
         public bool? JustRefundTheNonRefunded { get; set; }

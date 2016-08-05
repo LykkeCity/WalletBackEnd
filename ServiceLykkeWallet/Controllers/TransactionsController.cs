@@ -187,6 +187,23 @@ namespace ServiceLykkeWallet.Controllers
                 }
             }
 
+            /*
+            for (int i = 0; i < outputTx.Inputs.Count; i++)
+            {
+                var input = outputTx.Inputs[i];
+                var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(),
+                    WebSettings.ConnectionParams);
+                if (txResponse.Item1)
+                {
+                    throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
+                        input.PrevOut.Hash.ToString(), txResponse.Item2));
+                }
+
+                builder.AddCoins(new Transaction(txResponse.Item3));
+            }
+            var verify = builder.Verify(outputTx);
+            */
+
             return outputTx.ToHex();
         }
 

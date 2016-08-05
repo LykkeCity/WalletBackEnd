@@ -74,10 +74,12 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   Generating the refund transaction
 
-        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360 , "JustRefundTheNonRefunded":true}
+        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "PubKey":"PubKeyInHex", "timeoutInMinutes":360 , "JustRefundTheNonRefunded":true}
         Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
 
 JustRefundTheNonRefunded flag indicates the old refund method should be used. If false or omitted the new refunding method will be used. Old refund method is deprecated.
+
+If PubKey is null or not provided the conventional method of retrieving public key from private key is used, otherwise the provided public key is used to build the multi sig.
 
 *   Getting correspondent wallet addresses
 
