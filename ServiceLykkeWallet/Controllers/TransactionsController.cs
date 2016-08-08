@@ -163,7 +163,7 @@ namespace ServiceLykkeWallet.Controllers
                             {
                                 var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
                                 var hash = Script.SignatureHash(scriptParams.RedeemScript, tx, i, SigHash.All);
-                                var signature = secret.PrivateKey.Sign(hash,SigHash.All);
+                                var signature = secret.PrivateKey.Sign(hash, SigHash.All);
                                 scriptParams.Pushes[j + 1] = signature.Signature.ToDER().Concat(new byte[] { 0x01 }).ToArray();
                                 outputTx.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
                             }
@@ -172,10 +172,10 @@ namespace ServiceLykkeWallet.Controllers
                     continue;
                 }
 
-                if(PayToPubkeyHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
+                if (PayToPubkeyHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
                 {
                     var address = PayToPubkeyHashTemplate.Instance.ExtractScriptPubKeyParameters(output.ScriptPubKey).GetAddress(WebSettings.ConnectionParams.BitcoinNetwork).ToWif();
-                    if(address == secret.GetAddress().ToWif())
+                    if (address == secret.GetAddress().ToWif())
                     {
                         var hash = Script.SignatureHash(output.ScriptPubKey, tx, i, SigHash.All);
                         var signature = secret.PrivateKey.Sign(hash, SigHash.All);
@@ -225,7 +225,12 @@ namespace ServiceLykkeWallet.Controllers
                 {
                     using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(WebSettings.ConnectionString))
                     {
+                        /*
                         var txRecord = (from transaction in entities.SentTransactions
+                                        where transaction.id == (int)signBroadcastRequest.Id
+                                        select transaction).FirstOrDefault();
+                        */
+                        var txRecord = (from transaction in entities.UnsignedTransactions
                                         where transaction.id == (int)signBroadcastRequest.Id
                                         select transaction).FirstOrDefault();
 
@@ -350,10 +355,16 @@ namespace ServiceLykkeWallet.Controllers
 
                                     try
                                     {
+                                        /*
                                         RPCClient client = new RPCClient(new System.Net.NetworkCredential(WebSettings.ConnectionParams.Username, WebSettings.ConnectionParams.Password),
                                             WebSettings.ConnectionParams.IpAddress, WebSettings.ConnectionParams.BitcoinNetwork);
 
                                         await client.SendRawTransactionAsync(finalTransaction);
+                                        */
+                                        var sendingRetValue = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt(finalTransaction, WebSettings.ConnectionParams,
+                                            entities, WebSettings.ConnectionString, null, null);
+
+                                        await MakeReservedFeesAsSpent(entities, finalTransaction, txRecord.OwnerAddress);
 
                                         txRecord.TransactionId = finalTransaction.GetHash().ToString();
                                         txRecord.TransactionSendingSuccessful = true;
@@ -382,6 +393,26 @@ namespace ServiceLykkeWallet.Controllers
                 (WebSettings.ConnectionString, "Transfer:" + JsonConvert.SerializeObject(signBroadcastRequest), ConvertResultToString(result));
 
             return result;
+        }
+
+        // ToDo: Possible performance increase with join operation
+        private async Task MakeReservedFeesAsSpent(SqlexpressLykkeEntities entities, Transaction finalTransaction, string ownerAddress)
+        {
+            var feesForAddress = (from fee in entities.PreGeneratedOutputs
+                                  where fee.Consumed == 0 && fee.ReservedForAddress == ownerAddress
+                                  select fee).ToList();
+
+            var txInputs = finalTransaction.Inputs.Select(i => new { Hash = i.PrevOut.Hash, N = i.PrevOut.N });
+            for (int i = 0; i < feesForAddress.Count; i++)
+            {
+                var fee = feesForAddress[i];
+                if (txInputs.Where(input => (input.Hash.ToString() == fee.TransactionId && input.N == fee.OutputNumber)).Any())
+                {
+                    fee.Consumed = 1;
+                }
+            }
+
+            await entities.SaveChangesAsync();
         }
 
         // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"TransactionToSign\":\"xyz\",\"PrivateKey\":\"xyz\"}" http://localhost:8989/Transactions/SignTransaction
@@ -415,14 +446,14 @@ namespace ServiceLykkeWallet.Controllers
                 return JsonConvert.SerializeObject((result as JsonResult<UnsignedTransaction>).Content);
             }
 
-            if(result is BadRequestErrorMessageResult)
+            if (result is BadRequestErrorMessageResult)
             {
                 return ((BadRequestErrorMessageResult)result).Message;
             }
 
-            if(result is OkNegotiatedContentResult<string>)
+            if (result is OkNegotiatedContentResult<string>)
             {
-                return ((OkNegotiatedContentResult<string>)result).Content;                   
+                return ((OkNegotiatedContentResult<string>)result).Content;
             }
 
             return result.ToString();
@@ -516,12 +547,14 @@ namespace ServiceLykkeWallet.Controllers
                                         }
                                     }
 
+                                    var reservedId = Guid.NewGuid().ToString();
+
                                     if (OpenAssetsHelper.IsRealAsset(data.Asset))
                                     {
                                         builder = (await builder.SendAsset(destAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, WebSettings.ConnectionParams.BitcoinNetwork)),
                                             Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
                                         .AddEnoughPaymentFee(entities, WebSettings.ConnectionParams,
-                                        WebSettings.FeeAddress, 2));
+                                        WebSettings.FeeAddress, 2, -1, data.SourceAddress, reservedId));
                                     }
                                     else
                                     {
@@ -530,7 +563,7 @@ namespace ServiceLykkeWallet.Controllers
                                             uncoloredCoins,
                                             sourceAddress);
                                         builder = (await builder.AddEnoughPaymentFee(entities, WebSettings.ConnectionParams,
-                                            WebSettings.FeeAddress, 0));
+                                            WebSettings.FeeAddress, 0, -1, data.SourceAddress, reservedId));
                                     }
 
                                     var tx = builder.BuildTransaction(true);
@@ -538,6 +571,24 @@ namespace ServiceLykkeWallet.Controllers
                                     var txHash = tx.GetHash().ToString();
 
                                     OpenAssetsHelper.SentTransactionReturnValue transactionResult = null;
+
+                                    var unsignedTransaction = entities.UnsignedTransactions.Add(
+                                        new LykkeWalletServices.UnsignedTransaction
+                                        {
+                                            IsExchangeSignatureRequired = isExchangeSignatureRequired,
+                                            IsClientSignatureRequired = true,
+                                            TransactionHex = tx.ToHex(),
+                                            OwnerAddress = sourceAddress.ToWif()
+                                        });
+                                    await entities.SaveChangesAsync();
+
+                                    result = new UnsignedTransaction
+                                    {
+                                        TransactionHex = tx.ToHex(),
+                                        Id = unsignedTransaction.id
+                                    };
+
+                                    /*
                                     if (!isExchangeSignatureRequired)
                                     {
                                         transactionResult = await OpenAssetsHelper.CheckTransactionForDoubleSpentClientSignatureRequired
@@ -548,6 +599,7 @@ namespace ServiceLykkeWallet.Controllers
                                         transactionResult = await OpenAssetsHelper.CheckTransactionForDoubleSpentBothSignaturesRequired
                                             (tx, WebSettings.ConnectionParams, entities, WebSettings.ConnectionString, null, null);
                                     }
+                                    
 
                                     if (transactionResult.Error == null)
                                     {
@@ -561,7 +613,7 @@ namespace ServiceLykkeWallet.Controllers
                                     {
                                         error = transactionResult.Error;
                                     }
-
+                                    */
                                     if (error == null)
                                     {
                                         transaction.Commit();

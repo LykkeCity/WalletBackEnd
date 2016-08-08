@@ -63,6 +63,18 @@
           <Property Name="AssetId" Type="varchar" MaxLength="100" />
           <Property Name="Address" Type="varchar" MaxLength="100" />
           <Property Name="Network" Type="varchar" MaxLength="10" />
+          <Property Name="ReservedForAddress" Type="varchar" MaxLength="35" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="PregeneratedReserve">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="ReserveId" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="PreGeneratedOutputTxId" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="PreGeneratedOutputN" Type="int" Nullable="false" />
+          <Property Name="CreationTime" Type="datetime" Nullable="false" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
         <EntityType Name="RefundedOutputs">
@@ -134,6 +146,22 @@
           <Property Name="WholeRefundId" Type="bigint" />
           <Property Name="OldRefundedTxId" Type="bigint" />
         </EntityType>
+        <EntityType Name="UnsignedTransactions">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="TransactionHex" Type="text" />
+          <Property Name="IsClientSignatureRequired" Type="bit" />
+          <Property Name="ClientSignedTransaction" Type="text" />
+          <Property Name="IsExchangeSignatureRequired" Type="bit" />
+          <Property Name="ExchangeSignedTransactionAfterClient" Type="text" />
+          <Property Name="OwnerAddress" Type="varchar" MaxLength="35" />
+          <Property Name="TransactionSendingSuccessful" Type="bit" />
+          <Property Name="TransactionSendingError" Type="text" />
+          <Property Name="TransactionId" Type="varchar" MaxLength="64" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
         <EntityType Name="WholeRefund">
           <Key>
             <PropertyRef Name="id" />
@@ -154,6 +182,20 @@
           <Property Name="SpentTransactionId" Type="varchar" MaxLength="64" Nullable="false" />
           <Property Name="SpentTransactionOutputNumber" Type="int" Nullable="false" />
         </EntityType>
+        <Association Name="FK_PregeneratedReserve_PregeneratedReserve">
+          <End Role="PreGeneratedOutput" Type="Self.PreGeneratedOutput" Multiplicity="1" />
+          <End Role="PregeneratedReserve" Type="Self.PregeneratedReserve" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PreGeneratedOutput">
+              <PropertyRef Name="TransactionId" />
+              <PropertyRef Name="OutputNumber" />
+            </Principal>
+            <Dependent Role="PregeneratedReserve">
+              <PropertyRef Name="PreGeneratedOutputTxId" />
+              <PropertyRef Name="PreGeneratedOutputN" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         <Association Name="FK_RefundedOutputs_RefundTransactions">
           <End Role="RefundTransactions" Type="Self.RefundTransactions" Multiplicity="1" />
           <End Role="RefundedOutputs" Type="Self.RefundedOutputs" Multiplicity="*" />
@@ -220,14 +262,20 @@
           <EntitySet Name="InputOutputMessageLog" EntityType="Self.InputOutputMessageLog" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="PreGeneratedOutput" EntityType="Self.PreGeneratedOutput" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="PregeneratedReserve" EntityType="Self.PregeneratedReserve" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="RefundedOutputs" EntityType="Self.RefundedOutputs" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="RefundTransactions" EntityType="Self.RefundTransactions" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="SentTransactions" EntityType="Self.SentTransactions" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="SpentOutputs" EntityType="Self.SpentOutputs" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="TransactionsToBeSigned" EntityType="Self.TransactionsToBeSigned" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="TransactionsWaitForConfirmations" EntityType="Self.TransactionsWaitForConfirmations" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="UnsignedTransactions" EntityType="Self.UnsignedTransactions" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="WholeRefund" EntityType="Self.WholeRefund" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="WholeRefundSpentOutputs" EntityType="Self.WholeRefundSpentOutputs" Schema="dbo" store:Type="Tables" />
+          <AssociationSet Name="FK_PregeneratedReserve_PregeneratedReserve" Association="Self.FK_PregeneratedReserve_PregeneratedReserve">
+            <End Role="PreGeneratedOutput" EntitySet="PreGeneratedOutput" />
+            <End Role="PregeneratedReserve" EntitySet="PregeneratedReserve" />
+          </AssociationSet>
           <AssociationSet Name="FK_RefundedOutputs_RefundTransactions" Association="Self.FK_RefundedOutputs_RefundTransactions">
             <End Role="RefundTransactions" EntitySet="RefundTransactions" />
             <End Role="RefundedOutputs" EntitySet="RefundedOutputs" />
@@ -258,7 +306,6 @@
           <EntitySet Name="KeyStorages" EntityType="SqlexpressLykkeModel.KeyStorage" />
           <EntitySet Name="PreGeneratedOutputs" EntityType="SqlexpressLykkeModel.PreGeneratedOutput" />
           <EntitySet Name="SpentOutputs" EntityType="SqlexpressLykkeModel.SpentOutput" />
-          <EntitySet Name="TransactionsToBeSigneds" EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" />
           <EntitySet Name="RefundedOutputs" EntityType="SqlexpressLykkeModel.RefundedOutput" />
           <EntitySet Name="RefundTransactions" EntityType="SqlexpressLykkeModel.RefundTransaction" />
           <AssociationSet Name="FK_RefundedOutputs_RefundTransactions" Association="SqlexpressLykkeModel.FK_RefundedOutputs_RefundTransactions">
@@ -287,6 +334,13 @@
             <End Role="SentTransaction" EntitySet="SentTransactions" />
             <End Role="SpentOutput" EntitySet="SpentOutputs" />
           </AssociationSet>
+          <EntitySet Name="PregeneratedReserves" EntityType="SqlexpressLykkeModel.PregeneratedReserve" />
+          <AssociationSet Name="FK_PregeneratedReserve_PregeneratedReserve" Association="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve">
+            <End Role="PreGeneratedOutput" EntitySet="PreGeneratedOutputs" />
+            <End Role="PregeneratedReserve" EntitySet="PregeneratedReserves" />
+          </AssociationSet>
+          <EntitySet Name="TransactionsToBeSigneds" EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" />
+          <EntitySet Name="UnsignedTransactions" EntityType="SqlexpressLykkeModel.UnsignedTransaction" />
           </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -331,6 +385,8 @@
           <Property Name="Address" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Network" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <Property Name="ReservedForAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="PregeneratedReserves" Relationship="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" FromRole="PreGeneratedOutput" ToRole="PregeneratedReserve" />
         </EntityType>
         <EntityType Name="SpentOutput">
           <Key>
@@ -342,17 +398,6 @@
           <Property Name="SentTransactionId" Type="Int32" />
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
           <NavigationProperty Name="SentTransaction" Relationship="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions" FromRole="SpentOutput" ToRole="SentTransaction" />
-        </EntityType>
-        <EntityType Name="TransactionsToBeSigned">
-          <Key>
-            <PropertyRef Name="ExchangeId" />
-            <PropertyRef Name="WalletAddress" />
-          </Key>
-          <Property Name="ExchangeId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="WalletAddress" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="UnsignedTransaction" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="SignedTransaction" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
         </EntityType>
         <EntityType Name="RefundedOutput">
           <Key>
@@ -507,6 +552,59 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <EntityType Name="PregeneratedReserve">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="ReserveId" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="PreGeneratedOutputTxId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="PreGeneratedOutputN" Type="Int32" Nullable="false" />
+          <Property Name="CreationTime" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <NavigationProperty Name="PreGeneratedOutput" Relationship="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" FromRole="PregeneratedReserve" ToRole="PreGeneratedOutput" />
+        </EntityType>
+        <Association Name="FK_PregeneratedReserve_PregeneratedReserve">
+          <End Type="SqlexpressLykkeModel.PreGeneratedOutput" Role="PreGeneratedOutput" Multiplicity="1" />
+          <End Type="SqlexpressLykkeModel.PregeneratedReserve" Role="PregeneratedReserve" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PreGeneratedOutput">
+              <PropertyRef Name="TransactionId" />
+              <PropertyRef Name="OutputNumber" />
+            </Principal>
+            <Dependent Role="PregeneratedReserve">
+              <PropertyRef Name="PreGeneratedOutputTxId" />
+              <PropertyRef Name="PreGeneratedOutputN" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="TransactionsToBeSigned">
+          <Key>
+            <PropertyRef Name="ExchangeId" />
+            <PropertyRef Name="WalletAddress" />
+          </Key>
+          <Property Name="ExchangeId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="WalletAddress" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="UnsignedTransaction" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="SignedTransaction" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+        </EntityType>
+        <EntityType Name="UnsignedTransaction">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="IsClientSignatureRequired" Type="Boolean" />
+          <Property Name="ClientSignedTransaction" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="IsExchangeSignatureRequired" Type="Boolean" />
+          <Property Name="TransactionHex" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="OwnerAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
+          <Property Name="ExchangeSignedTransactionAfterClient" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionSendingSuccessful" Type="Boolean" />
+          <Property Name="TransactionSendingError" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionId" Type="String" MaxLength="64" FixedLength="false" Unicode="false" />
+        </EntityType>
         </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -546,6 +644,7 @@
           <EntitySetMapping Name="PreGeneratedOutputs">
             <EntityTypeMapping TypeName="SqlexpressLykkeModel.PreGeneratedOutput">
               <MappingFragment StoreEntitySet="PreGeneratedOutput">
+                <ScalarProperty Name="ReservedForAddress" ColumnName="ReservedForAddress" />
                 <ScalarProperty Name="Version" ColumnName="Version" />
                 <ScalarProperty Name="Network" ColumnName="Network" />
                 <ScalarProperty Name="Address" ColumnName="Address" />
@@ -566,17 +665,6 @@
                 <ScalarProperty Name="SentTransactionId" ColumnName="SentTransactionId" />
                 <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
                 <ScalarProperty Name="PrevHash" ColumnName="PrevHash" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
-          <EntitySetMapping Name="TransactionsToBeSigneds">
-            <EntityTypeMapping TypeName="SqlexpressLykkeModel.TransactionsToBeSigned">
-              <MappingFragment StoreEntitySet="TransactionsToBeSigned">
-                <ScalarProperty Name="Version" ColumnName="Version" />
-                <ScalarProperty Name="SignedTransaction" ColumnName="SignedTransaction" />
-                <ScalarProperty Name="UnsignedTransaction" ColumnName="UnsignedTransaction" />
-                <ScalarProperty Name="WalletAddress" ColumnName="WalletAddress" />
-                <ScalarProperty Name="ExchangeId" ColumnName="ExchangeId" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
@@ -668,6 +756,46 @@
                 <ScalarProperty Name="CreationDate" ColumnName="CreationDate" />
                 <ScalarProperty Name="Version" ColumnName="Version" />
                 <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="PregeneratedReserves">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.PregeneratedReserve">
+              <MappingFragment StoreEntitySet="PregeneratedReserve">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="CreationTime" ColumnName="CreationTime" />
+                <ScalarProperty Name="PreGeneratedOutputN" ColumnName="PreGeneratedOutputN" />
+                <ScalarProperty Name="PreGeneratedOutputTxId" ColumnName="PreGeneratedOutputTxId" />
+                <ScalarProperty Name="ReserveId" ColumnName="ReserveId" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TransactionsToBeSigneds">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.TransactionsToBeSigned">
+              <MappingFragment StoreEntitySet="TransactionsToBeSigned">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="SignedTransaction" ColumnName="SignedTransaction" />
+                <ScalarProperty Name="UnsignedTransaction" ColumnName="UnsignedTransaction" />
+                <ScalarProperty Name="WalletAddress" ColumnName="WalletAddress" />
+                <ScalarProperty Name="ExchangeId" ColumnName="ExchangeId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="UnsignedTransactions">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.UnsignedTransaction">
+              <MappingFragment StoreEntitySet="UnsignedTransactions">
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+                <ScalarProperty Name="TransactionSendingError" ColumnName="TransactionSendingError" />
+                <ScalarProperty Name="TransactionSendingSuccessful" ColumnName="TransactionSendingSuccessful" />
+                <ScalarProperty Name="ExchangeSignedTransactionAfterClient" ColumnName="ExchangeSignedTransactionAfterClient" />
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="OwnerAddress" ColumnName="OwnerAddress" />
+                <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
+                <ScalarProperty Name="IsExchangeSignatureRequired" ColumnName="IsExchangeSignatureRequired" />
+                <ScalarProperty Name="ClientSignedTransaction" ColumnName="ClientSignedTransaction" />
+                <ScalarProperty Name="IsClientSignatureRequired" ColumnName="IsClientSignatureRequired" />
                 <ScalarProperty Name="id" ColumnName="id" />
               </MappingFragment>
             </EntityTypeMapping>

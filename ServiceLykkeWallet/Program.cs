@@ -92,6 +92,9 @@ namespace ServiceLykkeWallet
             var srvFeeUpdater = new SrvFeeUpdater(log);
             srvFeeUpdater.Start();
 
+            var srvFeeReserveCleaner = new SrvFeeReserveCleaner(log, settings.ConnectionString);
+            srvFeeReserveCleaner.Start();
+
 
             Console.WriteLine("Queue reader is started");
            

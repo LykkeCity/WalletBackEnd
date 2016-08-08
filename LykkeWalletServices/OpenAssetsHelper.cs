@@ -305,7 +305,8 @@ namespace LykkeWalletServices
         }
 
         public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
-            RPCConnectionParams connectionParams, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1)
+            RPCConnectionParams connectionParams, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1,
+            string reservedForAddress = null, string reserveId = null)
         {
             builder.SetChange(BitcoinAddress.Create(feeAddress), ChangeType.Uncolored);
 
@@ -325,7 +326,8 @@ namespace LykkeWalletServices
                     }
                     catch (NotEnoughFundsException ex)
                     {
-                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams);
+                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, null,
+                            reservedForAddress, reserveId);
                         Coin feePayerCoin = feePayer.GetCoin();
 
                         totalAddedFee += feePayer.Amount;
@@ -348,7 +350,7 @@ namespace LykkeWalletServices
                     break;
                 }
 
-                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams);
+                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, null, reservedForAddress, reserveId);
                 Coin feePayerCoin = feePayer.GetCoin();
 
                 totalAddedFee += feePayer.Amount;
@@ -937,8 +939,8 @@ namespace LykkeWalletServices
 
         public static async Task<SentTransactionReturnValue> CheckTransactionForDoubleSpentBothSignaturesRequired(Transaction tx,
             RPCConnectionParams connectionParams, SqlexpressLykkeEntities entitiesContext, string connectionString,
-            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler, Action outsideTransactionBeforeBroadcast = null, 
-            Action<SqlexpressLykkeEntities> databaseCommitableAction = null, 
+            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler, Action outsideTransactionBeforeBroadcast = null,
+            Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
             APIProvider apiProvider = APIProvider.QBitNinja, bool isCompletelySignedTransaction = true)
         {
             return await CheckTransactionForDoubleSpentThenSendItCore(tx, connectionParams, entitiesContext, connectionString,
@@ -948,7 +950,7 @@ namespace LykkeWalletServices
 
         public static async Task<SentTransactionReturnValue> CheckTransactionForDoubleSpentClientSignatureRequired(Transaction tx,
             RPCConnectionParams connectionParams, SqlexpressLykkeEntities entitiesContext, string connectionString,
-            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler, 
+            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler,
             Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
             APIProvider apiProvider = APIProvider.QBitNinja, bool isCompletelySignedTransaction = true)
         {
@@ -1645,17 +1647,63 @@ namespace LykkeWalletServices
             }
         }
 
-        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
-            RPCConnectionParams connectionParams, string assetId = null)
+        public static async Task CreateNewReserve(SqlexpressLykkeEntities entities, string reserveId, PreGeneratedOutput c, bool save)
         {
+            PregeneratedReserve reserve = new PregeneratedReserve();
+
+            reserve.PreGeneratedOutputTxId = c.TransactionId;
+            reserve.PreGeneratedOutputN = c.OutputNumber;
+            reserve.CreationTime = DateTime.UtcNow;
+            reserve.ReserveId = reserveId;
+
+            entities.PregeneratedReserves.Add(reserve);
+            if (save)
+            {
+                await entities.SaveChangesAsync();
+            }
+        }
+
+        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
+            RPCConnectionParams connectionParams, string assetId = null, string reservedForAddress = null, string reserveId = null)
+        {
+            bool pregeneratedCoinFound = false;
+
+            if (!string.IsNullOrEmpty(reservedForAddress))
+            {
+                var reservedCoins = from item in entities.PreGeneratedOutputs
+                            where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) &&
+                            (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) &&
+                            item.ReservedForAddress == reservedForAddress
+                            select item;
+
+                foreach (var c in reservedCoins)
+                {
+                    var isPreviouslyUsed = (from item in entities.PregeneratedReserves
+                                                where item.PreGeneratedOutputN == c.OutputNumber
+                                                && item.PreGeneratedOutputTxId == c.TransactionId
+                                                && item.ReserveId == reserveId
+                                                select item).Any();
+
+                    if (isPreviouslyUsed)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        await CreateNewReserve(entities, reserveId, c, true);
+
+                        return c;
+                    }
+                }
+            }
+
             var coins = from item in entities.PreGeneratedOutputs
-                        where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString()))
+                        where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) && string.IsNullOrEmpty(item.ReservedForAddress)
                         select item;
 
             int count = await coins.CountAsync();
-            bool pregeneratedCoinFound = false;
-            PreGeneratedOutput f = null;
 
+            PreGeneratedOutput f = null;
             while (!pregeneratedCoinFound)
             {
                 if (count < PreGeneratedOutputMinimumCount)
@@ -1671,96 +1719,556 @@ namespace LykkeWalletServices
                 {
                     int index = new Random().Next(coins.Count());
                     f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
-                    f.Consumed = 1;
+                    if (string.IsNullOrEmpty(reserveId))
+                    {
+                        f.Consumed = 1;
+                    }
+                    else
+                    {
+                        f.ReservedForAddress = reservedForAddress;
+                        await CreateNewReserve(entities, reserveId, f, false);
+                    }
                     await entities.SaveChangesAsync();
+
                     if (!await PregeneratedHasBeenSpentInBlockchain(f, connectionParams))
                     {
                         pregeneratedCoinFound = true;
+                    }
+                    else
+                    {
+                        if(!string.IsNullOrEmpty(reserveId))
+                        {
+                            f.Consumed = 1;
+                            f.ReservedForAddress = null;
+                            await entities.SaveChangesAsync();
+                        }
                     }
                 }
             }
 
             return f;
+    }
+
+    public static string GetPrivateKeyForAddress(string address)
+    {
+        Exception exp = new Exception("Could not find a matching record for address: "
+                + address);
+        var parsedAddr = Base58Data.GetFromBase58Data(address);
+        if (parsedAddr is BitcoinColoredAddress)
+        {
+            parsedAddr = ((BitcoinColoredAddress)parsedAddr).Address;
+        }
+        if (parsedAddr is BitcoinAddress)
+        {
+            if (P2PKHDictionary.ContainsKey(address))
+            {
+                return P2PKHDictionary[address];
+            }
+            else
+            {
+                throw exp;
+            }
+        }
+        if (parsedAddr is BitcoinScriptAddress)
+        {
+            if (MultisigDictionary.ContainsKey(address))
+            {
+                return MultisigDictionary[address];
+            }
+            else
+            {
+                throw exp;
+            }
         }
 
-        public static string GetPrivateKeyForAddress(string address)
+        throw new Exception(string.Format("Could not parse the address {0} successfully.", address));
+    }
+
+
+    public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
+    {
+        KeyStorage ret = null;
+
+        var base58Data = Base58Data.GetFromBase58Data(multiSigAddress);
+        if (base58Data is BitcoinColoredAddress)
         {
-            Exception exp = new Exception("Could not find a matching record for address: "
-                    + address);
-            var parsedAddr = Base58Data.GetFromBase58Data(address);
-            if (parsedAddr is BitcoinColoredAddress)
+            multiSigAddress = (base58Data as BitcoinColoredAddress).Address.ToWif();
+        }
+
+        if (PrivateKeyWillBeSubmitted)
+        {
+            if (MultisigDictionary.ContainsKey(multiSigAddress))
             {
-                parsedAddr = ((BitcoinColoredAddress)parsedAddr).Address;
+                ret = new KeyStorage();
+                ret.ExchangePrivateKey = ExchangePrivateKey;
+                ret.MultiSigAddress = multiSigAddress;
+                ret.MultiSigScript = MultisigScriptDictionary[multiSigAddress];
+                ret.Network = Network.ToString();
+                ret.WalletPrivateKey = MultisigDictionary[multiSigAddress];
+                ret.WalletAddress = (new BitcoinSecret(ret.WalletPrivateKey)).GetAddress().ToWif();
             }
-            if (parsedAddr is BitcoinAddress)
+        }
+        else
+        {
+            ret = await (from item in entities.KeyStorages
+                         where item.MultiSigAddress.Equals(multiSigAddress)
+                         select item).SingleOrDefaultAsync();
+        }
+
+        if (ret == null)
+        {
+            throw new Exception("Could not find a matching record for MultiSigAddress: "
+                + multiSigAddress);
+        }
+
+        return ret;
+    }
+
+    public static bool IsRealAsset(string asset)
+    {
+        if (asset != null && asset.Trim().ToUpper() != "BTC")
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public static Asset GetAssetFromName(AssetDefinition[] assets, string assetName, Network network)
+    {
+        Asset ret = null;
+        foreach (var item in assets)
+        {
+            if (item.Name == assetName)
             {
-                if (P2PKHDictionary.ContainsKey(address))
+                ret = new Asset();
+                ret.AssetId = item.AssetId;
+                ret.AssetPrivateKey = item.PrivateKey;
+                ret.AssetAddress = BitcoinAddress.Create(item.AssetAddress, network);
+                ret.AssetMultiplicationFactor = item.MultiplyFactor;
+                ret.AssetDefinitionUrl = item.DefinitionUrl;
+                break;
+            }
+        }
+
+        return ret;
+    }
+
+    // From: http://stackoverflow.com/questions/311165/how-do-you-convert-byte-array-to-hexadecimal-string-and-vice-versa
+    public static byte[] StringToByteArray(String hex)
+    {
+        int NumberChars = hex.Length;
+        byte[] bytes = new byte[NumberChars / 2];
+        for (int i = 0; i < NumberChars; i += 2)
+            bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
+        return bytes;
+    }
+
+    public static BitcoinAddress GetBitcoinAddressFormBase58Date(string base58Data)
+    {
+        var base58Decoded = Base58Data.GetFromBase58Data(base58Data);
+        var address = base58Decoded as BitcoinAddress;
+        if (address != null)
+        {
+            return address;
+        }
+        else
+        {
+            return (base58Decoded as BitcoinColoredAddress)?.Address;
+        }
+    }
+
+    #endregion
+
+    #region EmailStructure
+    public class PlainTextMessage
+    {
+        public string Subject
+        {
+            get;
+            set;
+        }
+
+        public string Text
+        {
+            get;
+            set;
+        }
+    }
+
+    public class PlainTextBroadcastData
+    {
+        public int BroadcastGroup
+        {
+            get;
+            set;
+        }
+
+        public PlainTextMessage MessageData
+        {
+            get;
+            set;
+        }
+    }
+
+    public class PlainTextBroadcast
+    {
+        public PlainTextBroadcastData Data
+        {
+            get;
+            set;
+        }
+    }
+    #endregion
+
+    //#region LykkeJobsNotificationStructures
+    //public class LykkeJobsNotificationMessage
+    //{
+    //    public string TransactionId
+    //    {
+    //        get;
+    //        set;
+    //    }
+
+    //    public string BlockchainHash
+    //    {
+    //        get;
+    //        set;
+    //    }
+
+    //    public string Operation
+    //    {
+    //        get;
+    //        set;
+    //    }
+    //}
+
+    //public class LykkeJobsNotificationResponseError
+    //{
+    //    public int Code
+    //    {
+    //        get;
+    //        set;
+    //    }
+
+    //    public string Message
+    //    {
+    //        get;
+    //        set;
+    //    }
+    //}
+    //public class LykkeJobsNotificationResponse
+    //{
+    //    public LykkeJobsNotificationResponseError Error
+    //    {
+    //        get;
+    //        set;
+    //    }
+    //}
+    //#endregion
+
+    #region BitcoinApiReturnStructure
+    public class UniversalUnspentOutput
+    {
+    }
+
+    public class QBitNinjaUnspentOutput : UniversalUnspentOutput
+    {
+        public string transaction_hash { get; set; }
+        public int output_index { get; set; }
+        public long value { get; set; }
+        public int confirmations { get; set; }
+        public string script_hex { get; set; }
+        public string asset_id { get; set; }
+        public long asset_quantity { get; set; }
+    }
+
+    public class QBitNinjaReceivedCoin
+    {
+        public string transactionId { get; set; }
+        public int index { get; set; }
+        public long value { get; set; }
+        public string scriptPubKey { get; set; }
+        public object redeemScript { get; set; }
+        public string assetId { get; set; }
+        public long quantity { get; set; }
+    }
+
+    public class QBitNinjaSpentCoin
+    {
+        public string address { get; set; }
+        public string transactionId { get; set; }
+        public int index { get; set; }
+        public long value { get; set; }
+        public string scriptPubKey { get; set; }
+        public object redeemScript { get; set; }
+        public string assetId { get; set; }
+        public long quantity { get; set; }
+    }
+
+    public class QBitNinjaOperation
+    {
+        public long amount { get; set; }
+        public int confirmations { get; set; }
+        public int height { get; set; }
+        public string blockId { get; set; }
+        public string transactionId { get; set; }
+        public List<QBitNinjaReceivedCoin> receivedCoins { get; set; }
+        public List<QBitNinjaSpentCoin> spentCoins { get; set; }
+    }
+
+
+
+    public class QBitNinjaOutputResponse
+    {
+        public object continuation { get; set; }
+        public List<QBitNinjaOperation> operations { get; set; }
+    }
+
+    public class QBitNinjaBlock
+    {
+        public string blockId { get; set; }
+        public string blockHeader { get; set; }
+        public int height { get; set; }
+        public int confirmations { get; set; }
+        public string medianTimePast { get; set; }
+        public string blockTime { get; set; }
+    }
+
+    public class QBitNinjaTransactionResponse
+    {
+        public string transaction { get; set; }
+        public string transactionId { get; set; }
+        public bool isCoinbase { get; set; }
+        public QBitNinjaBlock block { get; set; }
+        public List<QBitNinjaSpentCoin> spentCoins { get; set; }
+        public List<QBitNinjaReceivedCoin> receivedCoins { get; set; }
+        public string firstSeen { get; set; }
+        public int fees { get; set; }
+    }
+
+    public class BlockCypherInput
+    {
+        public string prev_hash { get; set; }
+        public int output_index { get; set; }
+        public string script { get; set; }
+        public long output_value { get; set; }
+        public object sequence { get; set; }
+        public string[] addresses { get; set; }
+        public string script_type { get; set; }
+    }
+
+    public class BlockCypherOutput
+    {
+        public long value { get; set; }
+        public string script { get; set; }
+        public string spent_by { get; set; }
+        public string[] addresses { get; set; }
+        public string script_type { get; set; }
+    }
+
+    public class BlockCypherGetTransactionResult
+    {
+        public string block_hash { get; set; }
+        public int block_height { get; set; }
+        public int block_index { get; set; }
+        public string hash { get; set; }
+        public string hex { get; set; }
+        public string[] addresses { get; set; }
+        public long total { get; set; }
+        public int fees { get; set; }
+        public int size { get; set; }
+        public string preference { get; set; }
+        public string relayed_by { get; set; }
+        public string confirmed { get; set; }
+        public string received { get; set; }
+        public int ver { get; set; }
+        public int lock_time { get; set; }
+        public bool double_spend { get; set; }
+        public int vin_sz { get; set; }
+        public int vout_sz { get; set; }
+        public int confirmations { get; set; }
+        public int confidence { get; set; }
+        public BlockCypherInput[] inputs { get; set; }
+        public BlockCypherOutput[] outputs { get; set; }
+    }
+    #endregion
+
+    #region QBitNinjaFunctions
+    public static async Task<bool> IsTransactionPresentInQBitNinja(Transaction tx)
+    {
+        string url = null;
+        try
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                url = QBitNinjaTransactionUrl + tx.GetHash().ToString();
+                HttpResponseMessage result = await client.GetAsync(url);
+                if (!result.IsSuccessStatusCode)
                 {
-                    return P2PKHDictionary[address];
+                    return false;
                 }
                 else
                 {
-                    throw exp;
+                    return true;
                 }
             }
-            if (parsedAddr is BitcoinScriptAddress)
+        }
+        catch (Exception)
+        {
+            return true;
+        }
+    }
+
+    public static async Task<Tuple<float, bool, string>> GetAccountBalanceQBitNinja(string walletAddress,
+        string assetId, Network network, Func<int> getMinimumConfirmationNumber = null)
+    {
+        float balance = 0;
+        float unconfirmedBalance = 0;
+        bool errorOccured = false;
+        string errorMessage = "";
+        string url;
+
+        getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
+        var minimumConfirmationNumber = getMinimumConfirmationNumber();
+
+        try
+        {
+            QBitNinjaOutputResponse response = null;
+
+            /*
+            using (HttpClient client = new HttpClient())
             {
-                if (MultisigDictionary.ContainsKey(address))
+                url = QBitNinjaBalanceUrl + walletAddress;
+                HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
+                if (!result.IsSuccessStatusCode)
                 {
-                    return MultisigDictionary[address];
+                    return new Tuple<float, bool, string>(0, true, result.ReasonPhrase);
                 }
                 else
                 {
-                    throw exp;
+                    var webResponse = await result.Content.ReadAsStringAsync();
+                    response = JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                        (webResponse);
                 }
             }
-
-            throw new Exception(string.Format("Could not parse the address {0} successfully.", address));
-        }
-
-
-        public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
-        {
-            KeyStorage ret = null;
-
-            var base58Data = Base58Data.GetFromBase58Data(multiSigAddress);
-            if (base58Data is BitcoinColoredAddress)
+            */
+            Tuple<float, bool, string> retValue = null;
+            response = await GetAddressBalance(walletAddress,
+                (result) => { retValue = new Tuple<float, bool, string>(0, true, result.ReasonPhrase); }
+                , true, true);
+            if (retValue != null)
             {
-                multiSigAddress = (base58Data as BitcoinColoredAddress).Address.ToWif();
+                return retValue;
             }
 
-            if (PrivateKeyWillBeSubmitted)
+
+            if (response.operations != null && response.operations.Count > 0)
             {
-                if (MultisigDictionary.ContainsKey(multiSigAddress))
+                foreach (var item in response.operations)
                 {
-                    ret = new KeyStorage();
-                    ret.ExchangePrivateKey = ExchangePrivateKey;
-                    ret.MultiSigAddress = multiSigAddress;
-                    ret.MultiSigScript = MultisigScriptDictionary[multiSigAddress];
-                    ret.Network = Network.ToString();
-                    ret.WalletPrivateKey = MultisigDictionary[multiSigAddress];
-                    ret.WalletAddress = (new BitcoinSecret(ret.WalletPrivateKey)).GetAddress().ToWif();
+                    response.operations.ForEach((o) =>
+                    {
+                        balance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations >= getMinimumConfirmationNumber()).Select(c => c.quantity).Sum();
+                        unconfirmedBalance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
+                    });
                 }
             }
             else
             {
-                ret = await (from item in entities.KeyStorages
-                             where item.MultiSigAddress.Equals(multiSigAddress)
-                             select item).SingleOrDefaultAsync();
+                errorOccured = true;
+                errorMessage = "No coins found.";
             }
-
-            if (ret == null)
-            {
-                throw new Exception("Could not find a matching record for MultiSigAddress: "
-                    + multiSigAddress);
-            }
-
-            return ret;
         }
-
-        public static bool IsRealAsset(string asset)
+        catch (Exception e)
         {
-            if (asset != null && asset.Trim().ToUpper() != "BTC")
+            errorOccured = true;
+            errorMessage = e.ToString();
+        }
+        return new Tuple<float, bool, string>(balance, errorOccured, errorMessage);
+    }
+
+    public static async Task<QBitNinjaOutputResponse> GetAddressBalance(string walletAddress, Action<HttpResponseMessage> onNotSuccessfulReturn,
+        bool colored = true, bool unspentonly = true)
+    {
+        string continuation = null;
+        List<QBitNinjaOperation> operations = new List<QBitNinjaOperation>();
+
+        do
+        {
+            QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
+            using (HttpClient client = new HttpClient())
+            {
+                string url = null;
+                url = string.Format("{0}?unspentonly={1}&colored={2}",
+                    QBitNinjaBalanceUrl + walletAddress, unspentonly.ToString().ToLower(), colored.ToString().ToLower());
+                if (!string.IsNullOrEmpty(continuation))
+                {
+                    url += string.Format("&continuation={0}", continuation);
+                }
+                HttpResponseMessage result = await client.GetAsync(url);
+
+                if (!result.IsSuccessStatusCode)
+                {
+                    onNotSuccessfulReturn.Invoke(result);
+                    return null;
+                }
+                else
+                {
+                    var webResponse = await result.Content.ReadAsStringAsync();
+                    notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                        (webResponse);
+                    operations.AddRange(notProcessedUnspentOutputs.operations);
+                    continuation = notProcessedUnspentOutputs.continuation as string;
+                }
+            }
+        }
+        while (!string.IsNullOrEmpty(continuation));
+
+        return new QBitNinjaOutputResponse { continuation = null, operations = operations };
+    }
+
+    public static async Task<int> GetNumberOfTransactionConfirmations(string txId)
+    {
+        string url = null;
+        try
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                url = QBitNinjaTransactionUrl + txId;
+                HttpResponseMessage result = await client.GetAsync(url);
+
+                if (result.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    var webResponse = await result.Content.ReadAsStringAsync();
+                    var response = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaTransactionResponse>
+                            (webResponse);
+                    return response.block.confirmations;
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+        }
+        catch (Exception exp)
+        {
+            return -1;
+        }
+    }
+
+    public static async Task<bool> HasTransactionPassedItsWaitTime(string txId,
+        SqlexpressLykkeEntities entitiesContext)
+    {
+        var found = (from item in entitiesContext.TransactionsWaitForConfirmations
+                     where item.txToBeWatched == txId
+                     select item).FirstOrDefault();
+
+        if (found != null)
+        {
+            if (await GetNumberOfTransactionConfirmations(txId) > 2)
             {
                 return true;
             }
@@ -1769,686 +2277,237 @@ namespace LykkeWalletServices
                 return false;
             }
         }
-
-        public static Asset GetAssetFromName(AssetDefinition[] assets, string assetName, Network network)
+        else
         {
-            Asset ret = null;
-            foreach (var item in assets)
+            return true;
+        }
+    }
+
+    delegate Task PopulateUnspentOupt(QBitNinjaOperation operation);
+
+    public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
+        Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null)
+    {
+        bool errorOccured = false;
+        string errorMessage = string.Empty;
+        // List is not thread safe to be runned in parallel
+        //IList<QBitNinjaUnspentOutput> unspentOutputsList = new List<QBitNinjaUnspentOutput>();
+        ConcurrentQueue<QBitNinjaUnspentOutput> unspentOutputConcurrent = new ConcurrentQueue<QBitNinjaUnspentOutput>();
+
+        getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
+        var minimumConfirmationNumber = getMinimumConfirmationNumber();
+
+        try
+        {
+            QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
+            /*
+            using (HttpClient client = new HttpClient())
             {
-                if (item.Name == assetName)
-                {
-                    ret = new Asset();
-                    ret.AssetId = item.AssetId;
-                    ret.AssetPrivateKey = item.PrivateKey;
-                    ret.AssetAddress = BitcoinAddress.Create(item.AssetAddress, network);
-                    ret.AssetMultiplicationFactor = item.MultiplyFactor;
-                    ret.AssetDefinitionUrl = item.DefinitionUrl;
-                    break;
-                }
-            }
-
-            return ret;
-        }
-
-        // From: http://stackoverflow.com/questions/311165/how-do-you-convert-byte-array-to-hexadecimal-string-and-vice-versa
-        public static byte[] StringToByteArray(String hex)
-        {
-            int NumberChars = hex.Length;
-            byte[] bytes = new byte[NumberChars / 2];
-            for (int i = 0; i < NumberChars; i += 2)
-                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
-            return bytes;
-        }
-
-        // Sqlite dll is not copied to output folder, this method creates the reference, never called
-        // http://stackoverflow.com/questions/14033193/entity-framework-provider-type-could-not-be-loaded
-        public static void FixEfProviderServicesProblem()
-        {
-            var instance = System.Data.SQLite.EF6.SQLiteProviderFactory.Instance;
-        }
-
-        public static BitcoinAddress GetBitcoinAddressFormBase58Date(string base58Data)
-        {
-            var base58Decoded = Base58Data.GetFromBase58Data(base58Data);
-            var address = base58Decoded as BitcoinAddress;
-            if (address != null)
-            {
-                return address;
-            }
-            else
-            {
-                return (base58Decoded as BitcoinColoredAddress)?.Address;
-            }
-        }
-
-        #endregion
-
-        #region EmailStructure
-        public class PlainTextMessage
-        {
-            public string Subject
-            {
-                get;
-                set;
-            }
-
-            public string Text
-            {
-                get;
-                set;
-            }
-        }
-
-        public class PlainTextBroadcastData
-        {
-            public int BroadcastGroup
-            {
-                get;
-                set;
-            }
-
-            public PlainTextMessage MessageData
-            {
-                get;
-                set;
-            }
-        }
-
-        public class PlainTextBroadcast
-        {
-            public PlainTextBroadcastData Data
-            {
-                get;
-                set;
-            }
-        }
-        #endregion
-
-        //#region LykkeJobsNotificationStructures
-        //public class LykkeJobsNotificationMessage
-        //{
-        //    public string TransactionId
-        //    {
-        //        get;
-        //        set;
-        //    }
-
-        //    public string BlockchainHash
-        //    {
-        //        get;
-        //        set;
-        //    }
-
-        //    public string Operation
-        //    {
-        //        get;
-        //        set;
-        //    }
-        //}
-
-        //public class LykkeJobsNotificationResponseError
-        //{
-        //    public int Code
-        //    {
-        //        get;
-        //        set;
-        //    }
-
-        //    public string Message
-        //    {
-        //        get;
-        //        set;
-        //    }
-        //}
-        //public class LykkeJobsNotificationResponse
-        //{
-        //    public LykkeJobsNotificationResponseError Error
-        //    {
-        //        get;
-        //        set;
-        //    }
-        //}
-        //#endregion
-
-        #region BitcoinApiReturnStructure
-        public class UniversalUnspentOutput
-        {
-        }
-
-        public class QBitNinjaUnspentOutput : UniversalUnspentOutput
-        {
-            public string transaction_hash { get; set; }
-            public int output_index { get; set; }
-            public long value { get; set; }
-            public int confirmations { get; set; }
-            public string script_hex { get; set; }
-            public string asset_id { get; set; }
-            public long asset_quantity { get; set; }
-        }
-
-        public class QBitNinjaReceivedCoin
-        {
-            public string transactionId { get; set; }
-            public int index { get; set; }
-            public long value { get; set; }
-            public string scriptPubKey { get; set; }
-            public object redeemScript { get; set; }
-            public string assetId { get; set; }
-            public long quantity { get; set; }
-        }
-
-        public class QBitNinjaSpentCoin
-        {
-            public string address { get; set; }
-            public string transactionId { get; set; }
-            public int index { get; set; }
-            public long value { get; set; }
-            public string scriptPubKey { get; set; }
-            public object redeemScript { get; set; }
-            public string assetId { get; set; }
-            public long quantity { get; set; }
-        }
-
-        public class QBitNinjaOperation
-        {
-            public long amount { get; set; }
-            public int confirmations { get; set; }
-            public int height { get; set; }
-            public string blockId { get; set; }
-            public string transactionId { get; set; }
-            public List<QBitNinjaReceivedCoin> receivedCoins { get; set; }
-            public List<QBitNinjaSpentCoin> spentCoins { get; set; }
-        }
-
-
-
-        public class QBitNinjaOutputResponse
-        {
-            public object continuation { get; set; }
-            public List<QBitNinjaOperation> operations { get; set; }
-        }
-
-        public class QBitNinjaBlock
-        {
-            public string blockId { get; set; }
-            public string blockHeader { get; set; }
-            public int height { get; set; }
-            public int confirmations { get; set; }
-            public string medianTimePast { get; set; }
-            public string blockTime { get; set; }
-        }
-
-        public class QBitNinjaTransactionResponse
-        {
-            public string transaction { get; set; }
-            public string transactionId { get; set; }
-            public bool isCoinbase { get; set; }
-            public QBitNinjaBlock block { get; set; }
-            public List<QBitNinjaSpentCoin> spentCoins { get; set; }
-            public List<QBitNinjaReceivedCoin> receivedCoins { get; set; }
-            public string firstSeen { get; set; }
-            public int fees { get; set; }
-        }
-
-        public class BlockCypherInput
-        {
-            public string prev_hash { get; set; }
-            public int output_index { get; set; }
-            public string script { get; set; }
-            public long output_value { get; set; }
-            public object sequence { get; set; }
-            public string[] addresses { get; set; }
-            public string script_type { get; set; }
-        }
-
-        public class BlockCypherOutput
-        {
-            public long value { get; set; }
-            public string script { get; set; }
-            public string spent_by { get; set; }
-            public string[] addresses { get; set; }
-            public string script_type { get; set; }
-        }
-
-        public class BlockCypherGetTransactionResult
-        {
-            public string block_hash { get; set; }
-            public int block_height { get; set; }
-            public int block_index { get; set; }
-            public string hash { get; set; }
-            public string hex { get; set; }
-            public string[] addresses { get; set; }
-            public long total { get; set; }
-            public int fees { get; set; }
-            public int size { get; set; }
-            public string preference { get; set; }
-            public string relayed_by { get; set; }
-            public string confirmed { get; set; }
-            public string received { get; set; }
-            public int ver { get; set; }
-            public int lock_time { get; set; }
-            public bool double_spend { get; set; }
-            public int vin_sz { get; set; }
-            public int vout_sz { get; set; }
-            public int confirmations { get; set; }
-            public int confidence { get; set; }
-            public BlockCypherInput[] inputs { get; set; }
-            public BlockCypherOutput[] outputs { get; set; }
-        }
-        #endregion
-
-        #region QBitNinjaFunctions
-        public static async Task<bool> IsTransactionPresentInQBitNinja(Transaction tx)
-        {
-            string url = null;
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    url = QBitNinjaTransactionUrl + tx.GetHash().ToString();
-                    HttpResponseMessage result = await client.GetAsync(url);
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                return true;
-            }
-        }
-
-        public static async Task<Tuple<float, bool, string>> GetAccountBalanceQBitNinja(string walletAddress,
-            string assetId, Network network, Func<int> getMinimumConfirmationNumber = null)
-        {
-            float balance = 0;
-            float unconfirmedBalance = 0;
-            bool errorOccured = false;
-            string errorMessage = "";
-            string url;
-
-            getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
-            var minimumConfirmationNumber = getMinimumConfirmationNumber();
-
-            try
-            {
-                QBitNinjaOutputResponse response = null;
-
-                /*
-                using (HttpClient client = new HttpClient())
-                {
-                    url = QBitNinjaBalanceUrl + walletAddress;
-                    HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        return new Tuple<float, bool, string>(0, true, result.ReasonPhrase);
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        response = JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                            (webResponse);
-                    }
-                }
-                */
-                Tuple<float, bool, string> retValue = null;
-                response = await GetAddressBalance(walletAddress,
-                    (result) => { retValue = new Tuple<float, bool, string>(0, true, result.ReasonPhrase); }
-                    , true, true);
-                if (retValue != null)
-                {
-                    return retValue;
-                }
-
-
-                if (response.operations != null && response.operations.Count > 0)
-                {
-                    foreach (var item in response.operations)
-                    {
-                        response.operations.ForEach((o) =>
-                        {
-                            balance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations >= getMinimumConfirmationNumber()).Select(c => c.quantity).Sum();
-                            unconfirmedBalance += o.receivedCoins.Where(c => !string.IsNullOrEmpty(c.assetId) && c.assetId.Equals(assetId) && o.confirmations == 0).Select(c => c.quantity).Sum();
-                        });
-                    }
-                }
-                else
+                string url = null;
+                url = QBitNinjaBalanceUrl + walletAddress;
+                HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
+                if (!result.IsSuccessStatusCode)
                 {
                     errorOccured = true;
-                    errorMessage = "No coins found.";
-                }
-            }
-            catch (Exception e)
-            {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
-            return new Tuple<float, bool, string>(balance, errorOccured, errorMessage);
-        }
-
-        public static async Task<QBitNinjaOutputResponse> GetAddressBalance(string walletAddress, Action<HttpResponseMessage> onNotSuccessfulReturn,
-            bool colored = true, bool unspentonly = true)
-        {
-            string continuation = null;
-            List<QBitNinjaOperation> operations = new List<QBitNinjaOperation>();
-
-            do
-            {
-                QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
-                using (HttpClient client = new HttpClient())
-                {
-                    string url = null;
-                    url = string.Format("{0}?unspentonly={1}&colored={2}",
-                        QBitNinjaBalanceUrl + walletAddress, unspentonly.ToString().ToLower(), colored.ToString().ToLower());
-                    if (!string.IsNullOrEmpty(continuation))
-                    {
-                        url += string.Format("&continuation={0}", continuation);
-                    }
-                    HttpResponseMessage result = await client.GetAsync(url);
-
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        onNotSuccessfulReturn.Invoke(result);
-                        return null;
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                            (webResponse);
-                        operations.AddRange(notProcessedUnspentOutputs.operations);
-                        continuation = notProcessedUnspentOutputs.continuation as string;
-                    }
-                }
-            }
-            while (!string.IsNullOrEmpty(continuation));
-
-            return new QBitNinjaOutputResponse { continuation = null, operations = operations };
-        }
-
-        public static async Task<int> GetNumberOfTransactionConfirmations(string txId)
-        {
-            string url = null;
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    url = QBitNinjaTransactionUrl + txId;
-                    HttpResponseMessage result = await client.GetAsync(url);
-
-                    if (result.StatusCode == System.Net.HttpStatusCode.OK)
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        var response = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaTransactionResponse>
-                                (webResponse);
-                        return response.block.confirmations;
-                    }
-                    else
-                    {
-                        return -1;
-                    }
-                }
-            }
-            catch (Exception exp)
-            {
-                return -1;
-            }
-        }
-
-        public static async Task<bool> HasTransactionPassedItsWaitTime(string txId,
-            SqlexpressLykkeEntities entitiesContext)
-        {
-            var found = (from item in entitiesContext.TransactionsWaitForConfirmations
-                         where item.txToBeWatched == txId
-                         select item).FirstOrDefault();
-
-            if (found != null)
-            {
-                if (await GetNumberOfTransactionConfirmations(txId) > 2)
-                {
-                    return true;
+                    errorMessage = result.ReasonPhrase;
                 }
                 else
                 {
-                    return false;
+                    var webResponse = await result.Content.ReadAsStringAsync();
+                    notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                        (webResponse);
                 }
             }
-            else
+            */
+            notProcessedUnspentOutputs = await GetAddressBalance(walletAddress,
+                (result) => { errorOccured = true; errorMessage = result.ReasonPhrase; }
+                , true, true);
+
+            if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
             {
-                return true;
-            }
-        }
-
-        delegate Task PopulateUnspentOupt(QBitNinjaOperation operation);
-
-        public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
-            Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null)
-        {
-            bool errorOccured = false;
-            string errorMessage = string.Empty;
-            // List is not thread safe to be runned in parallel
-            //IList<QBitNinjaUnspentOutput> unspentOutputsList = new List<QBitNinjaUnspentOutput>();
-            ConcurrentQueue<QBitNinjaUnspentOutput> unspentOutputConcurrent = new ConcurrentQueue<QBitNinjaUnspentOutput>();
-
-            getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
-            var minimumConfirmationNumber = getMinimumConfirmationNumber();
-
-            try
-            {
-                QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
-                /*
-                using (HttpClient client = new HttpClient())
+                PopulateUnspentOupt t = async (o) =>
                 {
-                    string url = null;
-                    url = QBitNinjaBalanceUrl + walletAddress;
-                    HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
-                    if (!result.IsSuccessStatusCode)
+                    var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
                     {
-                        errorOccured = true;
-                        errorMessage = result.ReasonPhrase;
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                            (webResponse);
-                    }
-                }
-                */
-                notProcessedUnspentOutputs = await GetAddressBalance(walletAddress,
-                    (result) => { errorOccured = true; errorMessage = result.ReasonPhrase; }
-                    , true, true);
-
-                if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
-                {
-                    PopulateUnspentOupt t = async (o) =>
-                    {
-                        var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
-                        {
-                            confirmations = o.confirmations,
-                            output_index = c.index,
-                            transaction_hash = c.transactionId,
-                            value = c.value,
-                            script_hex = c.scriptPubKey,
-                            asset_id = c.assetId,
-                            asset_quantity = c.quantity
-                        });
+                        confirmations = o.confirmations,
+                        output_index = c.index,
+                        transaction_hash = c.transactionId,
+                        value = c.value,
+                        script_hex = c.scriptPubKey,
+                        asset_id = c.assetId,
+                        asset_quantity = c.quantity
+                    });
 
                         /*
                         await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
                             convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
                             */
 
-                        (await convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))))
-                        .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));
-                    };
-                    var tasks = notProcessedUnspentOutputs.operations.Select(o => t(o));
-                    await Task.WhenAll(tasks);
-                    /*
-                    notProcessedUnspentOutputs.operations.ForEach(async (o) =>
-                    {
-                        var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
-                        {
-                            confirmations = o.confirmations,
-                            output_index = c.index,
-                            transaction_hash = c.transactionId,
-                            value = c.value,
-                            script_hex = c.scriptPubKey,
-                            asset_id = c.assetId,
-                            asset_quantity = c.quantity
-                        });
-
-                        try
-                        {
-                            await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
-                                convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
-                        }
-                        catch (Exception)
-                        {
-                            throw;
-                        }
-                    });
-                    */
-                }
-                else
+                    (await convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))))
+                    .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));
+                };
+                var tasks = notProcessedUnspentOutputs.operations.Select(o => t(o));
+                await Task.WhenAll(tasks);
+                /*
+                notProcessedUnspentOutputs.operations.ForEach(async (o) =>
                 {
-                    errorOccured = true;
-                    errorMessage = "No coins to retrieve.";
-                }
-            }
-            catch (Exception e)
-            {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
+                    var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
+                    {
+                        confirmations = o.confirmations,
+                        output_index = c.index,
+                        transaction_hash = c.transactionId,
+                        value = c.value,
+                        script_hex = c.scriptPubKey,
+                        asset_id = c.assetId,
+                        asset_quantity = c.quantity
+                    });
 
-            // return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
-            return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputConcurrent.ToArray(),
-                errorOccured, errorMessage);
-        }
-
-        #endregion
-
-        #region PropagationVerification
-
-        public static async Task<bool> HasBalanceIndexed(TheSettings settings, string txId, string btcAddress)
-        {
-            return await HasBalanceIndexedInternal(settings, txId, btcAddress);
-        }
-
-        public static async Task<bool> HasBalanceIndexedZeroConfirmation(TheSettings settings, string txId, string btcAddress)
-        {
-            return await HasBalanceIndexedInternal(settings, txId, btcAddress, false);
-        }
-
-        public static async Task<bool> HasBalanceIndexedInternal(TheSettings settings, string txId, string btcAddress,
-            bool confirmationRequired = true)
-        {
-            HttpResponseMessage result = null;
-            bool exists = false;
-            using (HttpClient client = new HttpClient())
-            {
-                string url = null;
-                exists = false;
-                url = settings.QBitNinjaBaseUrl + "balances/" + btcAddress + "?headeronly=true";
-                result = await client.GetAsync(url);
-            }
-
-            if (!result.IsSuccessStatusCode)
-            {
-                return false;
+                    try
+                    {
+                        await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
+                            convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
+                    }
+                    catch (Exception)
+                    {
+                        throw;
+                    }
+                });
+                */
             }
             else
             {
-                var webResponse = await result.Content.ReadAsStringAsync();
-                var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                    (webResponse);
-                if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
-                {
-                    notProcessedUnspentOutputs.operations.ForEach((o) =>
-                    {
-                        exists = o.receivedCoins
-                       .Where(c => c.transactionId.Equals(txId) && (!confirmationRequired | o.confirmations > 0))
-                       .Any() | exists;
-                        if (exists)
-                        {
-                            return;
-                        }
-                    });
-                }
-
-                return exists;
+                errorOccured = true;
+                errorMessage = "No coins to retrieve.";
             }
         }
-
-        public static async Task<bool> IsUrlSuccessful(string url)
+        catch (Exception e)
         {
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-
-                    HttpResponseMessage result = await client.GetAsync(url);
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                return true;
-            }
+            errorOccured = true;
+            errorMessage = e.ToString();
         }
 
-        public static async Task<bool> HasTransactionIndexed(TheSettings settings, string txId, string dummy)
-        {
-            string url = settings.QBitNinjaBaseUrl + "transactions/" + txId + "?headeronly=true";
-            return await IsUrlSuccessful(url);
-        }
-
-        public static async Task<bool> HasBlockIndexed(TheSettings settings, string blockId, string dummy)
-        {
-            string url = settings.QBitNinjaBaseUrl + "blocks/" + blockId + "?headeronly=true";
-            return await IsUrlSuccessful(url);
-        }
-
-        public static async Task WaitUntillQBitNinjaHasIndexed(TheSettings settings,
-            Func<TheSettings, string, string, Task<bool>> checkIndexed, IEnumerable<string> ids, string id2 = null)
-        {
-            var indexed = false;
-            foreach (var id in ids)
-            {
-                indexed = false;
-                for (int i = 0; i < 30; i++)
-                {
-                    if (await checkIndexed(settings, id, id2))
-                    {
-                        indexed = true;
-                        break;
-                    }
-                    else
-                    {
-                        await Task.Delay(1000);
-                    }
-                }
-
-                if (!indexed)
-                {
-                    throw new Exception(string.IsNullOrEmpty(id2) ? string.Format("Item with id: {0} did not get indexed yet.", id) : string.Format("Item with id: {0} did not get indexed yet. Provided id2 is {1}", id, id2));
-                }
-            }
-        }
-
-        #endregion
+        // return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
+        return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputConcurrent.ToArray(),
+            errorOccured, errorMessage);
     }
+
+    #endregion
+
+    #region PropagationVerification
+
+    public static async Task<bool> HasBalanceIndexed(TheSettings settings, string txId, string btcAddress)
+    {
+        return await HasBalanceIndexedInternal(settings, txId, btcAddress);
+    }
+
+    public static async Task<bool> HasBalanceIndexedZeroConfirmation(TheSettings settings, string txId, string btcAddress)
+    {
+        return await HasBalanceIndexedInternal(settings, txId, btcAddress, false);
+    }
+
+    public static async Task<bool> HasBalanceIndexedInternal(TheSettings settings, string txId, string btcAddress,
+        bool confirmationRequired = true)
+    {
+        HttpResponseMessage result = null;
+        bool exists = false;
+        using (HttpClient client = new HttpClient())
+        {
+            string url = null;
+            exists = false;
+            url = settings.QBitNinjaBaseUrl + "balances/" + btcAddress + "?headeronly=true";
+            result = await client.GetAsync(url);
+        }
+
+        if (!result.IsSuccessStatusCode)
+        {
+            return false;
+        }
+        else
+        {
+            var webResponse = await result.Content.ReadAsStringAsync();
+            var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
+                (webResponse);
+            if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
+            {
+                notProcessedUnspentOutputs.operations.ForEach((o) =>
+                {
+                    exists = o.receivedCoins
+                   .Where(c => c.transactionId.Equals(txId) && (!confirmationRequired | o.confirmations > 0))
+                   .Any() | exists;
+                    if (exists)
+                    {
+                        return;
+                    }
+                });
+            }
+
+            return exists;
+        }
+    }
+
+    public static async Task<bool> IsUrlSuccessful(string url)
+    {
+        try
+        {
+            using (HttpClient client = new HttpClient())
+            {
+
+                HttpResponseMessage result = await client.GetAsync(url);
+                if (!result.IsSuccessStatusCode)
+                {
+                    return false;
+                }
+                else
+                {
+                    return true;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            return true;
+        }
+    }
+
+    public static async Task<bool> HasTransactionIndexed(TheSettings settings, string txId, string dummy)
+    {
+        string url = settings.QBitNinjaBaseUrl + "transactions/" + txId + "?headeronly=true";
+        return await IsUrlSuccessful(url);
+    }
+
+    public static async Task<bool> HasBlockIndexed(TheSettings settings, string blockId, string dummy)
+    {
+        string url = settings.QBitNinjaBaseUrl + "blocks/" + blockId + "?headeronly=true";
+        return await IsUrlSuccessful(url);
+    }
+
+    public static async Task WaitUntillQBitNinjaHasIndexed(TheSettings settings,
+        Func<TheSettings, string, string, Task<bool>> checkIndexed, IEnumerable<string> ids, string id2 = null)
+    {
+        var indexed = false;
+        foreach (var id in ids)
+        {
+            indexed = false;
+            for (int i = 0; i < 30; i++)
+            {
+                if (await checkIndexed(settings, id, id2))
+                {
+                    indexed = true;
+                    break;
+                }
+                else
+                {
+                    await Task.Delay(1000);
+                }
+            }
+
+            if (!indexed)
+            {
+                throw new Exception(string.IsNullOrEmpty(id2) ? string.Format("Item with id: {0} did not get indexed yet.", id) : string.Format("Item with id: {0} did not get indexed yet. Provided id2 is {1}", id, id2));
+            }
+        }
+    }
+
+    #endregion
+}
 }

@@ -94,6 +94,9 @@
     <Compile Include="PreGeneratedOutput.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="PregeneratedReserve.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RefundedOutput.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
@@ -122,6 +125,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
     </Compile>
+    <Compile Include="SrvFeeReserveCleaner.cs" />
     <Compile Include="SrvFeeUpdater.cs" />
     <Compile Include="SrvQueueReader.cs" />
     <Compile Include="TransactionsToBeSigned.cs">
@@ -160,6 +164,9 @@
     <Compile Include="Transactions\TaskHandlers\SrvNetworkBase.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetTransactionToSignTask.cs" />
+    <Compile Include="UnsignedTransaction.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="WebSettings.cs" />
     <Compile Include="WholeRefund.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
