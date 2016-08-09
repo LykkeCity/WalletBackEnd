@@ -14,6 +14,12 @@ namespace LykkeWalletServices
     
     public partial class PreGeneratedOutput
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
+        public PreGeneratedOutput()
+        {
+            this.PregeneratedReserves = new HashSet<PregeneratedReserve>();
+        }
+    
         public string TransactionId { get; set; }
         public int OutputNumber { get; set; }
         public long Amount { get; set; }
@@ -24,5 +30,9 @@ namespace LykkeWalletServices
         public string Address { get; set; }
         public string Network { get; set; }
         public byte[] Version { get; set; }
+        public string ReservedForAddress { get; set; }
+    
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<PregeneratedReserve> PregeneratedReserves { get; set; }
     }
 }

@@ -21,6 +21,12 @@ namespace Core.LykkeIntegration.Services
             get;
             set;
         }
+
+        public override string ToString()
+        {
+            return string.Format("HandleTx: TransactionId: {0} , BlockchainHash: {1} , Operation: {2}",
+                TransactionId, BlockchainHash, Operation);
+        }
     }
 
     public class HandleTxError

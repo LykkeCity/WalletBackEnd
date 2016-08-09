@@ -71,11 +71,15 @@ namespace ServiceLykkeWallet
             WebSettings.ConnectionString = settings.ConnectionString;
             WebSettings.FeeAddress = settings.FeeAddress;
 
-            var lykkeSettings = GeneralSettingsReader.ReadGeneralSettings<BaseSettings>(settings.LykkeSettingsConnectionString);
             var logger = new LogToConsole();
             var ioc = new IoC();
-            ioc.BindAzureRepositories(lykkeSettings.Db, logger);
-            ioc.BindLykkeServices();
+            if (!settings.UseMockAsLykkeNotification)
+            {
+                var lykkeSettings = GeneralSettingsReader.ReadGeneralSettings<BaseSettings>(settings.LykkeSettingsConnectionString);
+                ioc.BindAzureRepositories(lykkeSettings.Db, logger);
+            }
+            
+            ioc.BindLykkeServices(settings.UseMockAsLykkeNotification);
             
             srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
@@ -87,6 +91,9 @@ namespace ServiceLykkeWallet
 
             var srvFeeUpdater = new SrvFeeUpdater(log);
             srvFeeUpdater.Start();
+
+            var srvFeeReserveCleaner = new SrvFeeReserveCleaner(log, settings.ConnectionString);
+            srvFeeReserveCleaner.Start();
 
 
             Console.WriteLine("Queue reader is started");

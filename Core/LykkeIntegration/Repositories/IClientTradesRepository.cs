@@ -23,6 +23,7 @@ namespace Core.LykkeIntegration.Repositories
         public double Amount { get; set; }
         public string AssetId { get; set; }
         public string BlockChainHash { get; set; }
+        public string Multisig { get; set; }
         public string TransactionId { get; set; }
         public string AddressFrom { get; set; }
         public string AddressTo { get; set; }
@@ -40,7 +41,7 @@ namespace Core.LykkeIntegration.Repositories
         Task UpdateBlockChainHashAsync(string clientId, string recordId, string hash);
         Task SetBtcTransactionAsync(string clientId, string recordId, string btcTransactionId);
         Task<IEnumerable<IClientTrade>> GetByHashAsync(string blockchainHash);
+        Task<IEnumerable<IClientTrade>> GetByMultisigAsync(string multisig);
     }
-
 
 }

@@ -13,8 +13,24 @@ namespace AzureRepositories.LykkeRepositories
 
     public class ClientTradeEntity : TableEntity, IClientTrade
     {
+        public string Id => RowKey;
 
-        public static class ByTrader
+        public DateTime DateTime { get; set; }
+        public bool IsHidden { get; set; }
+        public string LimitOrderId { get; set; }
+        public string MarketOrderId { get; set; }
+        public double Price { get; set; }
+        public double Amount => Volume;
+        public string AssetId { get; set; }
+        public string BlockChainHash { get; set; }
+        public string Multisig { get; set; }
+        public string TransactionId { get; set; }
+        public string AddressFrom { get; set; }
+        public string AddressTo { get; set; }
+        public double Volume { get; set; }
+        public string ClientId { get; set; }
+
+        public static class ByClientId
         {
             public static string GeneratePartitionKey(string clientId)
             {
@@ -25,44 +41,62 @@ namespace AzureRepositories.LykkeRepositories
             {
                 return tradeId;
             }
-        }
 
-
-        public string Id => RowKey;
-        public string ClientId => PartitionKey;
-
-        public DateTime DateTime { get; set; }
-        public bool IsHidden { get; set; }
-        public string LimitOrderId { get; set; }
-        public string MarketOrderId { get; set; }
-        public double Price { get; set; }
-        public double Amount => Volume;
-        public string AssetId { get; set; }
-        public string BlockChainHash { get; set; }
-        public string TransactionId { get; set; }
-        public string AddressFrom { get; set; }
-        public string AddressTo { get; set; }
-        public double Volume { get; set; }
-
-        public static ClientTradeEntity Create(IClientTrade src)
-        {
-            return new ClientTradeEntity
+            public static ClientTradeEntity Create(IClientTrade src)
             {
-                PartitionKey = ByTrader.GeneratePartitionKey(src.ClientId),
-                RowKey = ByTrader.GenerateRowKey(src.Id ?? Guid.NewGuid().ToString("N")),
-                AssetId = src.AssetId,
-                DateTime = src.DateTime,
-                LimitOrderId = src.LimitOrderId,
-                MarketOrderId = src.MarketOrderId,
-                Volume = src.Amount,
-                BlockChainHash = src.BlockChainHash,
-                Price = src.Price,
-                IsHidden = src.IsHidden,
-                AddressFrom = src.AddressFrom,
-                AddressTo = src.AddressTo
-            };
+                return new ClientTradeEntity
+                {
+                    PartitionKey = GeneratePartitionKey(src.ClientId),
+                    RowKey = GenerateRowKey(src.Id ?? Guid.NewGuid().ToString("N")),
+                    ClientId = src.ClientId,
+                    AssetId = src.AssetId,
+                    DateTime = src.DateTime,
+                    LimitOrderId = src.LimitOrderId,
+                    MarketOrderId = src.MarketOrderId,
+                    Volume = src.Amount,
+                    BlockChainHash = src.BlockChainHash,
+                    Price = src.Price,
+                    IsHidden = src.IsHidden,
+                    AddressFrom = src.AddressFrom,
+                    AddressTo = src.AddressTo,
+                    Multisig = src.Multisig
+                };
+            }
         }
 
+        public static class ByMultisig
+        {
+            public static string GeneratePartitionKey(string multisig)
+            {
+                return multisig;
+            }
+
+            public static string GenerateRowKey(string tradeId)
+            {
+                return tradeId;
+            }
+
+            public static ClientTradeEntity Create(IClientTrade src)
+            {
+                return new ClientTradeEntity
+                {
+                    PartitionKey = GeneratePartitionKey(src.Multisig),
+                    RowKey = GenerateRowKey(src.Id ?? Guid.NewGuid().ToString("N")),
+                    ClientId = src.ClientId,
+                    AssetId = src.AssetId,
+                    DateTime = src.DateTime,
+                    LimitOrderId = src.LimitOrderId,
+                    MarketOrderId = src.MarketOrderId,
+                    Volume = src.Amount,
+                    BlockChainHash = src.BlockChainHash,
+                    Price = src.Price,
+                    IsHidden = src.IsHidden,
+                    AddressFrom = src.AddressFrom,
+                    AddressTo = src.AddressTo,
+                    Multisig = src.Multisig
+                };
+            }
+        }
     }
 
     public class ClientTradesRepository : IClientTradesRepository
@@ -76,20 +110,25 @@ namespace AzureRepositories.LykkeRepositories
             _blockChainHashIndices = blockChainHashIndices;
         }
 
+        [Obsolete ("Trades are created on ME side now.")]
         public async Task SaveAsync(params IClientTrade[] clientTrades)
         {
             foreach (var clientTradeBunch in clientTrades.ToPieces(10))
             {
+                var clientTradeBunchArr = clientTradeBunch.ToArray();
                 await
                     Task.WhenAll(
-                        clientTradeBunch.Select(
-                            clientTrade => _tableStorage.InsertOrReplaceAsync(ClientTradeEntity.Create(clientTrade))));
+                        clientTradeBunchArr.Select(
+                            clientTrade => _tableStorage.InsertOrReplaceAsync(ClientTradeEntity.ByClientId.Create(clientTrade)))
+                            .Concat(clientTradeBunchArr.Select(
+                            clientTrade => _tableStorage.InsertOrReplaceAsync(ClientTradeEntity.ByMultisig.Create(clientTrade))))
+                       );
             }
         }
 
         public async Task<IEnumerable<IClientTrade>> GetAsync(string clientId)
         {
-            var partitionKey = ClientTradeEntity.ByTrader.GeneratePartitionKey(clientId);
+            var partitionKey = ClientTradeEntity.ByClientId.GeneratePartitionKey(clientId);
             return await _tableStorage.GetDataAsync(partitionKey);
         }
 
@@ -101,16 +140,21 @@ namespace AzureRepositories.LykkeRepositories
 
         public async Task<IClientTrade> GetAsync(string clientId, string recordId)
         {
-            var partitionKey = ClientTradeEntity.ByTrader.GeneratePartitionKey(clientId);
-            var rowKey = ClientTradeEntity.ByTrader.GenerateRowKey(recordId);
+            var partitionKey = ClientTradeEntity.ByClientId.GeneratePartitionKey(clientId);
+            var rowKey = ClientTradeEntity.ByClientId.GenerateRowKey(recordId);
 
             return await _tableStorage.GetDataAsync(partitionKey, rowKey);
         }
 
         public async Task UpdateBlockChainHashAsync(string clientId, string recordId, string hash)
         {
-            var partitionKey = ClientTradeEntity.ByTrader.GeneratePartitionKey(clientId);
-            var rowKey = ClientTradeEntity.ByTrader.GenerateRowKey(recordId);
+            var partitionKey = ClientTradeEntity.ByClientId.GeneratePartitionKey(clientId);
+            var rowKey = ClientTradeEntity.ByClientId.GenerateRowKey(recordId);
+
+            var clientIdRecord = await _tableStorage.GetDataAsync(partitionKey, rowKey);
+
+            var multisigPartitionKey = ClientTradeEntity.ByMultisig.GeneratePartitionKey(clientIdRecord.Multisig);
+            var multisigRowKey = ClientTradeEntity.ByMultisig.GenerateRowKey(recordId);
 
             var indexEntity = AzureIndex.Create(hash, rowKey, partitionKey, rowKey);
             await _blockChainHashIndices.InsertOrReplaceAsync(indexEntity);
@@ -120,14 +164,31 @@ namespace AzureRepositories.LykkeRepositories
                 entity.BlockChainHash = hash;
                 return entity;
             });
+
+            await _tableStorage.MergeAsync(multisigPartitionKey, multisigRowKey, entity =>
+            {
+                entity.BlockChainHash = hash;
+                return entity;
+            });
         }
 
-        public Task SetBtcTransactionAsync(string clientId, string recordId, string btcTransactionId)
+        public async Task SetBtcTransactionAsync(string clientId, string recordId, string btcTransactionId)
         {
-            var partitionKey = ClientTradeEntity.ByTrader.GeneratePartitionKey(clientId);
-            var rowKey = ClientTradeEntity.ByTrader.GenerateRowKey(recordId);
+            var partitionKey = ClientTradeEntity.ByClientId.GeneratePartitionKey(clientId);
+            var rowKey = ClientTradeEntity.ByClientId.GenerateRowKey(recordId);
 
-            return _tableStorage.MergeAsync(partitionKey, rowKey, entity =>
+            var clientIdRecord = await _tableStorage.GetDataAsync(partitionKey, rowKey);
+
+            var multisigPartitionKey = ClientTradeEntity.ByMultisig.GeneratePartitionKey(clientIdRecord.Multisig);
+            var multisigRowKey = ClientTradeEntity.ByMultisig.GenerateRowKey(recordId);
+
+            await _tableStorage.MergeAsync(partitionKey, rowKey, entity =>
+            {
+                entity.TransactionId = btcTransactionId;
+                return entity;
+            });
+
+            await _tableStorage.MergeAsync(multisigPartitionKey, multisigRowKey, entity =>
             {
                 entity.TransactionId = btcTransactionId;
                 return entity;
@@ -139,6 +200,12 @@ namespace AzureRepositories.LykkeRepositories
             var indexes = await _blockChainHashIndices.GetDataAsync(blockchainHash);
             var keyValueTuples = indexes?.Select(x => new Tuple<string, string>(x.PrimaryPartitionKey, x.PrimaryRowKey));
             return await _tableStorage.GetDataAsync(keyValueTuples);
+        }
+
+        public async Task<IEnumerable<IClientTrade>> GetByMultisigAsync(string multisig)
+        {
+            var partitionKey = ClientTradeEntity.ByMultisig.GeneratePartitionKey(multisig);
+            return await _tableStorage.GetDataAsync(partitionKey);
         }
     }
 }

@@ -7,6 +7,7 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
@@ -16,6 +17,31 @@ namespace ServiceLykkeWallet.Controllers
 {
     public class GeneralController : ApiController
     {
+        // This should respond http://localhost:8989/General/GetPublicKeyFromPrivateKey?privatekey=cQKNnKS7TUFPdVc4muGXq8X9h5dxuGyYBSbnFUUuv9NVsLDNFP51
+        [System.Web.Http.HttpGet]
+        public HttpResponseMessage GetPublicKeyFromPrivateKey(string privatekey)
+        {
+            BitcoinSecret secret = BitcoinSecret.GetFromBase58Data(privatekey) as BitcoinSecret;
+
+            var result = new HttpResponseMessage(HttpStatusCode.Accepted);
+            result.Content = new StringContent(secret.PubKey.ToHex());
+
+            return result;
+        }
+
+        [System.Web.Http.HttpGet]
+        public HttpResponseMessage GetVersion()
+        {
+            // With the help of http://stackoverflow.com/questions/909555/how-can-i-get-the-assembly-file-version
+
+            Version version = Assembly.GetEntryAssembly().GetName().Version;
+
+            var result = new HttpResponseMessage(HttpStatusCode.Accepted);
+            result.Content = new StringContent(version.ToString());
+
+            return result;
+        }
+
         [System.Web.Http.HttpGet]
         public async Task<HttpResponseMessage> FeeRate()
         {
@@ -32,7 +58,7 @@ namespace ServiceLykkeWallet.Controllers
         {
             StringBuilder builder = new StringBuilder();
 
-            foreach(var item in OpenAssetsHelper.P2PKHDictionary)
+            foreach (var item in OpenAssetsHelper.P2PKHDictionary)
             {
                 builder.Append("Wallet: ");
                 builder.Append(item.Key);
