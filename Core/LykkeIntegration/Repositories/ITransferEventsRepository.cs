@@ -20,11 +20,12 @@ namespace Core.LykkeIntegration.Repositories
         public string AssetId { get; set; }
         public double Amount { get; set; }
         public string BlockChainHash { get; set; }
+        public string Multisig { get; set; }
         public string TransactionId { get; set; }
         public string AddressFrom { get; set; }
         public string AddressTo { get; set; }
 
-        public static TransferEvent CreateNew(string clientId, string fromId, string assetId, double amount,
+        public static TransferEvent CreateNew(string clientId, string clientMultiSig, string fromId, string assetId, double amount,
             string transactionId, string addressFrom, string addressTo, bool isHidden = false)
         {
             return new TransferEvent
@@ -38,7 +39,8 @@ namespace Core.LykkeIntegration.Repositories
                 TransactionId = transactionId,
                 IsHidden = isHidden,
                 AddressFrom = addressFrom,
-                AddressTo = addressTo
+                AddressTo = addressTo,
+                Multisig = clientMultiSig
             };
         }
     }
@@ -55,6 +57,7 @@ namespace Core.LykkeIntegration.Repositories
         Task SetBtcTransactionAsync(string clientId, string id, string btcTransaction);
 
         Task<IEnumerable<ITransferEvent>> GetByHashAsync(string blockchainHash);
+        Task<IEnumerable<ITransferEvent>> GetByMultisigAsync(string multisig);
     }
 
 }
