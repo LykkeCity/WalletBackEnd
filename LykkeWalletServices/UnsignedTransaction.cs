@@ -14,6 +14,13 @@ namespace LykkeWalletServices
     
     public partial class UnsignedTransaction
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
+        public UnsignedTransaction()
+        {
+            this.UnsignedTransactions1 = new HashSet<UnsignedTransaction>();
+            this.UnsignedTransactionSpentOutputs = new HashSet<UnsignedTransactionSpentOutput>();
+        }
+    
         public long id { get; set; }
         public Nullable<bool> IsClientSignatureRequired { get; set; }
         public string ClientSignedTransaction { get; set; }
@@ -25,5 +32,14 @@ namespace LykkeWalletServices
         public Nullable<bool> TransactionSendingSuccessful { get; set; }
         public string TransactionSendingError { get; set; }
         public string TransactionId { get; set; }
+        public Nullable<System.DateTime> CreationTime { get; set; }
+        public Nullable<bool> HasTimedout { get; set; }
+        public Nullable<long> TransactionIdWhichMadeThisTransactionInvalid { get; set; }
+    
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<UnsignedTransaction> UnsignedTransactions1 { get; set; }
+        public virtual UnsignedTransaction UnsignedTransaction1 { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<UnsignedTransactionSpentOutput> UnsignedTransactionSpentOutputs { get; set; }
     }
 }

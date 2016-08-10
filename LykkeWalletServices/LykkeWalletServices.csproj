@@ -113,6 +113,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
     </Compile>
+    <Compile Include="SrvUnsignedTransactionsUpdater.cs" />
     <Compile Include="SrvFeeReserveCleaner.cs" />
     <Compile Include="SrvFeeUpdater.cs" />
     <Compile Include="SrvQueueReader.cs" />
@@ -153,6 +154,9 @@
     <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetTransactionToSignTask.cs" />
     <Compile Include="UnsignedTransaction.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="UnsignedTransactionSpentOutput.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="WebSettings.cs" />

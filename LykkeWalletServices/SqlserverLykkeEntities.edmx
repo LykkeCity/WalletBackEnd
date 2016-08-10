@@ -160,7 +160,20 @@
           <Property Name="TransactionSendingSuccessful" Type="bit" />
           <Property Name="TransactionSendingError" Type="text" />
           <Property Name="TransactionId" Type="varchar" MaxLength="64" />
+          <Property Name="CreationTime" Type="datetime" />
+          <Property Name="HasTimedout" Type="bit" />
+          <Property Name="TransactionIdWhichMadeThisTransactionInvalid" Type="bigint" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="UnsignedTransactionSpentOutputs">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+            <PropertyRef Name="UnsignedTransactionId" />
+          </Key>
+          <Property Name="TransactionId" Type="varchar" MaxLength="35" Nullable="false" />
+          <Property Name="OutputNumber" Type="int" Nullable="false" />
+          <Property Name="UnsignedTransactionId" Type="bigint" Nullable="false" />
         </EntityType>
         <EntityType Name="WholeRefund">
           <Key>
@@ -244,6 +257,30 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <Association Name="FK_UnsignedTransactions_UnsignedTransactions">
+          <End Role="UnsignedTransactions" Type="Self.UnsignedTransactions" Multiplicity="0..1" />
+          <End Role="UnsignedTransactions1" Type="Self.UnsignedTransactions" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="UnsignedTransactions">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="UnsignedTransactions1">
+              <PropertyRef Name="TransactionIdWhichMadeThisTransactionInvalid" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_UnsignedTransactionSpentOutputs_UnsignedTransactions">
+          <End Role="UnsignedTransactions" Type="Self.UnsignedTransactions" Multiplicity="1" />
+          <End Role="UnsignedTransactionSpentOutputs" Type="Self.UnsignedTransactionSpentOutputs" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="UnsignedTransactions">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="UnsignedTransactionSpentOutputs">
+              <PropertyRef Name="UnsignedTransactionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         <Association Name="FK_WholeRefundSpentOutputs_WholeRefund">
           <End Role="WholeRefund" Type="Self.WholeRefund" Multiplicity="1" />
           <End Role="WholeRefundSpentOutputs" Type="Self.WholeRefundSpentOutputs" Multiplicity="*" />
@@ -270,6 +307,7 @@
           <EntitySet Name="TransactionsToBeSigned" EntityType="Self.TransactionsToBeSigned" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="TransactionsWaitForConfirmations" EntityType="Self.TransactionsWaitForConfirmations" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="UnsignedTransactions" EntityType="Self.UnsignedTransactions" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="UnsignedTransactionSpentOutputs" EntityType="Self.UnsignedTransactionSpentOutputs" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="WholeRefund" EntityType="Self.WholeRefund" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="WholeRefundSpentOutputs" EntityType="Self.WholeRefundSpentOutputs" Schema="dbo" store:Type="Tables" />
           <AssociationSet Name="FK_PregeneratedReserve_PregeneratedReserve" Association="Self.FK_PregeneratedReserve_PregeneratedReserve">
@@ -291,6 +329,14 @@
           <AssociationSet Name="FK_TransactionsWaitForConfirmations_WholeRefund" Association="Self.FK_TransactionsWaitForConfirmations_WholeRefund">
             <End Role="WholeRefund" EntitySet="WholeRefund" />
             <End Role="TransactionsWaitForConfirmations" EntitySet="TransactionsWaitForConfirmations" />
+          </AssociationSet>
+          <AssociationSet Name="FK_UnsignedTransactions_UnsignedTransactions" Association="Self.FK_UnsignedTransactions_UnsignedTransactions">
+            <End Role="UnsignedTransactions" EntitySet="UnsignedTransactions" />
+            <End Role="UnsignedTransactions1" EntitySet="UnsignedTransactions" />
+          </AssociationSet>
+          <AssociationSet Name="FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" Association="Self.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions">
+            <End Role="UnsignedTransactions" EntitySet="UnsignedTransactions" />
+            <End Role="UnsignedTransactionSpentOutputs" EntitySet="UnsignedTransactionSpentOutputs" />
           </AssociationSet>
           <AssociationSet Name="FK_WholeRefundSpentOutputs_WholeRefund" Association="Self.FK_WholeRefundSpentOutputs_WholeRefund">
             <End Role="WholeRefund" EntitySet="WholeRefund" />
@@ -341,6 +387,15 @@
           </AssociationSet>
           <EntitySet Name="TransactionsToBeSigneds" EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" />
           <EntitySet Name="UnsignedTransactions" EntityType="SqlexpressLykkeModel.UnsignedTransaction" />
+          <AssociationSet Name="FK_UnsignedTransactions_UnsignedTransactions" Association="SqlexpressLykkeModel.FK_UnsignedTransactions_UnsignedTransactions">
+            <End Role="UnsignedTransaction" EntitySet="UnsignedTransactions" />
+            <End Role="UnsignedTransaction1" EntitySet="UnsignedTransactions" />
+          </AssociationSet>
+          <EntitySet Name="UnsignedTransactionSpentOutputs" EntityType="SqlexpressLykkeModel.UnsignedTransactionSpentOutput" />
+          <AssociationSet Name="FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" Association="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions">
+            <End Role="UnsignedTransaction" EntitySet="UnsignedTransactions" />
+            <End Role="UnsignedTransactionSpentOutput" EntitySet="UnsignedTransactionSpentOutputs" />
+          </AssociationSet>
           </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -604,7 +659,48 @@
           <Property Name="TransactionSendingSuccessful" Type="Boolean" />
           <Property Name="TransactionSendingError" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="TransactionId" Type="String" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="CreationTime" Type="DateTime" Precision="3" />
+          <Property Name="HasTimedout" Type="Boolean" />
+          <Property Name="TransactionIdWhichMadeThisTransactionInvalid" Type="Int64" />
+          <NavigationProperty Name="UnsignedTransactions1" Relationship="SqlexpressLykkeModel.FK_UnsignedTransactions_UnsignedTransactions" FromRole="UnsignedTransaction" ToRole="UnsignedTransaction1" />
+          <NavigationProperty Name="UnsignedTransaction1" Relationship="SqlexpressLykkeModel.FK_UnsignedTransactions_UnsignedTransactions" FromRole="UnsignedTransaction1" ToRole="UnsignedTransaction" />
+          <NavigationProperty Name="UnsignedTransactionSpentOutputs" Relationship="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" FromRole="UnsignedTransaction" ToRole="UnsignedTransactionSpentOutput" />
         </EntityType>
+        <Association Name="FK_UnsignedTransactions_UnsignedTransactions">
+          <End Type="SqlexpressLykkeModel.UnsignedTransaction" Role="UnsignedTransaction" Multiplicity="0..1" />
+          <End Type="SqlexpressLykkeModel.UnsignedTransaction" Role="UnsignedTransaction1" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="UnsignedTransaction">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="UnsignedTransaction1">
+              <PropertyRef Name="TransactionIdWhichMadeThisTransactionInvalid" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="UnsignedTransactionSpentOutput">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+            <PropertyRef Name="UnsignedTransactionId" />
+          </Key>
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="OutputNumber" Type="Int32" Nullable="false" />
+          <Property Name="UnsignedTransactionId" Type="Int64" Nullable="false" />
+          <NavigationProperty Name="UnsignedTransaction" Relationship="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" FromRole="UnsignedTransactionSpentOutput" ToRole="UnsignedTransaction" />
+        </EntityType>
+        <Association Name="FK_UnsignedTransactionSpentOutputs_UnsignedTransactions">
+          <End Type="SqlexpressLykkeModel.UnsignedTransaction" Role="UnsignedTransaction" Multiplicity="1" />
+          <End Type="SqlexpressLykkeModel.UnsignedTransactionSpentOutput" Role="UnsignedTransactionSpentOutput" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="UnsignedTransaction">
+              <PropertyRef Name="id" />
+            </Principal>
+            <Dependent Role="UnsignedTransactionSpentOutput">
+              <PropertyRef Name="UnsignedTransactionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -786,6 +882,9 @@
           <EntitySetMapping Name="UnsignedTransactions">
             <EntityTypeMapping TypeName="SqlexpressLykkeModel.UnsignedTransaction">
               <MappingFragment StoreEntitySet="UnsignedTransactions">
+                <ScalarProperty Name="TransactionIdWhichMadeThisTransactionInvalid" ColumnName="TransactionIdWhichMadeThisTransactionInvalid" />
+                <ScalarProperty Name="HasTimedout" ColumnName="HasTimedout" />
+                <ScalarProperty Name="CreationTime" ColumnName="CreationTime" />
                 <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
                 <ScalarProperty Name="TransactionSendingError" ColumnName="TransactionSendingError" />
                 <ScalarProperty Name="TransactionSendingSuccessful" ColumnName="TransactionSendingSuccessful" />
@@ -797,6 +896,15 @@
                 <ScalarProperty Name="ClientSignedTransaction" ColumnName="ClientSignedTransaction" />
                 <ScalarProperty Name="IsClientSignatureRequired" ColumnName="IsClientSignatureRequired" />
                 <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="UnsignedTransactionSpentOutputs">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.UnsignedTransactionSpentOutput">
+              <MappingFragment StoreEntitySet="UnsignedTransactionSpentOutputs">
+                <ScalarProperty Name="UnsignedTransactionId" ColumnName="UnsignedTransactionId" />
+                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

@@ -45,5 +45,6 @@ namespace LykkeWalletServices
         public virtual DbSet<PregeneratedReserve> PregeneratedReserves { get; set; }
         public virtual DbSet<TransactionsToBeSigned> TransactionsToBeSigneds { get; set; }
         public virtual DbSet<UnsignedTransaction> UnsignedTransactions { get; set; }
+        public virtual DbSet<UnsignedTransactionSpentOutput> UnsignedTransactionSpentOutputs { get; set; }
     }
 }

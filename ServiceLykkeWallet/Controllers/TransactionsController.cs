@@ -225,158 +225,177 @@ namespace ServiceLykkeWallet.Controllers
                 {
                     using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(WebSettings.ConnectionString))
                     {
-                        /*
-                        var txRecord = (from transaction in entities.SentTransactions
-                                        where transaction.id == (int)signBroadcastRequest.Id
-                                        select transaction).FirstOrDefault();
-                        */
-                        var txRecord = (from transaction in entities.UnsignedTransactions
-                                        where transaction.id == (int)signBroadcastRequest.Id
-                                        select transaction).FirstOrDefault();
+                        using (var dbTransaction = entities.Database.BeginTransaction())
+                        {
+                            /*
+                            var txRecord = (from transaction in entities.SentTransactions
+                                            where transaction.id == (int)signBroadcastRequest.Id
+                                            select transaction).FirstOrDefault();
+                            */
+                            var txRecord = (from transaction in entities.UnsignedTransactions
+                                            where transaction.id == (int)signBroadcastRequest.Id
+                                            select transaction).FirstOrDefault();
 
-                        if (txRecord == null)
-                        {
-                            result = BadRequest(string.Format("The request transaction with id:{0} was not found.", signBroadcastRequest.Id));
-                        }
-                        else
-                        {
-                            if (txRecord.TransactionSendingSuccessful ?? false)
+                            if (txRecord == null)
                             {
-                                string txId = null;
-                                if (!string.IsNullOrEmpty(txRecord.ExchangeSignedTransactionAfterClient))
-                                {
-                                    txId = (new Transaction(txRecord.ExchangeSignedTransactionAfterClient)).GetHash().ToString();
-                                }
-                                else
-                                {
-                                    txId = (new Transaction(txRecord.ClientSignedTransaction)).GetHash().ToString();
-                                }
-                                result = BadRequest(string.Format("This transaction has been successfully sent before with Bitcoin transaction id: {0} .", txId));
+                                result = BadRequest(string.Format("The request transaction with id:{0} was not found.", signBroadcastRequest.Id));
                             }
                             else
                             {
-
-                                if (!(txRecord.IsClientSignatureRequired ?? false))
+                                if (txRecord.HasTimedout == true)
                                 {
-                                    result = BadRequest(string.Format("The requested transaction with id:{0} does not require client side signature.", signBroadcastRequest.Id));
+                                    result = BadRequest(string.Format("The request transaction with id:{0} has been timeout, please request a new transaction.", signBroadcastRequest.Id));
                                 }
                                 else
                                 {
-                                    txRecord.ClientSignedTransaction = signBroadcastRequest.ClientSignedTransaction;
-                                    finalTransaction = new Transaction(signBroadcastRequest.ClientSignedTransaction);
-                                    await entities.SaveChangesAsync();
-
-                                    if (txRecord.IsExchangeSignatureRequired ?? false)
+                                    if (txRecord.TransactionIdWhichMadeThisTransactionInvalid != null)
                                     {
-                                        TransactionSignRequest request = new TransactionSignRequest
+                                        result = BadRequest(string.Format("The request transaction with id:{0} has been become invalid by another transaction.", signBroadcastRequest.Id));
+                                    }
+                                    else
+                                    {
+                                        if (txRecord.TransactionSendingSuccessful ?? false)
                                         {
-                                            TransactionToSign = txRecord.TransactionHex,
-                                            PrivateKey = WebSettings.ExchangePrivateKey
-                                        };
-
-                                        var exchangeSignResult = await SignTransactionWorker(request);
-
-                                        var unsignedTx = new Transaction(txRecord.TransactionHex);
-                                        var clientSignedTx = new Transaction(signBroadcastRequest.ClientSignedTransaction);
-                                        var exchangeSignedTx = new Transaction(exchangeSignResult);
-                                        /*
-                                        TransactionBuilder builder = new TransactionBuilder();
-                                        finalTransaction = builder.ContinueToBuild(new Transaction(txRecord.TransactionHex)).CombineSignatures(new Transaction[] { new Transaction(txRecord.TransactionHex),
-                                            new Transaction(signBroadcastRequest.ClientSignedTransaction),
-                                            new Transaction(exchangeSignResult) });
-                                            */
-
-                                        for (int i = 0; i < unsignedTx.Inputs.Count; i++)
-                                        {
-                                            var input = unsignedTx.Inputs[i];
-                                            var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
-                                            if (txResponse.Item1)
+                                            string txId = null;
+                                            if (!string.IsNullOrEmpty(txRecord.ExchangeSignedTransactionAfterClient))
                                             {
-                                                throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
-                                                    input.PrevOut.Hash.ToString(), txResponse.Item2));
+                                                txId = (new Transaction(txRecord.ExchangeSignedTransactionAfterClient)).GetHash().ToString();
                                             }
-
-                                            var prevTransaction = new Transaction(txResponse.Item3);
-                                            var output = prevTransaction.Outputs[input.PrevOut.N];
-                                            if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
+                                            else
                                             {
-                                                var redeemScript = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig).RedeemScript;
-                                                if (PayToMultiSigTemplate.Instance.CheckScriptPubKey(redeemScript))
+                                                txId = (new Transaction(txRecord.ClientSignedTransaction)).GetHash().ToString();
+                                            }
+                                            result = BadRequest(string.Format("This transaction has been successfully sent before with Bitcoin transaction id: {0} .", txId));
+                                        }
+                                        else
+                                        {
+
+                                            if (!(txRecord.IsClientSignatureRequired ?? false))
+                                            {
+                                                result = BadRequest(string.Format("The requested transaction with id:{0} does not require client side signature.", signBroadcastRequest.Id));
+                                            }
+                                            else
+                                            {
+                                                txRecord.ClientSignedTransaction = signBroadcastRequest.ClientSignedTransaction;
+                                                finalTransaction = new Transaction(signBroadcastRequest.ClientSignedTransaction);
+                                                await entities.SaveChangesAsync();
+
+                                                if (txRecord.IsExchangeSignatureRequired ?? false)
                                                 {
-                                                    var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
-
-                                                    var clientPushes = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(clientSignedTx.Inputs[i].ScriptSig).Pushes;
-                                                    var exchangePushes = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(exchangeSignedTx.Inputs[i].ScriptSig).Pushes;
-
-                                                    //scriptParams.Pushes = new byte[][] { clientPushes[1] , exchangePushes[2] };
-
-
-                                                    scriptParams.Pushes[1] = clientPushes[1];
-                                                    scriptParams.Pushes[2] = exchangePushes[2];
-
-
-                                                    finalTransaction.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
-                                                    /*
-                                                    var pubkeys = PayToMultiSigTemplate.Instance.ExtractScriptPubKeyParameters(redeemScript).PubKeys;
-                                                    for (int j = 0; j < pubkeys.Length; j++)
+                                                    TransactionSignRequest request = new TransactionSignRequest
                                                     {
-                                                        if (secret.PubKey.ToHex() == pubkeys[j].ToHex())
+                                                        TransactionToSign = txRecord.TransactionHex,
+                                                        PrivateKey = WebSettings.ExchangePrivateKey
+                                                    };
+
+                                                    var exchangeSignResult = await SignTransactionWorker(request);
+
+                                                    var unsignedTx = new Transaction(txRecord.TransactionHex);
+                                                    var clientSignedTx = new Transaction(signBroadcastRequest.ClientSignedTransaction);
+                                                    var exchangeSignedTx = new Transaction(exchangeSignResult);
+                                                    /*
+                                                    TransactionBuilder builder = new TransactionBuilder();
+                                                    finalTransaction = builder.ContinueToBuild(new Transaction(txRecord.TransactionHex)).CombineSignatures(new Transaction[] { new Transaction(txRecord.TransactionHex),
+                                                        new Transaction(signBroadcastRequest.ClientSignedTransaction),
+                                                        new Transaction(exchangeSignResult) });
+                                                        */
+
+                                                    for (int i = 0; i < unsignedTx.Inputs.Count; i++)
+                                                    {
+                                                        var input = unsignedTx.Inputs[i];
+                                                        var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
+                                                        if (txResponse.Item1)
                                                         {
-                                                            var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
-                                                            scriptParams.Pushes[j + 1] = tx.SignInput(secret, new Coin(prevTransaction, output)).Signature.ToDER();
-                                                            outputTx.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
+                                                            throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
+                                                                input.PrevOut.Hash.ToString(), txResponse.Item2));
+                                                        }
+
+                                                        var prevTransaction = new Transaction(txResponse.Item3);
+                                                        var output = prevTransaction.Outputs[input.PrevOut.N];
+                                                        if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
+                                                        {
+                                                            var redeemScript = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig).RedeemScript;
+                                                            if (PayToMultiSigTemplate.Instance.CheckScriptPubKey(redeemScript))
+                                                            {
+                                                                var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
+
+                                                                var clientPushes = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(clientSignedTx.Inputs[i].ScriptSig).Pushes;
+                                                                var exchangePushes = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(exchangeSignedTx.Inputs[i].ScriptSig).Pushes;
+
+                                                                //scriptParams.Pushes = new byte[][] { clientPushes[1] , exchangePushes[2] };
+
+
+                                                                scriptParams.Pushes[1] = clientPushes[1];
+                                                                scriptParams.Pushes[2] = exchangePushes[2];
+
+
+                                                                finalTransaction.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
+                                                                /*
+                                                                var pubkeys = PayToMultiSigTemplate.Instance.ExtractScriptPubKeyParameters(redeemScript).PubKeys;
+                                                                for (int j = 0; j < pubkeys.Length; j++)
+                                                                {
+                                                                    if (secret.PubKey.ToHex() == pubkeys[j].ToHex())
+                                                                    {
+                                                                        var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
+                                                                        scriptParams.Pushes[j + 1] = tx.SignInput(secret, new Coin(prevTransaction, output)).Signature.ToDER();
+                                                                        outputTx.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
+                                                                    }
+                                                                }
+                                                                */
+                                                            }
                                                         }
                                                     }
+
+                                                    TransactionBuilder builder = new TransactionBuilder();
+                                                    for (int i = 0; i < finalTransaction.Inputs.Count; i++)
+                                                    {
+                                                        var input = finalTransaction.Inputs[i];
+                                                        var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
+                                                        if (txResponse.Item1)
+                                                        {
+                                                            throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
+                                                                input.PrevOut.Hash.ToString(), txResponse.Item2));
+                                                        }
+
+                                                        builder.AddCoins(new Transaction(txResponse.Item3));
+                                                    }
+
+                                                    //MinerTransactionPolicy.Instance.
+                                                    var verified = builder.Verify(finalTransaction);
+
+                                                    txRecord.ExchangeSignedTransactionAfterClient = finalTransaction.ToHex();
+                                                    await entities.SaveChangesAsync();
+                                                }
+
+                                                try
+                                                {
+                                                    /*
+                                                    RPCClient client = new RPCClient(new System.Net.NetworkCredential(WebSettings.ConnectionParams.Username, WebSettings.ConnectionParams.Password),
+                                                        WebSettings.ConnectionParams.IpAddress, WebSettings.ConnectionParams.BitcoinNetwork);
+
+                                                    await client.SendRawTransactionAsync(finalTransaction);
                                                     */
+                                                    var sendingRetValue = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt(finalTransaction, WebSettings.ConnectionParams,
+                                                        entities, WebSettings.ConnectionString, null, null);
+
+                                                    await MakeReservedFeesAsSpent(entities, finalTransaction, txRecord.OwnerAddress);
+
+                                                    txRecord.TransactionId = finalTransaction.GetHash().ToString();
+                                                    txRecord.TransactionSendingSuccessful = true;
+                                                    await entities.SaveChangesAsync();
+
+                                                    result = Ok(finalTransaction.GetHash().ToString());
+
+                                                    dbTransaction.Commit();
+                                                }
+                                                catch (Exception e)
+                                                {
+                                                    txRecord.TransactionSendingSuccessful = false;
+                                                    txRecord.TransactionSendingError = e.ToString();
+                                                    result = InternalServerError(e);
                                                 }
                                             }
                                         }
-
-                                        TransactionBuilder builder = new TransactionBuilder();
-                                        for (int i = 0; i < finalTransaction.Inputs.Count; i++)
-                                        {
-                                            var input = finalTransaction.Inputs[i];
-                                            var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
-                                            if (txResponse.Item1)
-                                            {
-                                                throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
-                                                    input.PrevOut.Hash.ToString(), txResponse.Item2));
-                                            }
-
-                                            builder.AddCoins(new Transaction(txResponse.Item3));
-                                        }
-
-                                        //MinerTransactionPolicy.Instance.
-                                        var verified = builder.Verify(finalTransaction);
-
-                                        txRecord.ExchangeSignedTransactionAfterClient = finalTransaction.ToHex();
-                                        await entities.SaveChangesAsync();
-                                    }
-
-                                    try
-                                    {
-                                        /*
-                                        RPCClient client = new RPCClient(new System.Net.NetworkCredential(WebSettings.ConnectionParams.Username, WebSettings.ConnectionParams.Password),
-                                            WebSettings.ConnectionParams.IpAddress, WebSettings.ConnectionParams.BitcoinNetwork);
-
-                                        await client.SendRawTransactionAsync(finalTransaction);
-                                        */
-                                        var sendingRetValue = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt(finalTransaction, WebSettings.ConnectionParams,
-                                            entities, WebSettings.ConnectionString, null, null);
-
-                                        await MakeReservedFeesAsSpent(entities, finalTransaction, txRecord.OwnerAddress);
-
-                                        txRecord.TransactionId = finalTransaction.GetHash().ToString();
-                                        txRecord.TransactionSendingSuccessful = true;
-                                        await entities.SaveChangesAsync();
-
-                                        result = Ok(finalTransaction.GetHash().ToString());
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        txRecord.TransactionSendingSuccessful = false;
-                                        txRecord.TransactionSendingError = e.ToString();
-                                        result = InternalServerError(e);
                                     }
                                 }
                             }
@@ -578,7 +597,8 @@ namespace ServiceLykkeWallet.Controllers
                                             IsExchangeSignatureRequired = isExchangeSignatureRequired,
                                             IsClientSignatureRequired = true,
                                             TransactionHex = tx.ToHex(),
-                                            OwnerAddress = sourceAddress.ToWif()
+                                            OwnerAddress = sourceAddress.ToWif(),
+                                            CreationTime = DateTime.UtcNow
                                         });
                                     await entities.SaveChangesAsync();
 
@@ -599,7 +619,7 @@ namespace ServiceLykkeWallet.Controllers
                                         transactionResult = await OpenAssetsHelper.CheckTransactionForDoubleSpentBothSignaturesRequired
                                             (tx, WebSettings.ConnectionParams, entities, WebSettings.ConnectionString, null, null);
                                     }
-                                    
+
 
                                     if (transactionResult.Error == null)
                                     {
@@ -623,6 +643,7 @@ namespace ServiceLykkeWallet.Controllers
                                         transaction.Rollback();
                                     }
                                 }
+
                             }
                         }
                     }

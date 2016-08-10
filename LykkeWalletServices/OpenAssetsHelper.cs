@@ -1670,11 +1670,11 @@ namespace LykkeWalletServices
 
             if (!string.IsNullOrEmpty(reservedForAddress))
             {
-                var reservedCoins = from item in entities.PreGeneratedOutputs
+                var reservedCoins = (from item in entities.PreGeneratedOutputs
                             where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) &&
                             (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) &&
                             item.ReservedForAddress == reservedForAddress
-                            select item;
+                            select item).ToList();
 
                 foreach (var c in reservedCoins)
                 {
