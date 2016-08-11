@@ -109,6 +109,22 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 get;
                 set;
             }
+
+            [DefaultValue(10 * 60 * 1000)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int UnsignedTransactionsUpdaterPeriod
+            {
+                get;
+                set;
+            }
+
+            [DefaultValue(5)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int UnsignedTransactionTimeoutInMinutes
+            {
+                get;
+                set;
+            }
         }
 
         public static async Task<TheSettings> ReadAppSettins(bool logToConsole = true)

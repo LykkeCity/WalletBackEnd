@@ -8,12 +8,14 @@ using NBitcoin.RPC;
 using Newtonsoft.Json;
 using ServiceLykkeWallet.Models;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Results;
 using System.Web.Mvc;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace ServiceLykkeWallet.Controllers
 {
@@ -375,6 +377,9 @@ namespace ServiceLykkeWallet.Controllers
 
                                                     await client.SendRawTransactionAsync(finalTransaction);
                                                     */
+                                                    await PerformProperOperationForCollidingTransactions(entities, txRecord);
+                                                    await entities.SaveChangesAsync();
+
                                                     var sendingRetValue = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt(finalTransaction, WebSettings.ConnectionParams,
                                                         entities, WebSettings.ConnectionString, null, null);
 
@@ -412,6 +417,93 @@ namespace ServiceLykkeWallet.Controllers
                 (WebSettings.ConnectionString, "Transfer:" + JsonConvert.SerializeObject(signBroadcastRequest), ConvertResultToString(result));
 
             return result;
+        }
+
+        private async Task PerformProperOperationForCollidingTransactions(SqlexpressLykkeEntities entities,
+            LykkeWalletServices.UnsignedTransaction txRecord)
+        {
+            var sameOwnerTransactions = (from tx in entities.UnsignedTransactions
+                                         where
+                                         tx.OwnerAddress == txRecord.OwnerAddress &&
+                                         (tx.HasTimedout ?? false) == false &&
+                                         tx.TransactionIdWhichMadeThisTransactionInvalid == null &&
+                                         (tx.TransactionSendingSuccessful ?? false ) == false
+                                         select tx).ToList();
+
+            IList<LykkeWalletServices.UnsignedTransaction> invalidTransactionList = new List<LykkeWalletServices.UnsignedTransaction>();
+
+            foreach(var transaction in sameOwnerTransactions)
+            {
+                if(transaction.id == txRecord.id)
+                {
+                    continue;
+                }
+
+                if(MakesInvalidTransaction(new Transaction(txRecord.TransactionHex), new Transaction(transaction.TransactionHex)))
+                {
+                    invalidTransactionList.Add(transaction);
+                    transaction.TransactionIdWhichMadeThisTransactionInvalid = txRecord.id;
+                }
+            }
+            await entities.SaveChangesAsync();
+
+            var spentOutptuts = txRecord.UnsignedTransactionSpentOutputs;
+
+            for (int i = 0; i < invalidTransactionList.Count(); i++)
+            {
+                var record = invalidTransactionList[i];
+
+                var freedOutput = (from output in entities.UnsignedTransactionSpentOutputs
+                                   where output.UnsignedTransactionId == record.id
+                                   select output).ToList();
+
+                foreach (var item in freedOutput)
+                {
+                    if(spentOutptuts.Where(o => o.TransactionId == item.TransactionId && o.OutputNumber == item.OutputNumber).Any())
+                    {
+                        // The item has been spent by current transaction
+                        continue;
+                    }
+
+                    var transactionsWithFreedOutput = (from output in entities.UnsignedTransactionSpentOutputs
+                                                       join tr in entities.UnsignedTransactions on output.UnsignedTransactionId equals tr.id
+                                                       where output.TransactionId == item.TransactionId &&
+                                                       output.OutputNumber == item.OutputNumber &&
+                                                       (tr.HasTimedout ?? false) == false &&
+                                                       tr.TransactionIdWhichMadeThisTransactionInvalid == null
+                                                       select output.UnsignedTransactionId).Count();
+
+                    if (transactionsWithFreedOutput > 0)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        await CheckForFeeOutputAndFree(entities, item);
+                        await entities.SaveChangesAsync();
+                    }
+                }
+            }
+
+
+        }
+
+        private static bool MakesInvalidTransaction(Transaction spendingTransaction, Transaction beingSpentTransaction)
+        {
+            var spendingInputs = spendingTransaction.Inputs;
+            var beingSpentInputs = beingSpentTransaction.Inputs;
+            foreach(var spendingInput in spendingInputs)
+            {
+                foreach(var beingSpentInput in beingSpentInputs)
+                {
+                    if(spendingInput.PrevOut.Hash == beingSpentInput.PrevOut.Hash && spendingInput.PrevOut.N == spendingInput.PrevOut.N)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         // ToDo: Possible performance increase with join operation
@@ -600,6 +692,14 @@ namespace ServiceLykkeWallet.Controllers
                                             OwnerAddress = sourceAddress.ToWif(),
                                             CreationTime = DateTime.UtcNow
                                         });
+                                    await entities.SaveChangesAsync();
+
+                                    foreach (var unspentOutput in tx.Inputs)
+                                    {
+                                        entities.UnsignedTransactionSpentOutputs.Add
+                                            (new UnsignedTransactionSpentOutput { TransactionId = unspentOutput.PrevOut.Hash.ToString(), OutputNumber = (int)unspentOutput.PrevOut.N ,
+                                                UnsignedTransactionId = unsignedTransaction.id });
+                                    }
                                     await entities.SaveChangesAsync();
 
                                     result = new UnsignedTransaction

@@ -4,7 +4,7 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-    <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+      <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <EntityType Name="EmailMessages">
           <Key>
             <PropertyRef Name="id" />
@@ -160,10 +160,10 @@
           <Property Name="TransactionSendingSuccessful" Type="bit" />
           <Property Name="TransactionSendingError" Type="text" />
           <Property Name="TransactionId" Type="varchar" MaxLength="64" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
           <Property Name="CreationTime" Type="datetime" />
           <Property Name="HasTimedout" Type="bit" />
           <Property Name="TransactionIdWhichMadeThisTransactionInvalid" Type="bigint" />
-          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
         <EntityType Name="UnsignedTransactionSpentOutputs">
           <Key>
@@ -171,7 +171,7 @@
             <PropertyRef Name="OutputNumber" />
             <PropertyRef Name="UnsignedTransactionId" />
           </Key>
-          <Property Name="TransactionId" Type="varchar" MaxLength="35" Nullable="false" />
+          <Property Name="TransactionId" Type="varchar" MaxLength="64" Nullable="false" />
           <Property Name="OutputNumber" Type="int" Nullable="false" />
           <Property Name="UnsignedTransactionId" Type="bigint" Nullable="false" />
         </EntityType>
@@ -343,7 +343,8 @@
             <End Role="WholeRefundSpentOutputs" EntitySet="WholeRefundSpentOutputs" />
           </AssociationSet>
         </EntityContainer>
-      </Schema></edmx:StorageModels>
+      </Schema>
+    </edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="SqlexpressLykkeModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
@@ -396,7 +397,7 @@
             <End Role="UnsignedTransaction" EntitySet="UnsignedTransactions" />
             <End Role="UnsignedTransactionSpentOutput" EntitySet="UnsignedTransactionSpentOutputs" />
           </AssociationSet>
-          </EntityContainer>
+        </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
             <PropertyRef Name="ExchangeId" />
@@ -654,7 +655,7 @@
           <Property Name="IsExchangeSignatureRequired" Type="Boolean" />
           <Property Name="TransactionHex" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="OwnerAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="false" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
           <Property Name="ExchangeSignedTransactionAfterClient" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="TransactionSendingSuccessful" Type="Boolean" />
           <Property Name="TransactionSendingError" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
@@ -684,7 +685,7 @@
             <PropertyRef Name="OutputNumber" />
             <PropertyRef Name="UnsignedTransactionId" />
           </Key>
-          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
           <Property Name="OutputNumber" Type="Int32" Nullable="false" />
           <Property Name="UnsignedTransactionId" Type="Int64" Nullable="false" />
           <NavigationProperty Name="UnsignedTransaction" Relationship="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" FromRole="UnsignedTransactionSpentOutput" ToRole="UnsignedTransaction" />
@@ -701,7 +702,7 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
-        </Schema>
+      </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
     <edmx:Mappings>

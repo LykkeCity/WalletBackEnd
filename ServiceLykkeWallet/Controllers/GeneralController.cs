@@ -53,6 +53,22 @@ namespace ServiceLykkeWallet.Controllers
             return result;
         }
 
+#if DEBUG
+        // curl localhost:8989/General/SetFeeRate?feeRate=11000
+        [System.Web.Http.HttpGet]
+        public IHttpActionResult SetFeeRate(uint feeRate)
+        {
+            if(feeRate < 10000 || feeRate > 60000)
+            {
+                return BadRequest("While setting manually feeRate should be between 10000 and 60000.");
+            }
+            else
+            {
+                OpenAssetsHelper.TransactionSendFeesInSatoshi = feeRate;
+                return Ok("Fee set.");
+            }
+        }
+#endif
         [System.Web.Http.HttpGet]
         public HttpResponseMessage GetWallets()
         {

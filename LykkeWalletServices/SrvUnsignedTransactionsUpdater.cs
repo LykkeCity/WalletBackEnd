@@ -6,6 +6,7 @@ using System.Data.Entity.Core;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices
 {
@@ -14,15 +15,11 @@ namespace LykkeWalletServices
         private int unsignedTransactionTimeoutInMinutes = 0;
         private string connectionString = null;
 
-        public SrvUnsignedTransactionsUpdater(ILog log, int unsignedTransactionTimeoutInMinutes, string connectionString) : base("SrvUnsignedTransactionsUpdater", 10 * 60 * 1000, log)
+        public SrvUnsignedTransactionsUpdater(ILog log, int unsignedTransactionTimeoutInMinutes, int unsignedTransactionsUpdaterPeriod, string connectionString) :
+            base("SrvUnsignedTransactionsUpdater", unsignedTransactionsUpdaterPeriod , log)
         {
             this.unsignedTransactionTimeoutInMinutes = unsignedTransactionTimeoutInMinutes;
             this.connectionString = connectionString;
-        }
-
-        private void CheckForFeeOutputAndFree(SqlexpressLykkeEntities entities, UnsignedTransactionSpentOutput item)
-        {
-
         }
 
         protected override async Task Execute()
@@ -37,9 +34,9 @@ namespace LykkeWalletServices
                         using (var dbTransaction = entities.Database.BeginTransaction())
                         {
                             var timedouts = (from r in entities.UnsignedTransactions
-                                             where r.CreationTime < unsignedTransactionsPastTime &&
-                                             r.HasTimedout == false &&
-                                             r.TransactionSendingSuccessful == false &&
+                                             where (r.CreationTime < unsignedTransactionsPastTime || r.CreationTime == null) &&
+                                             (r.HasTimedout ?? false) == false &&
+                                             (r.TransactionSendingSuccessful ?? false) == false &&
                                              r.TransactionIdWhichMadeThisTransactionInvalid == null
                                              select r).ToList();
 
@@ -64,7 +61,7 @@ namespace LykkeWalletServices
                                                                        join tr in entities.UnsignedTransactions on output.UnsignedTransactionId equals tr.id
                                                                        where output.TransactionId == item.TransactionId &&
                                                                        output.OutputNumber == item.OutputNumber &&
-                                                                       tr.HasTimedout == false &&
+                                                                       (tr.HasTimedout ?? false) == false &&
                                                                        tr.TransactionIdWhichMadeThisTransactionInvalid == null
                                                                        select output.UnsignedTransactionId).Count();
 
@@ -74,7 +71,7 @@ namespace LykkeWalletServices
                                     }
                                     else
                                     {
-                                        CheckForFeeOutputAndFree(entities, item);
+                                        await CheckForFeeOutputAndFree(entities, item);
                                         await entities.SaveChangesAsync();
                                     }
                                 }
@@ -94,6 +91,8 @@ namespace LykkeWalletServices
                     await _log.WriteError("UnsignedTransacionUpdater", "", "", ex);
                     break;
                 }
+
+                break;
             }
         }
     }
