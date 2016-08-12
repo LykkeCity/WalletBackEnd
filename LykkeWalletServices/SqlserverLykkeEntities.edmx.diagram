@@ -29,6 +29,7 @@
         <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactions_UnsignedTransactions" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.UnsignedTransactionSpentOutput" Width="1.5" PointX="12.625" PointY="9" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.SegKey" Width="1.5" PointX="3.375" PointY="11.75" />
         </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

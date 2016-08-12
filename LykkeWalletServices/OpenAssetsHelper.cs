@@ -1402,8 +1402,9 @@ namespace LykkeWalletServices
             {
                 return;
             }
+
             var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
-                secret.PubKey.GetExchangePrivateKey().PubKey });
+                secret.PubKey.GetExchangePrivateKey(null, WebSettings.ConnectionString).PubKey });
             var multiSigAddressStorage = multiSigAddress.GetScriptAddress(Network).ToString();
 
             MultisigDictionary.AddThreadSafe(multiSigAddressStorage, privateKey);
@@ -1813,7 +1814,7 @@ namespace LykkeWalletServices
                 if (MultisigDictionary.ContainsKey(multiSigAddress))
                 {
                     ret = new KeyStorage();
-                    ret.ExchangePrivateKey = (new BitcoinSecret(MultisigDictionary[multiSigAddress])).PubKey.GetExchangePrivateKey().ToWif();
+                    ret.ExchangePrivateKey = (new BitcoinSecret(MultisigDictionary[multiSigAddress])).PubKey.GetExchangePrivateKey(entities).ToWif();
                     ret.MultiSigAddress = multiSigAddress;
                     ret.MultiSigScript = MultisigScriptDictionary[multiSigAddress];
                     ret.Network = Network.ToString();

@@ -100,7 +100,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     else
                                     {
                                         builder.AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey),
-                                            (new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey());
+                                            (new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey(entities));
                                         if (OpenAssetsHelper.IsRealAsset(data.Asset))
                                         {
                                             builder.AddCoins(((OpenAssetsHelper.GetScriptCoinsForWalletReturnType)walletCoins).AssetScriptCoins);

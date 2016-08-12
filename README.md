@@ -130,6 +130,9 @@ If MultisigAddress is null (not passed), appropriate transactions for all addres
 |BroadcastGroup|400|The Broadcast Group used to send the email for insufficient fee outputs to (optional).|
 |EnvironmentName|null|The name environment in which the program is being runned, for example test or production.|
 |PrivateKeyWillBeSubmitted|false|If the private key will be submitted through POST via url [RestEndPoint]/PrivateKey/Add |
+|UseSegKeysTable|true|If the SegKeys table will be used for exchange private key|
+|UnsignedTransactionsUpdaterPeriod|10 minutes|The timer period for updating the unsigned transaction status and their consumed fees.|
+|UnsignedTransactionTimeoutInMinutes|5 minutes|Number of minutes after which unsigned transactions are timed out.|
 
 The AssetDefinitions is an array of json, with the following fields:
 

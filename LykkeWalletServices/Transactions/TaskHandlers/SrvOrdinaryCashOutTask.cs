@@ -54,7 +54,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 TransactionBuilder builder = new TransactionBuilder();
                                 builder
                                     .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork), ChangeType.Colored)
-                                    .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), (new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey());
+                                    .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), (new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey(entities));
                                 if (OpenAssetsHelper.IsRealAsset(data.Currency))
                                 {
                                     builder.AddCoins(walletCoins.AssetScriptCoins).

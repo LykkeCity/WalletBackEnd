@@ -15,18 +15,18 @@ namespace ServiceLykkeWallet.Controllers
     {
         // This should respond to curl -X POST http://localhost:8989/PrivateKey/Add -d "=cQKNnKS7TUFPdVc4muGXq8X9h5dxuGyYBSbnFUUuv9NVsLDNFP51"
         [System.Web.Http.HttpPost]
-        public ActionResult Add([FromBody]string privatekey)
+        public IHttpActionResult Add([FromBody]string privatekey)
         {
             try
             {
                 BitcoinSecret secret = BitcoinSecret.GetFromBase58Data(privatekey) as BitcoinSecret;
                 OpenAssetsHelper.AddPrivateKey(privatekey);
-                return new HttpStatusCodeResult((int)HttpStatusCode.OK);
+                return Ok();
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return new HttpStatusCodeResult((int)HttpStatusCode.BadRequest);
+                return InternalServerError(ex);
             }
         }
     }

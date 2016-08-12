@@ -153,10 +153,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controllers\GeneralController.cs" />
+    <Compile Include="Controllers\WalletController.cs" />
     <Compile Include="Controllers\TransactionsController.cs" />
     <Compile Include="Controllers\PrivateKeyController.cs" />
     <Compile Include="Controllers\AccountsController.cs" />
     <Compile Include="Models\AccountContracts.cs" />
+    <Compile Include="Models\TransactionContracts.cs" />
+    <Compile Include="Models\WalletContract.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />

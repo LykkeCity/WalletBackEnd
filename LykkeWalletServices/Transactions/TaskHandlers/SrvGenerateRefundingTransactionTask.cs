@@ -63,12 +63,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     var multiSig = (await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities));
                                     multiSigScript = new Script(multiSig.MultiSigScript);
                                     clientPubKey = (new BitcoinSecret(multiSig.WalletPrivateKey)).PubKey;
-                                    exchangePrivateKey = clientPubKey.GetExchangePrivateKey();
+                                    exchangePrivateKey = clientPubKey.GetExchangePrivateKey(entities);
                                 }
                                 else
                                 {
                                     clientPubKey = new PubKey(data.PubKey);
-                                    exchangePrivateKey = clientPubKey.GetExchangePrivateKey();
+                                    exchangePrivateKey = clientPubKey.GetExchangePrivateKey(entities);
                                     multiSigScript = PayToMultiSigTemplate.Instance.GenerateScriptPubKey
                                         (2, new PubKey[] { clientPubKey, exchangePrivateKey.PubKey });
                                     

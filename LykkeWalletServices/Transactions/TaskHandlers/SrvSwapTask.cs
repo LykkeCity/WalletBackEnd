@@ -79,7 +79,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 string asset = null;
 
                                 secret = new BitcoinSecret[] { new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey),
-                                    (new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey() };
+                                    (new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey(entities) };
                                 uncoloredCoins = wallet1Coins?.ScriptCoins;
                                 coloredCoins = wallet1Coins?.AssetScriptCoins;
                                 destAddress = new Script(wallet2Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
@@ -93,7 +93,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     uncoloredAmount, asset, out coloredCoinCount1);
 
                                 secret = new BitcoinSecret[] { new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey),
-                                    (new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey() };
+                                    (new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey(entities) };
                                 uncoloredCoins = wallet2Coins?.ScriptCoins;
                                 coloredCoins = wallet2Coins?.AssetScriptCoins;
                                 destAddress = new Script(wallet1Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
