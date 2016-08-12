@@ -28,7 +28,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         }
 
         public SrvGenerateRefundingTransactionTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string feePrivateKey, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string feePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, connectionString)
         {
         }
 
@@ -50,7 +50,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 {
                     try
                     {
-                        PubKey exchangePubKey = (new BitcoinSecret(ExchangePrivateKey, connectionParams.BitcoinNetwork)).PubKey;
+                        BitcoinSecret exchangePrivateKey = null;
 
                         using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                         {
@@ -63,12 +63,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     var multiSig = (await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities));
                                     multiSigScript = new Script(multiSig.MultiSigScript);
                                     clientPubKey = (new BitcoinSecret(multiSig.WalletPrivateKey)).PubKey;
+                                    exchangePrivateKey = clientPubKey.GetExchangePrivateKey();
                                 }
                                 else
                                 {
                                     clientPubKey = new PubKey(data.PubKey);
+                                    exchangePrivateKey = clientPubKey.GetExchangePrivateKey();
                                     multiSigScript = PayToMultiSigTemplate.Instance.GenerateScriptPubKey
-                                        (2, new PubKey[] { clientPubKey, exchangePubKey });
+                                        (2, new PubKey[] { clientPubKey, exchangePrivateKey.PubKey });
+                                    
                                 }
                                 var multiSigAddress = multiSigScript.GetScriptAddress(connectionParams.BitcoinNetwork).ToString();
 
@@ -196,7 +199,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                                         refundTx = builder
                                         .SetLockTime(lockTime)
-                                        .AddKeys(new BitcoinSecret(ExchangePrivateKey))
+                                        .AddKeys(exchangePrivateKey)
                                         .AddCoins(scriptCoinsToBeRefunded)
                                         .Send(dest, destAmount)
                                         .SendFees(new Money(feeAmount))

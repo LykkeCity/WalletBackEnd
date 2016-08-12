@@ -284,10 +284,11 @@ namespace ServiceLykkeWallet.Controllers
 
                                                 if (txRecord.IsExchangeSignatureRequired ?? false)
                                                 {
+                                                    var clientPubKey = await OpenAssetsHelper.GetClientPubKeyForMultisig(txRecord.OwnerAddress, entities);
                                                     TransactionSignRequest request = new TransactionSignRequest
                                                     {
                                                         TransactionToSign = txRecord.TransactionHex,
-                                                        PrivateKey = WebSettings.ExchangePrivateKey
+                                                        PrivateKey = clientPubKey.GetExchangePrivateKey().ToWif()
                                                     };
 
                                                     var exchangeSignResult = await SignTransactionWorker(request);

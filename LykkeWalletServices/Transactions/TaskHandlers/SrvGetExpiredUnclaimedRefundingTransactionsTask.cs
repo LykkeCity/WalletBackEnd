@@ -13,7 +13,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvGetExpiredUnclaimedRefundingTransactionsTask : SrvNetworkInvolvingExchangeBase
     {
         public SrvGetExpiredUnclaimedRefundingTransactionsTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string feePrivateKey, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string feePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, connectionString)
         {
         }
 

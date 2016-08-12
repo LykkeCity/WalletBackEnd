@@ -21,12 +21,6 @@ namespace LykkeWalletServices
             set;
         }
 
-        public static string ExchangePrivateKey
-        {
-            get;
-            set;
-        }
-
         public static string FeeAddress
         {
             get;

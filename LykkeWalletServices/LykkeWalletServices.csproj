@@ -71,6 +71,7 @@
     <Compile Include="ExchangeRequest.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="GeneralHelper.cs" />
     <Compile Include="InputOutputMessageLog.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>

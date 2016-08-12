@@ -10,12 +10,16 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvGenerateNewWalletTask
     {
         private Network network = null;
-        private string exchangePrivateKey = null;
+        public static string ExchangePrivateKey
+        {
+            get;
+            set;
+        }
+
         private string connectionString = null;
-        public SrvGenerateNewWalletTask(Network network, string exchangePrivateKey, string connectionString)
+        public SrvGenerateNewWalletTask(Network network, string connectionString)
         {
             this.network = network;
-            this.exchangePrivateKey = exchangePrivateKey;
             this.connectionString = connectionString;
         }
 
@@ -45,7 +49,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 walletPrivateKey = secret.PrivateKey.GetWif(network).ToWif();
 
                 var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
-                (new BitcoinSecret(exchangePrivateKey, network)).PubKey });
+                (new BitcoinSecret(ExchangePrivateKey, network)).PubKey });
                 multiSigAddressStorage = multiSigAddress.GetScriptAddress(network).ToString();
                 var coloredMulsigAddress = BitcoinAddress.Create(multiSigAddressStorage, network).ToColoredAddress().ToWif();
 
@@ -56,7 +60,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         WalletAddress = walletAddress,
                         WalletPrivateKey = walletPrivateKey,
                         MultiSigAddress = multiSigAddressStorage,
-                        ExchangePrivateKey = exchangePrivateKey,
+                        ExchangePrivateKey = ExchangePrivateKey,
                         MultiSigScript = multiSigAddress.ToString(),
                         Network = (network == Network.Main ? NetworkType.Main : NetworkType.TestNet).ToString()
                     };

@@ -29,8 +29,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         }
 
         public SrvSwapTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString, IPreBroadcastHandler preBroadcastHandler) :
-                base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string connectionString, IPreBroadcastHandler preBroadcastHandler) :
+                base(network, assets, username, password, ipAddress, feeAddress, connectionString)
         {
             _preBroadcastHandler = preBroadcastHandler;
         }
@@ -78,7 +78,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 long uncoloredAmount = 0;
                                 string asset = null;
 
-                                secret = new BitcoinSecret[] { new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey) };
+                                secret = new BitcoinSecret[] { new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey),
+                                    (new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey() };
                                 uncoloredCoins = wallet1Coins?.ScriptCoins;
                                 coloredCoins = wallet1Coins?.AssetScriptCoins;
                                 destAddress = new Script(wallet2Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
@@ -91,7 +92,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 builder.BuildHalfOfSwap(secret, uncoloredCoins, coloredCoins, destAddress, changeAddress, coloredAmount,
                                     uncoloredAmount, asset, out coloredCoinCount1);
 
-                                secret = new BitcoinSecret[] { new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey) };
+                                secret = new BitcoinSecret[] { new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey),
+                                    (new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey() };
                                 uncoloredCoins = wallet2Coins?.ScriptCoins;
                                 coloredCoins = wallet2Coins?.AssetScriptCoins;
                                 destAddress = new Script(wallet1Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);

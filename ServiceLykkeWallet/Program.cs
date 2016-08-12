@@ -61,13 +61,13 @@ namespace ServiceLykkeWallet
                     settings.GenerateRefundingTransactionMinimumConfirmationNumber;
             }
             OpenAssetsHelper.PrivateKeyWillBeSubmitted = settings.PrivateKeyWillBeSubmitted;
-            OpenAssetsHelper.ExchangePrivateKey = settings.exchangePrivateKey;
+            GeneralHelper.ExchangePrivateKey = settings.exchangePrivateKey;
+            SrvGenerateNewWalletTask.ExchangePrivateKey = settings.exchangePrivateKey;
             OpenAssetsHelper.Network = settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet;
 
             WebSettings.Assets = settings.AssetDefinitions;
             WebSettings.ConnectionParams = new OpenAssetsHelper.RPCConnectionParams { Username = settings.RPCUsername,
                 Password = settings.RPCPassword, IpAddress = settings.RPCServerIpAddress, Network = settings.NetworkType.ToString() };
-            WebSettings.ExchangePrivateKey = settings.exchangePrivateKey;
             WebSettings.ConnectionString = settings.ConnectionString;
             WebSettings.FeeAddress = settings.FeeAddress;
 
@@ -83,7 +83,7 @@ namespace ServiceLykkeWallet
             
             srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
-                settings.exchangePrivateKey, settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
+                settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
                 settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress, settings.FeeAddressPrivateKey,
                 ioc.GetObject<IPreBroadcastHandler>());
 

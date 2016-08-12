@@ -31,10 +31,6 @@ namespace TestConsole
         {
             Key exchangeKey = new Key();
 
-
-            string exchangePrivateKeyMain = new BitcoinSecret(exchangeKey, Network.Main).PrivateKey.GetWif(Network.Main).ToWif();
-            string exchangePrivateKeyTest = new BitcoinSecret(exchangeKey, Network.TestNet).PrivateKey.GetWif(Network.TestNet).ToWif();
-
             var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { (new BitcoinSecret(WalletAddress01PrivateKey)).PubKey ,
                 (new BitcoinSecret(WalletAddress02PrivateKey)).PubKey });
             var address = multiSigAddress.GetScriptAddress(Network.Main);

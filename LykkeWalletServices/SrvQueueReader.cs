@@ -17,7 +17,6 @@ namespace LykkeWalletServices
         private readonly IQueueWriter _queueWriter;
         private readonly ILog _log;
         private readonly Network _network;
-        private readonly string _exchangePrivateKey;
         public AssetDefinition[] _assets
         {
             get;
@@ -32,7 +31,7 @@ namespace LykkeWalletServices
         private readonly IPreBroadcastHandler _preBroadcastHandler;
 
         public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log,
-            Network network, string exchangePrivateKey, AssetDefinition[] assets, string rpcUsername,
+            Network network, AssetDefinition[] assets, string rpcUsername,
             string rpcPassword, string rpcServer, string connectionString, string feeAddress, string feeAddressPrivateKey, IPreBroadcastHandler preBroadcastHandler)
             : base("SrvQueueReader", 5000, log)
         {
@@ -41,7 +40,6 @@ namespace LykkeWalletServices
             _queueWriter = queueWriter;
             _log = log;
             _network = network;
-            _exchangePrivateKey = exchangePrivateKey;
             _assets = assets;
             _rpcUsername = rpcUsername;
             _rpcPassword = rpcPassword;
@@ -82,7 +80,7 @@ namespace LykkeWalletServices
             var transactionGenerateNewWallet = @event as TaskToDoGenerateNewWallet;
             if (transactionGenerateNewWallet != null)
             {
-                var service = new SrvGenerateNewWalletTask(_network, _exchangePrivateKey, _connectionString);
+                var service = new SrvGenerateNewWalletTask(_network, _connectionString);
                 service.Execute(transactionGenerateNewWallet, async result =>
                 {
                     /*
@@ -136,7 +134,7 @@ namespace LykkeWalletServices
             if (transactionCashOut != null)
             {
                 var service = new SrvCashOutTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer,
-                    _feeAddress, _exchangePrivateKey, _connectionString, _preBroadcastHandler);
+                    _feeAddress, _connectionString, _preBroadcastHandler);
                 service.Execute(transactionCashOut, async result =>
                 {
                     /*
@@ -153,7 +151,7 @@ namespace LykkeWalletServices
             var transactionCashOutSeparateSignatures = @event as TaskToDoCashOutSeparateSignatures;
             if (transactionCashOutSeparateSignatures != null)
             {
-                var service = new SrvCashOutSeparateSignaturesTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString);
+                var service = new SrvCashOutSeparateSignaturesTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _feeAddress, _connectionString);
                 service.Execute(transactionCashOutSeparateSignatures, async result =>
                 {
                     /*
@@ -171,7 +169,7 @@ namespace LykkeWalletServices
             if (transactionOrdinaryCashOut != null)
             {
                 var service = new SrvOrdinaryCashOutTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer, _feeAddress,
-                    _exchangePrivateKey, _connectionString, _preBroadcastHandler);
+                    _connectionString, _preBroadcastHandler);
                 service.Execute(transactionOrdinaryCashOut, async result =>
                 {
                     /*
@@ -208,7 +206,7 @@ namespace LykkeWalletServices
             if (transactionSwap != null)
             {
                 var service = new SrvSwapTask(_network, _assets, _rpcUsername,
-                    _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString, _preBroadcastHandler);
+                    _rpcPassword, _rpcServer, _feeAddress, _connectionString, _preBroadcastHandler);
                 service.Execute(transactionSwap, async result =>
                 {
                     /*
@@ -262,7 +260,7 @@ namespace LykkeWalletServices
             if (transactionTransfer != null)
             {
                 var service = new SrvTransferTask(_network, _assets, _rpcUsername,
-                    _rpcPassword, _rpcServer, _feeAddress, _exchangePrivateKey, _connectionString, _preBroadcastHandler);
+                    _rpcPassword, _rpcServer, _feeAddress, _connectionString, _preBroadcastHandler);
                 service.Execute(transactionTransfer, async result =>
                 {
                     /*
@@ -316,7 +314,7 @@ namespace LykkeWalletServices
             if (transactionGenerateRefundingTransaction != null)
             {
                 var service = new SrvGenerateRefundingTransactionTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer,
-                    _feeAddress, _feeAddressPrivateKey, _exchangePrivateKey, _connectionString);
+                    _feeAddress, _feeAddressPrivateKey, _connectionString);
                 service.Execute(transactionGenerateRefundingTransaction, async result =>
                 {
                     /*
@@ -353,7 +351,7 @@ namespace LykkeWalletServices
             if (transactionGetExpiredUnclaimedRefundingTransactions != null)
             {
                 var service = new SrvGetExpiredUnclaimedRefundingTransactionsTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer,
-                    _feeAddress, _feeAddressPrivateKey, _exchangePrivateKey, _connectionString);
+                    _feeAddress, _feeAddressPrivateKey, _connectionString);
                 service.Execute(transactionGetExpiredUnclaimedRefundingTransactions, async result =>
                 {
                     /*

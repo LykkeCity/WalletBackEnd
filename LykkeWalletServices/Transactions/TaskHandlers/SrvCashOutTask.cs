@@ -16,8 +16,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         private readonly IPreBroadcastHandler _preBroadcastHandler;
 
         public SrvCashOutTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString, IPreBroadcastHandler preBroadcastHandler) : 
-                base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string connectionString, IPreBroadcastHandler preBroadcastHandler) : 
+                base(network, assets, username, password, ipAddress, feeAddress, connectionString)
         {
             _preBroadcastHandler = preBroadcastHandler;
         }
@@ -52,7 +52,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 TransactionBuilder builder = new TransactionBuilder();
                                 var tx = (await builder
                                     .SetChange(new Script(walletCoins.MatchingAddress.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork), ChangeType.Colored)
-                                    .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
+                                    .AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), (new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey())
                                     .AddCoins(walletCoins.AssetScriptCoins)
                                     .SendAsset(walletCoins.Asset.AssetAddress, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))))
                                     .AddEnoughPaymentFee(entities, connectionParams,

@@ -162,12 +162,6 @@ namespace LykkeWalletServices
         public static IDictionary<string, string> MultisigDictionary = new Dictionary<string, string>();
         public static IDictionary<string, string> MultisigScriptDictionary = new Dictionary<string, string>();
 
-        public static string ExchangePrivateKey
-        {
-            get;
-            set;
-        }
-
         public static Network Network
         {
             get;
@@ -1409,7 +1403,7 @@ namespace LykkeWalletServices
                 return;
             }
             var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
-                (new BitcoinSecret(ExchangePrivateKey)).PubKey });
+                secret.PubKey.GetExchangePrivateKey().PubKey });
             var multiSigAddressStorage = multiSigAddress.GetScriptAddress(Network).ToString();
 
             MultisigDictionary.AddThreadSafe(multiSigAddressStorage, privateKey);
@@ -1797,6 +1791,12 @@ namespace LykkeWalletServices
             throw new Exception(string.Format("Could not parse the address {0} successfully.", address));
         }
 
+        public static async Task<PubKey> GetClientPubKeyForMultisig(string multisigAddr, SqlexpressLykkeEntities entities)
+        {
+            var multisig = await GetMatchingMultisigAddress(multisigAddr, entities);
+            return (new BitcoinSecret(multisig.WalletPrivateKey)).PubKey;
+        }
+
 
         public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
         {
@@ -1813,7 +1813,7 @@ namespace LykkeWalletServices
                 if (MultisigDictionary.ContainsKey(multiSigAddress))
                 {
                     ret = new KeyStorage();
-                    ret.ExchangePrivateKey = ExchangePrivateKey;
+                    ret.ExchangePrivateKey = (new BitcoinSecret(MultisigDictionary[multiSigAddress])).PubKey.GetExchangePrivateKey().ToWif();
                     ret.MultiSigAddress = multiSigAddress;
                     ret.MultiSigScript = MultisigScriptDictionary[multiSigAddress];
                     ret.Network = Network.ToString();
