@@ -80,7 +80,7 @@ namespace LykkeWalletServices
         public const ulong BTCToSathoshiMultiplicationFactor = 100000000;
         public const uint ConcurrencyRetryCount = 3;
         public const uint NBitcoinColoredCoinOutputInSatoshi = 2730;
-        private const APIProvider apiProvider = APIProvider.QBitNinja;
+        public const APIProvider apiProvider = APIProvider.QBitNinja;
         public const int LocktimeMinutesAllowance = 120;
 
         public static string QBitNinjaBalanceUrl
@@ -283,8 +283,11 @@ namespace LykkeWalletServices
             long sum = coins.Sum(c => c.Amount.Quantity);
             builder.SendAsset(destination, assetMoney);
 
-            var changeAssetMoney = new AssetMoney(assetMoney.Id, sum - assetMoney.Quantity);
-            builder.SendAsset(changeDestination, changeAssetMoney);
+            if (sum - assetMoney.Quantity > 0)
+            {
+                var changeAssetMoney = new AssetMoney(assetMoney.Id, sum - assetMoney.Quantity);
+                builder.SendAsset(changeDestination, changeAssetMoney);
+            }
 
             return builder;
         }
@@ -294,7 +297,10 @@ namespace LykkeWalletServices
         {
             long sum = coins.Sum(c => c.Amount);
             builder.Send(destination, amount);
-            builder.Send(changeDestination, sum - amount);
+            if (sum - amount > 0)
+            {
+                builder.Send(changeDestination, sum - amount);
+            }
             return builder;
         }
 
@@ -356,13 +362,13 @@ namespace LykkeWalletServices
             return builder;
         }
 
-        private static Coin GetCoinFromOutput(this UniversalUnspentOutput output)
+        internal static Coin GetCoinFromOutput(this UniversalUnspentOutput output)
         {
             return new Coin(new uint256(output.GetTransactionHash()), (uint)output.GetOutputIndex(),
                     new Money(output.GetValue()), new Script(StringToByteArray(output.GetScriptHex())));
         }
 
-        private static ColoredCoin[] GenerateWalletColoredCoins(UniversalUnspentOutput[] usableOutputs, string assetId)
+        internal static ColoredCoin[] GenerateWalletColoredCoins(UniversalUnspentOutput[] usableOutputs, string assetId)
         {
             ColoredCoin[] coins = new ColoredCoin[usableOutputs.Length];
             for (int i = 0; i < usableOutputs.Length; i++)
@@ -450,7 +456,7 @@ namespace LykkeWalletServices
         }
 
         public static async Task<Tuple<UniversalUnspentOutput[], bool, string>> GetWalletOutputs(string walletAddress,
-            Network network, SqlexpressLykkeEntities entities, bool considerTimeOut = true, Func<int> getMinimumConfirmationNumber = null)
+            Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null)
         {
             Tuple<UniversalUnspentOutput[], bool, string> ret = null;
             switch (apiProvider)
@@ -648,7 +654,7 @@ namespace LykkeWalletServices
 
                 // Getting wallet outputs
                 var walletOutputs = await GetWalletOutputs
-                    (multiSigAddress, connectionParams.BitcoinNetwork, entities, true, getMinimumConfirmationNumber);
+                    (multiSigAddress, connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);
                 if (walletOutputs.Item2)
                 {
                     ret.Error = new Error();

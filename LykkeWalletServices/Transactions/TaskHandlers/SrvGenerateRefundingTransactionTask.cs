@@ -79,7 +79,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 LockTime lockTime = new LockTime(lockTimeValue);
 
                                 var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(multiSigAddress,
-                                    connectionParams.BitcoinNetwork, entities, false, getMinimumConfirmationNumber);
+                                    connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);
                                 if (walletOuputs.Item2)
                                 {
                                     error = new Error();

@@ -170,6 +170,13 @@ namespace Core
         public string Asset { get; set; }
     }
 
+    public class TaskToDoTransferAllAssetsToAddress : TransactionToDoBase
+    {
+        public string SourceAddress { get; set; }
+        public string SourcePrivateKey { get; set; }
+        public string DestinationAddress { get; set; }
+    }
+
     public class TaskToDoSwap : TransactionToDoBase
     {
         public string MultisigCustomer1 { get; set; }

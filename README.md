@@ -100,6 +100,13 @@ Primary key for updating is the asset name. If a field is absent for an asset, t
 
 If MultisigAddress is null (not passed), appropriate transactions for all addresses are returned.
 
+*   Transfer all assets to an address
+
+        Sample request: TransferAllAssetsToAddress:{"TransactionId":"10","SourceAddress":"xxx","SourcePrivateKey":"xxx","DestinationAddress":"xxx"}
+        Sample response: TransferAllAssetsToAddress:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
+
+SourcePrivateKey is required only if the private keys are not submitted
+
 ## Some notes
 *   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.
 

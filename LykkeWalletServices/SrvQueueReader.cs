@@ -274,6 +274,24 @@ namespace LykkeWalletServices
                 knownTaskType = true;
             }
 
+            var transactionTransferAllAssetsToAddress = @event as TaskToDoTransferAllAssetsToAddress;
+            if (transactionTransferAllAssetsToAddress != null)
+            {
+                var service = new SrvTransferAllAssetsToAddressTask(_network, _assets, _rpcUsername,
+                    _rpcPassword, _rpcServer, _feeAddress, _connectionString, _preBroadcastHandler);
+                service.Execute(transactionTransferAllAssetsToAddress, async result =>
+                {
+                    /*
+                    await _queueWriter.WriteQueue(TransactionResultModel.Create
+                        ("Transfer", @event.TransactionId, result.Item1, result.Item2));
+                    await OpenAssetsHelper.PerformFunctionEndJobs(_connectionString, _log);
+                    *////
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("TransferAllAssetsToAddress", @event.TransactionId, result.Item1, result.Item2));
+                });
+                knownTaskType = true;
+            }
+
             var transactionGetIssuerOutputStatus = @event as TaskToDoGetIssuersOutputStatus;
             if (transactionGetIssuerOutputStatus != null)
             {
