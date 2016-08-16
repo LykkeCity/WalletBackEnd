@@ -1400,7 +1400,7 @@ namespace LykkeWalletServices
         #endregion
 
         #region OtherUsefulFunctions
-        public static void AddPrivateKey(string privateKey)
+        public static void AddPrivateKey(string privateKey, bool isP2PKH)
         {
             var secret = new BitcoinSecret(privateKey);
             var p2pkhAddr = secret.GetAddress();
@@ -1408,14 +1408,17 @@ namespace LykkeWalletServices
             {
                 return;
             }
-
-            var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
-                secret.PubKey.GetExchangePrivateKey(null, WebSettings.ConnectionString).PubKey });
-            var multiSigAddressStorage = multiSigAddress.GetScriptAddress(Network).ToString();
-
-            MultisigDictionary.AddThreadSafe(multiSigAddressStorage, privateKey);
-            MultisigScriptDictionary.AddThreadSafe(multiSigAddressStorage, multiSigAddress.ToString());
             P2PKHDictionary.AddThreadSafe(p2pkhAddr.ToWif(), privateKey);
+
+            if (!isP2PKH)
+            {
+                var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
+                secret.PubKey.GetExchangePrivateKey(null, WebSettings.ConnectionString).PubKey });
+                var multiSigAddressStorage = multiSigAddress.GetScriptAddress(Network).ToString();
+
+                MultisigDictionary.AddThreadSafe(multiSigAddressStorage, privateKey);
+                MultisigScriptDictionary.AddThreadSafe(multiSigAddressStorage, multiSigAddress.ToString());
+            }
         }
         // This is written as a function instead of a constant since we may need to change the implementation
         // to adaptable one in future

@@ -13,14 +13,13 @@ namespace ServiceLykkeWallet.Controllers
 {
     public class PrivateKeyController : ApiController
     {
-        // This should respond to curl -X POST http://localhost:8989/PrivateKey/Add -d "=cQKNnKS7TUFPdVc4muGXq8X9h5dxuGyYBSbnFUUuv9NVsLDNFP51"
+        // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"PrivateKey\":\"xyz\",\"IsP2PKH\":\"true\"}" http://localhost:8989/PrivateKey/Add
         [System.Web.Http.HttpPost]
-        public IHttpActionResult Add([FromBody]string privatekey)
+        public IHttpActionResult Add(AddPrivateKeyContract privatekey)
         {
             try
             {
-                BitcoinSecret secret = BitcoinSecret.GetFromBase58Data(privatekey) as BitcoinSecret;
-                OpenAssetsHelper.AddPrivateKey(privatekey);
+                OpenAssetsHelper.AddPrivateKey(privatekey.PrivateKey, privatekey.IsP2PKH);
                 return Ok();
 
             }

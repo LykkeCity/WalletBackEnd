@@ -159,6 +159,7 @@
     <Compile Include="Controllers\AccountsController.cs" />
     <Compile Include="Models\AccountContracts.cs" />
     <Compile Include="Models\TransactionContracts.cs" />
+    <Compile Include="Models\PrivateKeyContract.cs" />
     <Compile Include="Models\WalletContract.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
