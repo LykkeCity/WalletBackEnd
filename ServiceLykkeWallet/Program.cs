@@ -61,25 +61,31 @@ namespace ServiceLykkeWallet
                     settings.GenerateRefundingTransactionMinimumConfirmationNumber;
             }
             OpenAssetsHelper.PrivateKeyWillBeSubmitted = settings.PrivateKeyWillBeSubmitted;
-            OpenAssetsHelper.ExchangePrivateKey = settings.exchangePrivateKey;
+            GeneralHelper.ExchangePrivateKey = settings.exchangePrivateKey;
+            SrvGenerateNewWalletTask.ExchangePrivateKey = settings.exchangePrivateKey;
             OpenAssetsHelper.Network = settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet;
+
+            GeneralHelper.UseSegKeysTable = settings.UseSegKeysTable;
 
             WebSettings.Assets = settings.AssetDefinitions;
             WebSettings.ConnectionParams = new OpenAssetsHelper.RPCConnectionParams { Username = settings.RPCUsername,
                 Password = settings.RPCPassword, IpAddress = settings.RPCServerIpAddress, Network = settings.NetworkType.ToString() };
-            WebSettings.ExchangePrivateKey = settings.exchangePrivateKey;
             WebSettings.ConnectionString = settings.ConnectionString;
             WebSettings.FeeAddress = settings.FeeAddress;
 
-            var lykkeSettings = GeneralSettingsReader.ReadGeneralSettings<BaseSettings>(settings.LykkeSettingsConnectionString);
             var logger = new LogToConsole();
             var ioc = new IoC();
-            ioc.BindAzureRepositories(lykkeSettings.Db, logger);
-            ioc.BindLykkeServices();
+            if (!settings.UseMockAsLykkeNotification)
+            {
+                var lykkeSettings = GeneralSettingsReader.ReadGeneralSettings<BaseSettings>(settings.LykkeSettingsConnectionString);
+                ioc.BindAzureRepositories(lykkeSettings.Db, logger);
+            }
+            
+            ioc.BindLykkeServices(settings.UseMockAsLykkeNotification);
             
             srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
-                settings.exchangePrivateKey, settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
+                settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
                 settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress, settings.FeeAddressPrivateKey,
                 ioc.GetObject<IPreBroadcastHandler>());
 
@@ -87,6 +93,12 @@ namespace ServiceLykkeWallet
 
             var srvFeeUpdater = new SrvFeeUpdater(log);
             srvFeeUpdater.Start();
+
+            var srvFeeReserveCleaner = new SrvFeeReserveCleaner(log, settings.ConnectionString);
+            srvFeeReserveCleaner.Start();
+
+            var srvUnsignedTransactionsUpdater = new SrvUnsignedTransactionsUpdater(log, settings.UnsignedTransactionTimeoutInMinutes, settings.UnsignedTransactionsUpdaterPeriod, settings.ConnectionString);
+            srvUnsignedTransactionsUpdater.Start();
 
 
             Console.WriteLine("Queue reader is started");

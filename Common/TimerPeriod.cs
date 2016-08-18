@@ -9,7 +9,7 @@ namespace Common
     {
         private readonly string _componentName;
         private readonly int _periodMs;
-        private readonly ILog _log;
+        protected readonly ILog _log;
 
         protected TimerPeriod(string componentName, int periodMs, ILog log)
         {

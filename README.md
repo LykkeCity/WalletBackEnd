@@ -74,10 +74,12 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   Generating the refund transaction
 
-        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360 , "JustRefundTheNonRefunded":true}
+        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "PubKey":"PubKeyInHex", "timeoutInMinutes":360 , "JustRefundTheNonRefunded":true}
         Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
 
 JustRefundTheNonRefunded flag indicates the old refund method should be used. If false or omitted the new refunding method will be used. Old refund method is deprecated.
+
+If PubKey is null or not provided the conventional method of retrieving public key from private key is used, otherwise the provided public key is used to build the multi sig.
 
 *   Getting correspondent wallet addresses
 
@@ -97,6 +99,13 @@ Primary key for updating is the asset name. If a field is absent for an asset, t
         Sample response: GetExpiredUnclaimedRefundingTransactions:{"TransactionId":"10","Result":{"Elements":[{"TxId":"xxx","TxHex":"xxx"}]},"Error":null}
 
 If MultisigAddress is null (not passed), appropriate transactions for all addresses are returned.
+
+*   Transfer all assets to an address
+
+        Sample request: TransferAllAssetsToAddress:{"TransactionId":"10","SourceAddress":"xxx","SourcePrivateKey":"xxx","DestinationAddress":"xxx"}
+        Sample response: TransferAllAssetsToAddress:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
+
+SourcePrivateKey is required only if the private keys are not submitted
 
 ## Some notes
 *   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.
@@ -128,6 +137,9 @@ If MultisigAddress is null (not passed), appropriate transactions for all addres
 |BroadcastGroup|400|The Broadcast Group used to send the email for insufficient fee outputs to (optional).|
 |EnvironmentName|null|The name environment in which the program is being runned, for example test or production.|
 |PrivateKeyWillBeSubmitted|false|If the private key will be submitted through POST via url [RestEndPoint]/PrivateKey/Add |
+|UseSegKeysTable|true|If the SegKeys table will be used for exchange private key|
+|UnsignedTransactionsUpdaterPeriod|10 minutes|The timer period for updating the unsigned transaction status and their consumed fees.|
+|UnsignedTransactionTimeoutInMinutes|5 minutes|Number of minutes after which unsigned transactions are timed out.|
 
 The AssetDefinitions is an array of json, with the following fields:
 

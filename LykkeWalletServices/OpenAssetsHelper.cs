@@ -80,7 +80,7 @@ namespace LykkeWalletServices
         public const ulong BTCToSathoshiMultiplicationFactor = 100000000;
         public const uint ConcurrencyRetryCount = 3;
         public const uint NBitcoinColoredCoinOutputInSatoshi = 2730;
-        private const APIProvider apiProvider = APIProvider.QBitNinja;
+        public const APIProvider apiProvider = APIProvider.QBitNinja;
         public const int LocktimeMinutesAllowance = 120;
 
         public static string QBitNinjaBalanceUrl
@@ -161,12 +161,6 @@ namespace LykkeWalletServices
         public static IDictionary<string, string> P2PKHDictionary = new Dictionary<string, string>();
         public static IDictionary<string, string> MultisigDictionary = new Dictionary<string, string>();
         public static IDictionary<string, string> MultisigScriptDictionary = new Dictionary<string, string>();
-
-        public static string ExchangePrivateKey
-        {
-            get;
-            set;
-        }
 
         public static Network Network
         {
@@ -289,8 +283,11 @@ namespace LykkeWalletServices
             long sum = coins.Sum(c => c.Amount.Quantity);
             builder.SendAsset(destination, assetMoney);
 
-            var changeAssetMoney = new AssetMoney(assetMoney.Id, sum - assetMoney.Quantity);
-            builder.SendAsset(changeDestination, changeAssetMoney);
+            if (sum - assetMoney.Quantity > 0)
+            {
+                var changeAssetMoney = new AssetMoney(assetMoney.Id, sum - assetMoney.Quantity);
+                builder.SendAsset(changeDestination, changeAssetMoney);
+            }
 
             return builder;
         }
@@ -300,12 +297,16 @@ namespace LykkeWalletServices
         {
             long sum = coins.Sum(c => c.Amount);
             builder.Send(destination, amount);
-            builder.Send(changeDestination, sum - amount);
+            if (sum - amount > 0)
+            {
+                builder.Send(changeDestination, sum - amount);
+            }
             return builder;
         }
 
         public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
-            RPCConnectionParams connectionParams, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1)
+            RPCConnectionParams connectionParams, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1,
+            string reservedForAddress = null, string reserveId = null)
         {
             builder.SetChange(BitcoinAddress.Create(feeAddress), ChangeType.Uncolored);
 
@@ -325,7 +326,8 @@ namespace LykkeWalletServices
                     }
                     catch (NotEnoughFundsException ex)
                     {
-                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams);
+                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, null,
+                            reservedForAddress, reserveId);
                         Coin feePayerCoin = feePayer.GetCoin();
 
                         totalAddedFee += feePayer.Amount;
@@ -348,7 +350,7 @@ namespace LykkeWalletServices
                     break;
                 }
 
-                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams);
+                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, null, reservedForAddress, reserveId);
                 Coin feePayerCoin = feePayer.GetCoin();
 
                 totalAddedFee += feePayer.Amount;
@@ -360,13 +362,13 @@ namespace LykkeWalletServices
             return builder;
         }
 
-        private static Coin GetCoinFromOutput(this UniversalUnspentOutput output)
+        internal static Coin GetCoinFromOutput(this UniversalUnspentOutput output)
         {
             return new Coin(new uint256(output.GetTransactionHash()), (uint)output.GetOutputIndex(),
                     new Money(output.GetValue()), new Script(StringToByteArray(output.GetScriptHex())));
         }
 
-        private static ColoredCoin[] GenerateWalletColoredCoins(UniversalUnspentOutput[] usableOutputs, string assetId)
+        internal static ColoredCoin[] GenerateWalletColoredCoins(UniversalUnspentOutput[] usableOutputs, string assetId)
         {
             ColoredCoin[] coins = new ColoredCoin[usableOutputs.Length];
             for (int i = 0; i < usableOutputs.Length; i++)
@@ -454,7 +456,7 @@ namespace LykkeWalletServices
         }
 
         public static async Task<Tuple<UniversalUnspentOutput[], bool, string>> GetWalletOutputs(string walletAddress,
-            Network network, SqlexpressLykkeEntities entities, bool considerTimeOut = true, Func<int> getMinimumConfirmationNumber = null)
+            Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null)
         {
             Tuple<UniversalUnspentOutput[], bool, string> ret = null;
             switch (apiProvider)
@@ -652,7 +654,7 @@ namespace LykkeWalletServices
 
                 // Getting wallet outputs
                 var walletOutputs = await GetWalletOutputs
-                    (multiSigAddress, connectionParams.BitcoinNetwork, entities, true, getMinimumConfirmationNumber);
+                    (multiSigAddress, connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);
                 if (walletOutputs.Item2)
                 {
                     ret.Error = new Error();
@@ -807,7 +809,7 @@ namespace LykkeWalletServices
 
             // Solution: We assume a broadcasted transaction gets confirmation 24 hours
             DateTime now = DateTime.UtcNow;
-            if (now.AddHours(-24) <= locktime && (await GetNumberOfTransactionConfirmations(transactionHex) < 3))
+            if (locktime <= now.AddHours(24) && (await GetNumberOfTransactionConfirmations(transactionHex) < 3))
             {
                 // Probably if we reach here GetNumberOfTransactionConfirmations(transactionHex) will always return 0 and second condition
                 // will always be ture; Because if the refund is broadcasted its spent coins is not returned as free coins, so actual transactionHex
@@ -937,8 +939,8 @@ namespace LykkeWalletServices
 
         public static async Task<SentTransactionReturnValue> CheckTransactionForDoubleSpentBothSignaturesRequired(Transaction tx,
             RPCConnectionParams connectionParams, SqlexpressLykkeEntities entitiesContext, string connectionString,
-            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler, Action outsideTransactionBeforeBroadcast = null, 
-            Action<SqlexpressLykkeEntities> databaseCommitableAction = null, 
+            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler, Action outsideTransactionBeforeBroadcast = null,
+            Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
             APIProvider apiProvider = APIProvider.QBitNinja, bool isCompletelySignedTransaction = true)
         {
             return await CheckTransactionForDoubleSpentThenSendItCore(tx, connectionParams, entitiesContext, connectionString,
@@ -948,7 +950,7 @@ namespace LykkeWalletServices
 
         public static async Task<SentTransactionReturnValue> CheckTransactionForDoubleSpentClientSignatureRequired(Transaction tx,
             RPCConnectionParams connectionParams, SqlexpressLykkeEntities entitiesContext, string connectionString,
-            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler, 
+            HandleTxRequest handleTxRequest, IPreBroadcastHandler preBroadcastHandler,
             Action outsideTransactionBeforeBroadcast = null, Action<SqlexpressLykkeEntities> databaseCommitableAction = null,
             APIProvider apiProvider = APIProvider.QBitNinja, bool isCompletelySignedTransaction = true)
         {
@@ -1398,7 +1400,7 @@ namespace LykkeWalletServices
         #endregion
 
         #region OtherUsefulFunctions
-        public static void AddPrivateKey(string privateKey)
+        public static void AddPrivateKey(string privateKey, bool isP2PKH)
         {
             var secret = new BitcoinSecret(privateKey);
             var p2pkhAddr = secret.GetAddress();
@@ -1406,13 +1408,17 @@ namespace LykkeWalletServices
             {
                 return;
             }
-            var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
-                (new BitcoinSecret(ExchangePrivateKey)).PubKey });
-            var multiSigAddressStorage = multiSigAddress.GetScriptAddress(Network).ToString();
-
-            MultisigDictionary.AddThreadSafe(multiSigAddressStorage, privateKey);
-            MultisigScriptDictionary.AddThreadSafe(multiSigAddressStorage, multiSigAddress.ToString());
             P2PKHDictionary.AddThreadSafe(p2pkhAddr.ToWif(), privateKey);
+
+            if (!isP2PKH)
+            {
+                var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
+                secret.PubKey.GetExchangePrivateKey(null, WebSettings.ConnectionString).PubKey });
+                var multiSigAddressStorage = multiSigAddress.GetScriptAddress(Network).ToString();
+
+                MultisigDictionary.AddThreadSafe(multiSigAddressStorage, privateKey);
+                MultisigScriptDictionary.AddThreadSafe(multiSigAddressStorage, multiSigAddress.ToString());
+            }
         }
         // This is written as a function instead of a constant since we may need to change the implementation
         // to adaptable one in future
@@ -1645,17 +1651,63 @@ namespace LykkeWalletServices
             }
         }
 
-        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
-            RPCConnectionParams connectionParams, string assetId = null)
+        public static async Task CreateNewReserve(SqlexpressLykkeEntities entities, string reserveId, PreGeneratedOutput c, bool save)
         {
+            PregeneratedReserve reserve = new PregeneratedReserve();
+
+            reserve.PreGeneratedOutputTxId = c.TransactionId;
+            reserve.PreGeneratedOutputN = c.OutputNumber;
+            reserve.CreationTime = DateTime.UtcNow;
+            reserve.ReserveId = reserveId;
+
+            entities.PregeneratedReserves.Add(reserve);
+            if (save)
+            {
+                await entities.SaveChangesAsync();
+            }
+        }
+
+        public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
+            RPCConnectionParams connectionParams, string assetId = null, string reservedForAddress = null, string reserveId = null)
+        {
+            bool pregeneratedCoinFound = false;
+
+            if (!string.IsNullOrEmpty(reservedForAddress))
+            {
+                var reservedCoins = (from item in entities.PreGeneratedOutputs
+                                     where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) &&
+                                     (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) &&
+                                     item.ReservedForAddress == reservedForAddress
+                                     select item).ToList();
+
+                foreach (var c in reservedCoins)
+                {
+                    var isPreviouslyUsed = (from item in entities.PregeneratedReserves
+                                            where item.PreGeneratedOutputN == c.OutputNumber
+                                            && item.PreGeneratedOutputTxId == c.TransactionId
+                                            && item.ReserveId == reserveId
+                                            select item).Any();
+
+                    if (isPreviouslyUsed)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        await CreateNewReserve(entities, reserveId, c, true);
+
+                        return c;
+                    }
+                }
+            }
+
             var coins = from item in entities.PreGeneratedOutputs
-                        where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString()))
+                        where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) && string.IsNullOrEmpty(item.ReservedForAddress)
                         select item;
 
             int count = await coins.CountAsync();
-            bool pregeneratedCoinFound = false;
-            PreGeneratedOutput f = null;
 
+            PreGeneratedOutput f = null;
             while (!pregeneratedCoinFound)
             {
                 if (count < PreGeneratedOutputMinimumCount)
@@ -1671,16 +1723,47 @@ namespace LykkeWalletServices
                 {
                     int index = new Random().Next(coins.Count());
                     f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
-                    f.Consumed = 1;
+                    if (string.IsNullOrEmpty(reserveId))
+                    {
+                        f.Consumed = 1;
+                    }
+                    else
+                    {
+                        f.ReservedForAddress = reservedForAddress;
+                        await CreateNewReserve(entities, reserveId, f, false);
+                    }
                     await entities.SaveChangesAsync();
+
                     if (!await PregeneratedHasBeenSpentInBlockchain(f, connectionParams))
                     {
                         pregeneratedCoinFound = true;
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(reserveId))
+                        {
+                            f.Consumed = 1;
+                            f.ReservedForAddress = null;
+                            await entities.SaveChangesAsync();
+                        }
                     }
                 }
             }
 
             return f;
+        }
+
+        public static async Task CheckForFeeOutputAndFree(SqlexpressLykkeEntities entities, UnsignedTransactionSpentOutput item)
+        {
+            var feeOutput = (from fee in entities.PreGeneratedOutputs
+                             where fee.TransactionId == item.TransactionId && fee.OutputNumber == item.OutputNumber
+                             select fee).FirstOrDefault();
+
+            if (feeOutput != null)
+            {
+                feeOutput.ReservedForAddress = null;
+                await entities.SaveChangesAsync();
+            }
         }
 
         public static string GetPrivateKeyForAddress(string address)
@@ -1718,6 +1801,12 @@ namespace LykkeWalletServices
             throw new Exception(string.Format("Could not parse the address {0} successfully.", address));
         }
 
+        public static async Task<PubKey> GetClientPubKeyForMultisig(string multisigAddr, SqlexpressLykkeEntities entities)
+        {
+            var multisig = await GetMatchingMultisigAddress(multisigAddr, entities);
+            return (new BitcoinSecret(multisig.WalletPrivateKey)).PubKey;
+        }
+
 
         public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
         {
@@ -1734,7 +1823,7 @@ namespace LykkeWalletServices
                 if (MultisigDictionary.ContainsKey(multiSigAddress))
                 {
                     ret = new KeyStorage();
-                    ret.ExchangePrivateKey = ExchangePrivateKey;
+                    ret.ExchangePrivateKey = (new BitcoinSecret(MultisigDictionary[multiSigAddress])).PubKey.GetExchangePrivateKey(entities).ToWif();
                     ret.MultiSigAddress = multiSigAddress;
                     ret.MultiSigScript = MultisigScriptDictionary[multiSigAddress];
                     ret.Network = Network.ToString();
@@ -1798,13 +1887,6 @@ namespace LykkeWalletServices
             for (int i = 0; i < NumberChars; i += 2)
                 bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
             return bytes;
-        }
-
-        // Sqlite dll is not copied to output folder, this method creates the reference, never called
-        // http://stackoverflow.com/questions/14033193/entity-framework-provider-type-could-not-be-loaded
-        public static void FixEfProviderServicesProblem()
-        {
-            var instance = System.Data.SQLite.EF6.SQLiteProviderFactory.Instance;
         }
 
         public static BitcoinAddress GetBitcoinAddressFormBase58Date(string base58Data)
@@ -2279,10 +2361,10 @@ namespace LykkeWalletServices
                             asset_quantity = c.quantity
                         });
 
-                        /*
-                        await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
-                            convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
-                            */
+                    /*
+                    await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
+                        convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
+                        */
 
                         (await convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))))
                         .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));

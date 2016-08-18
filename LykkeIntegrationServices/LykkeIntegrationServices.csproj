@@ -58,6 +58,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MockBroadcastHandler.cs" />
     <Compile Include="Models\ContextData.cs" />
     <Compile Include="PreBroadcastHandler.cs" />
     <Compile Include="SrvBinder.cs" />

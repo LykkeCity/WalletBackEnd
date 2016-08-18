@@ -79,6 +79,7 @@ namespace Core
     public class TaskToDoGenerateRefundingTransaction : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }
+        public string PubKey { get; set; }
         public uint timeoutInMinutes { get; set; }
         public string RefundAddress { get; set; }
         public bool? JustRefundTheNonRefunded { get; set; }
@@ -167,6 +168,13 @@ namespace Core
         // ToDo - At first we assume the currency is not divisable
         public double Amount { get; set; }
         public string Asset { get; set; }
+    }
+
+    public class TaskToDoTransferAllAssetsToAddress : TransactionToDoBase
+    {
+        public string SourceAddress { get; set; }
+        public string SourcePrivateKey { get; set; }
+        public string DestinationAddress { get; set; }
     }
 
     public class TaskToDoSwap : TransactionToDoBase

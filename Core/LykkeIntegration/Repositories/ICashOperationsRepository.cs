@@ -33,6 +33,8 @@ namespace Core.LykkeIntegration.Repositories
     {
         string BlockChainHash { get; }
 
+        string Multisig { get; }
+
         /// <summary>
         /// Bitcoin queue record id (BitCointTransaction)
         /// </summary>
@@ -54,9 +56,10 @@ namespace Core.LykkeIntegration.Repositories
         public DateTime DateTime { get; set; }
         public bool IsHidden { get; set; }
         public string AssetId { get; set; }
-        public string ClientId { get; set; }
+        public string ClientId { get; set;  }
         public double Amount { get; set; }
         public string BlockChainHash { get; set; }
+        public string Multisig { get; set; }
         public string TransactionId { get; set; }
         public string AddressFrom { get; set; }
         public string AddressTo { get; set; }
@@ -75,11 +78,12 @@ namespace Core.LykkeIntegration.Repositories
 
     public interface ICashOperationsRepository
     {
-        Task<string> RegisterAsync(string clientId, ICashInOutOperation operation);
+        Task<string> RegisterAsync(ICashInOutOperation operation);
         Task<IEnumerable<ICashInOutOperation>> GetAsync(string clientId);
         Task<ICashInOutOperation> GetAsync(string clientId, string recordId);
         Task UpdateBlockchainHashAsync(string clientId, string id, string hash);
         Task SetBtcTransaction(string clientId, string id, string bcnTransactionId);
         Task<IEnumerable<ICashInOutOperation>> GetByHashAsync(string blockchainHash);
+        Task<IEnumerable<ICashInOutOperation>> GetByMultisigAsync(string multisig);
     }
 }

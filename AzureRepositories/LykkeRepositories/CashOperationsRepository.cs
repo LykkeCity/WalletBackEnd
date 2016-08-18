@@ -11,44 +11,81 @@ namespace AzureRepositories.LykkeRepositories
 {
     public class CashInOutOperationEntity : TableEntity, ICashInOutOperation
     {
-        public static string GeneratePartitionKey(string clientId)
-        {
-            return clientId;
-        }
-
-        internal static string GenerateRowKey(string id)
-        {
-            return id;
-        }
-
-
         public string Id => RowKey;
         public DateTime DateTime { get; set; }
         public bool IsHidden { get; set; }
         public string AssetId { get; set; }
-        public string ClientId => PartitionKey;
+        public string ClientId { get; set; }
         public double Amount { get; set; }
         public string BlockChainHash { get; set; }
+        public string Multisig { get; set; }
         public string TransactionId { get; set; }
         public string AddressFrom { get; set; }
         public string AddressTo { get; set; }
         public bool IsRefund { get; set; }
 
-        public static CashInOutOperationEntity Create(string clientId, ICashInOutOperation src)
+        public static class ByClientId
         {
-            return new CashInOutOperationEntity
+            public static string GeneratePartitionKey(string clientId)
             {
-                PartitionKey = GeneratePartitionKey(clientId),
-                RowKey = GenerateRowKey(Guid.NewGuid().ToString("N")),
-                DateTime = src.DateTime,
-                AssetId = src.AssetId,
-                Amount = src.Amount,
-                BlockChainHash = src.BlockChainHash,
-                IsHidden = src.IsHidden,
-                IsRefund = src.IsRefund,
-                AddressFrom = src.AddressFrom,
-                AddressTo = src.AddressTo
-            };
+                return clientId;
+            }
+
+            internal static string GenerateRowKey(string id)
+            {
+                return id;
+            }
+
+            public static CashInOutOperationEntity Create(ICashInOutOperation src)
+            {
+                return new CashInOutOperationEntity
+                {
+                    PartitionKey = GeneratePartitionKey(src.ClientId),
+                    RowKey = GenerateRowKey(Guid.NewGuid().ToString("N")),
+                    DateTime = src.DateTime,
+                    AssetId = src.AssetId,
+                    Amount = src.Amount,
+                    BlockChainHash = src.BlockChainHash,
+                    IsHidden = src.IsHidden,
+                    IsRefund = src.IsRefund,
+                    AddressFrom = src.AddressFrom,
+                    AddressTo = src.AddressTo,
+                    Multisig = src.Multisig,
+                    ClientId = src.ClientId
+                };
+            }
+        }
+
+        public static class ByMultisig
+        {
+            public static string GeneratePartitionKey(string multisig)
+            {
+                return multisig;
+            }
+
+            internal static string GenerateRowKey(string id)
+            {
+                return id;
+            }
+
+            public static CashInOutOperationEntity Create(ICashInOutOperation src)
+            {
+                return new CashInOutOperationEntity
+                {
+                    PartitionKey = GeneratePartitionKey(src.Multisig),
+                    RowKey = GenerateRowKey(Guid.NewGuid().ToString("N")),
+                    DateTime = src.DateTime,
+                    AssetId = src.AssetId,
+                    Amount = src.Amount,
+                    BlockChainHash = src.BlockChainHash,
+                    IsHidden = src.IsHidden,
+                    IsRefund = src.IsRefund,
+                    AddressFrom = src.AddressFrom,
+                    AddressTo = src.AddressTo,
+                    Multisig = src.Multisig,
+                    ClientId = src.ClientId
+                };
+            }
         }
     }
 
@@ -63,10 +100,12 @@ namespace AzureRepositories.LykkeRepositories
             _blockChainHashIndices = blockChainHashIndices;
         }
 
-        public async Task<string> RegisterAsync(string clientId, ICashInOutOperation operation)
+        public async Task<string> RegisterAsync(ICashInOutOperation operation)
         {
-            var newItem = CashInOutOperationEntity.Create(clientId, operation);
+            var newItem = CashInOutOperationEntity.ByClientId.Create(operation);
+            var byMultisig = CashInOutOperationEntity.ByMultisig.Create(operation);
             await _tableStorage.InsertAsync(newItem);
+            await _tableStorage.InsertAsync(byMultisig);
 
             if (!string.IsNullOrEmpty(operation.BlockChainHash))
             {
@@ -79,21 +118,26 @@ namespace AzureRepositories.LykkeRepositories
 
         public async Task<IEnumerable<ICashInOutOperation>> GetAsync(string clientId)
         {
-            var partitionkey = CashInOutOperationEntity.GeneratePartitionKey(clientId);
+            var partitionkey = CashInOutOperationEntity.ByClientId.GeneratePartitionKey(clientId);
             return await _tableStorage.GetDataAsync(partitionkey);
         }
 
         public async Task<ICashInOutOperation> GetAsync(string clientId, string recordId)
         {
-            var partitionkey = CashInOutOperationEntity.GeneratePartitionKey(clientId);
-            var rowKey = CashInOutOperationEntity.GenerateRowKey(recordId);
+            var partitionkey = CashInOutOperationEntity.ByClientId.GeneratePartitionKey(clientId);
+            var rowKey = CashInOutOperationEntity.ByClientId.GenerateRowKey(recordId);
             return await _tableStorage.GetDataAsync(partitionkey, rowKey);
         }
 
         public async Task UpdateBlockchainHashAsync(string clientId, string id, string hash)
         {
-            var partitionkey = CashInOutOperationEntity.GeneratePartitionKey(clientId);
-            var rowKey = CashInOutOperationEntity.GenerateRowKey(id);
+            var partitionkey = CashInOutOperationEntity.ByClientId.GeneratePartitionKey(clientId);
+            var rowKey = CashInOutOperationEntity.ByClientId.GenerateRowKey(id);
+
+            var record = await _tableStorage.GetDataAsync(partitionkey, rowKey);
+
+            var multisigPartitionkey = CashInOutOperationEntity.ByMultisig.GeneratePartitionKey(record.Multisig);
+            var multisigRowKey = CashInOutOperationEntity.ByMultisig.GenerateRowKey(id);
 
             var indexEntity = AzureIndex.Create(hash, rowKey, partitionkey, rowKey);
             await _blockChainHashIndices.InsertOrReplaceAsync(indexEntity);
@@ -103,14 +147,31 @@ namespace AzureRepositories.LykkeRepositories
                 entity.BlockChainHash = hash;
                 return entity;
             });
+
+            await _tableStorage.MergeAsync(multisigPartitionkey, multisigRowKey, entity =>
+            {
+                entity.BlockChainHash = hash;
+                return entity;
+            });
         }
 
-        public Task SetBtcTransaction(string clientId, string id, string bcnTransactionId)
+        public async Task SetBtcTransaction(string clientId, string id, string bcnTransactionId)
         {
-            var partitionkey = CashInOutOperationEntity.GeneratePartitionKey(clientId);
-            var rowKey = CashInOutOperationEntity.GenerateRowKey(id);
+            var partitionkey = CashInOutOperationEntity.ByClientId.GeneratePartitionKey(clientId);
+            var rowKey = CashInOutOperationEntity.ByClientId.GenerateRowKey(id);
 
-            return _tableStorage.MergeAsync(partitionkey, rowKey, entity =>
+            var record = await _tableStorage.GetDataAsync(partitionkey, rowKey);
+
+            var multisigPartitionkey = CashInOutOperationEntity.ByMultisig.GeneratePartitionKey(record.Multisig);
+            var multisigRowKey = CashInOutOperationEntity.ByMultisig.GenerateRowKey(id);
+
+            await _tableStorage.MergeAsync(partitionkey, rowKey, entity =>
+            {
+                entity.TransactionId = bcnTransactionId;
+                return entity;
+            });
+
+            await _tableStorage.MergeAsync(multisigPartitionkey, multisigRowKey, entity =>
             {
                 entity.TransactionId = bcnTransactionId;
                 return entity;
@@ -119,9 +180,15 @@ namespace AzureRepositories.LykkeRepositories
 
         public async Task<IEnumerable<ICashInOutOperation>> GetByHashAsync(string blockchainHash)
         {
-            var indexes = await _blockChainHashIndices.GetDataAsync(blockchainHash);
-            var keyValueTuples = indexes?.Select(x => new Tuple<string, string>(x.PrimaryPartitionKey, x.PrimaryRowKey));
+            var indices = await _blockChainHashIndices.GetDataAsync(blockchainHash);
+            var keyValueTuples = indices?.Select(x => new Tuple<string, string>(x.PrimaryPartitionKey, x.PrimaryRowKey));
             return await _tableStorage.GetDataAsync(keyValueTuples);
+        }
+
+        public async Task<IEnumerable<ICashInOutOperation>> GetByMultisigAsync(string multisig)
+        {
+            var partitionkey = CashInOutOperationEntity.ByMultisig.GeneratePartitionKey(multisig);
+            return await _tableStorage.GetDataAsync(partitionkey);
         }
     }
 }

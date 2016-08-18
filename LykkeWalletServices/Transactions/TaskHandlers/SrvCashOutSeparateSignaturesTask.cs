@@ -15,7 +15,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvCashOutSeparateSignaturesTask : SrvNetworkInvolvingExchangeBase
     {
         public SrvCashOutSeparateSignaturesTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, connectionString)
         {
         }
 
@@ -70,8 +70,9 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     }
                     else
                     {
+                        var multisig = await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities);
                         var txSignedByExchange = await GenerateUncompleteTransactionWithOnlyOneSignature(data.MultisigAddress, data.Amount, data.Currency,
-                            Assets, connectionParams, ConnectionString, new BitcoinSecret(ExchangePrivateKey));
+                            Assets, connectionParams, ConnectionString, (new BitcoinSecret(multisig.WalletPrivateKey)));
                         if (txSignedByExchange.Item2 != null)
                         {
                             error = txSignedByExchange.Item2;

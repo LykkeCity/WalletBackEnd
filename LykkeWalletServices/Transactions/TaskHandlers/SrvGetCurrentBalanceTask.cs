@@ -31,7 +31,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 Tuple<UniversalUnspentOutput[], bool, string> walletOuputs = null;
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
-                    walletOuputs = await GetWalletOutputs(data.MultisigAddress, connectionParams.BitcoinNetwork, entities, true, getMinimumConfirmationNumber);
+                    walletOuputs = await GetWalletOutputs(data.MultisigAddress, connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);
                 }
                 if (walletOuputs.Item2)
                 {

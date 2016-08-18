@@ -16,8 +16,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         private readonly IPreBroadcastHandler _preBroadcastHandler;
 
         public SrvTransferTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string exchangePrivateKey, string connectionString, IPreBroadcastHandler preBroadcastHandler) :
-                base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string connectionString, IPreBroadcastHandler preBroadcastHandler) :
+                base(network, assets, username, password, ipAddress, feeAddress, connectionString)
         {
             _preBroadcastHandler = preBroadcastHandler;
         }
@@ -99,7 +99,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     }
                                     else
                                     {
-                                        builder.AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey));
+                                        builder.AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey),
+                                            (new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey(entities));
                                         if (OpenAssetsHelper.IsRealAsset(data.Asset))
                                         {
                                             builder.AddCoins(((OpenAssetsHelper.GetScriptCoinsForWalletReturnType)walletCoins).AssetScriptCoins);

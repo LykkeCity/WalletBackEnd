@@ -101,6 +101,38 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 get;
                 set;
             }
+
+            [DefaultValue(false)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public bool UseMockAsLykkeNotification
+            {
+                get;
+                set;
+            }
+
+            [DefaultValue(10 * 60 * 1000)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int UnsignedTransactionsUpdaterPeriod
+            {
+                get;
+                set;
+            }
+
+            [DefaultValue(5)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int UnsignedTransactionTimeoutInMinutes
+            {
+                get;
+                set;
+            }
+
+            [DefaultValue(true)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public bool UseSegKeysTable
+            {
+                get;
+                set;
+            }
         }
 
         public static async Task<TheSettings> ReadAppSettins(bool logToConsole = true)
@@ -155,7 +187,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvUpdateAssetsTask
     {
 #if DEBUG
-        public const string SETTINGSFILEPATH = "D:\\settings.json";
+        public const string SETTINGSFILEPATH = "F:\\Lykkex\\settings.json";
 #else
         public const string SETTINGSFILEPATH = "settings.json";
 #endif

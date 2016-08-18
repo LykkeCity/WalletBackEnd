@@ -110,6 +110,10 @@ namespace Core
     {
     }
 
+    public class TransferAllAssetsToAddressTaskResult : TransactionSenderTaskResult
+    {
+    }
+
     public class UpdateAssetsTaskResult : ITaskResult
     {
         public bool Success

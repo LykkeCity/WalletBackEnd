@@ -49,6 +49,7 @@ namespace Lykkex.WalletBackend.Tests
                 QueueType.Create("GenerateFeeOutputs", typeof(GenerateFeeOutputsResponse)),
                 QueueType.Create("GenerateIssuerOutputs", typeof(GenerateIssuerOutputsResponse)),
                 QueueType.Create("Transfer", typeof(TaskToDoTransfer)),
+                QueueType.Create("TransferAllAssetsToAddress", typeof(TaskToDoTransferAllAssetsToAddress)),
                 QueueType.Create("GetIssuersOutputStatus", typeof(TaskToDoGetIssuersOutputStatus)),
                 QueueType.Create("GetFeeOutputsStatus", typeof(TaskToDoGetFeeOutputsStatus)),
                 QueueType.Create("GenerateRefundingTransaction", typeof(TaskToDoGenerateRefundingTransaction)),
