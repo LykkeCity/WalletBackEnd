@@ -1777,9 +1777,9 @@ namespace LykkeWalletServices
             }
             if (parsedAddr is BitcoinAddress)
             {
-                if (P2PKHDictionary.ContainsKey(address))
+                if (P2PKHDictionary.ContainsKey(parsedAddr.ToWif()))
                 {
-                    return P2PKHDictionary[address];
+                    return P2PKHDictionary[parsedAddr.ToWif()];
                 }
                 else
                 {
@@ -1788,9 +1788,9 @@ namespace LykkeWalletServices
             }
             if (parsedAddr is BitcoinScriptAddress)
             {
-                if (MultisigDictionary.ContainsKey(address))
+                if (MultisigDictionary.ContainsKey(parsedAddr.ToWif()))
                 {
-                    return MultisigDictionary[address];
+                    return MultisigDictionary[parsedAddr.ToWif()];
                 }
                 else
                 {
