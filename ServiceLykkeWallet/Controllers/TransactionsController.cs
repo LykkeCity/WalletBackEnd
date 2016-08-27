@@ -68,7 +68,7 @@ namespace ServiceLykkeWallet.Controllers
             return result;
         }
 
-        // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"Id\":4371,\"ClientSignedTransaction\":\"xxx\"}" http://localhost:8989/Transactions/SignTransactionIfRequiredAndBroadcast
+        // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"Id\":\"D6FD05D4-01A9-4503-95EF-3CCBCF1D51AB\",\"ClientSignedTransaction\":\"xxx\"}" http://localhost:8989/Transactions/SignTransactionIfRequiredAndBroadcast
         [System.Web.Http.HttpPost]
         public async Task<IHttpActionResult> SignTransactionIfRequiredAndBroadcast(TranctionSignAndBroadcastRequest signBroadcastRequest)
         {
@@ -76,9 +76,11 @@ namespace ServiceLykkeWallet.Controllers
 
             Transaction finalTransaction = null;
 
-            if (signBroadcastRequest.Id < 0)
+            Guid inputGuid;
+
+            if (!Guid.TryParse(signBroadcastRequest.Id, out inputGuid))
             {
-                result = BadRequest("Id of the transaction should not be negative.");
+                result = BadRequest("Id of the transaction should not be a valid Guid.");
             }
             else
             {
@@ -94,7 +96,7 @@ namespace ServiceLykkeWallet.Controllers
                                             select transaction).FirstOrDefault();
                             */
                             var txRecord = (from transaction in entities.UnsignedTransactions
-                                            where transaction.id == (int)signBroadcastRequest.Id
+                                            where transaction.id == inputGuid
                                             select transaction).FirstOrDefault();
 
                             if (txRecord == null)
@@ -606,6 +608,7 @@ namespace ServiceLykkeWallet.Controllers
                                     var unsignedTransaction = entities.UnsignedTransactions.Add(
                                         new LykkeWalletServices.UnsignedTransaction
                                         {
+                                            id = Guid.NewGuid(),
                                             IsExchangeSignatureRequired = isExchangeSignatureRequired,
                                             IsClientSignatureRequired = true,
                                             TransactionHex = tx.ToHex(),
@@ -625,7 +628,7 @@ namespace ServiceLykkeWallet.Controllers
                                     result = new ServiceLykkeWallet.Models.UnsignedTransaction
                                     {
                                         TransactionHex = tx.ToHex(),
-                                        Id = unsignedTransaction.id
+                                        Id = unsignedTransaction.id.ToString()
                                     };
 
                                     /*

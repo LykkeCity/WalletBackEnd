@@ -2,7 +2,7 @@
 {
     public class UnsignedTransaction
     {
-        public long Id
+        public string Id
         {
             get;
             set;
@@ -43,7 +43,7 @@
 
     public class TranctionSignAndBroadcastRequest
     {
-        public long Id
+        public string Id
         {
             get;
             set;

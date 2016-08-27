@@ -111,12 +111,6 @@ namespace LykkeWalletServices
             set;
         }
 
-        public static string LykkeJobsUrl
-        {
-            get;
-            set;
-        }
-
         public static int BroadcastGroup
         {
             get;

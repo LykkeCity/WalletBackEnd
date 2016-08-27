@@ -45,7 +45,6 @@ namespace ServiceLykkeWallet
             OpenAssetsHelper.BroadcastGroup = settings.BroadcastGroup;
             OpenAssetsHelper.EnvironmentName = settings.EnvironmentName;
             OpenAssetsHelper.PreGeneratedOutputMinimumCount = settings.PreGeneratedOutputMinimumCount;
-            OpenAssetsHelper.LykkeJobsUrl = settings.LykkeJobsUrl;
             OpenAssetsHelper.EmailQueueWriter = emailQueueWriter;
             if(settings.SwapMinimumConfirmationNumber >= 0)
             {

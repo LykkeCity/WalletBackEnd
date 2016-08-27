@@ -16,7 +16,7 @@ namespace LykkeWalletServices
     {
         public string TransactionId { get; set; }
         public int OutputNumber { get; set; }
-        public long UnsignedTransactionId { get; set; }
+        public System.Guid UnsignedTransactionId { get; set; }
     
         public virtual UnsignedTransaction UnsignedTransaction { get; set; }
     }
