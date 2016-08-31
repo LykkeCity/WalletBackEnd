@@ -49,6 +49,165 @@ namespace ServiceLykkeWallet.Controllers
             return result;
         }
 
+        private string PadAddressTo35Bytes(string address)
+        {
+            if (address.Length == 35)
+            {
+                return address;
+            }
+
+            if (address.Length < 35)
+            {
+                for (int i = 0; i < 35 - address.Length; i++)
+                {
+                    address = address + " ";
+                }
+            }
+
+            return address;
+        }
+
+        private string GenerateSwapAddressForReserving(string address1, string address2)
+        {
+            address1 = PadAddressTo35Bytes(address1);
+
+            address2 = PadAddressTo35Bytes(address2);
+
+            if (string.Compare(address1, address2) > 0)
+            {
+                return address1 + address2;
+            }
+            else
+            {
+                return address2 + address1;
+            }
+        }
+
+        // curl -H "Content-Type: application/json" -X POST -d "{\"MultisigCustomer1\":\"xxx\",\"Amount1\":0.05,\"Asset1\":\"xxx\",\"MultisigCustomer2\":\"xxx\",\"Amount2\":0.05,\"Asset2\":\"xxx\",}" http://localhost:8989/Transactions/CreateUnsignedSwapBothSignSubmit
+        public async Task<IHttpActionResult> CreateUnsignedSwapBothSignSubmit(SwapTransferRequest transferRequest)
+        {
+            Models.UnsignedTransaction unsignedTransactionResult = null;
+            Error error = null;
+
+            Func<int> getMinimumConfirmationNumber = (() => { return WebSettings.SwapMinimumConfirmationNumber; });
+
+            try
+            {
+                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(WebSettings.ConnectionString))
+                {
+                    OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet1Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(transferRequest.MultisigCustomer1, !OpenAssetsHelper.IsRealAsset(transferRequest.Asset1) ? Convert.ToInt64(transferRequest.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, transferRequest.Amount1, transferRequest.Asset1,
+                    WebSettings.Assets, WebSettings.ConnectionParams, WebSettings.ConnectionString, entities, false, true, getMinimumConfirmationNumber);
+                    if (wallet1Coins.Error != null)
+                    {
+                        error = wallet1Coins.Error;
+                    }
+                    else
+                    {
+                        OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet2Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(transferRequest.MultisigCustomer2, !OpenAssetsHelper.IsRealAsset(transferRequest.Asset2) ? Convert.ToInt64(transferRequest.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, transferRequest.Amount2, transferRequest.Asset2,
+                         WebSettings.Assets, WebSettings.ConnectionParams, WebSettings.ConnectionString, entities, false, true, getMinimumConfirmationNumber);
+                        if (wallet2Coins.Error != null)
+                        {
+                            error = wallet2Coins.Error;
+                        }
+                        else
+                        {
+                            using (var transaction = entities.Database.BeginTransaction())
+                            {
+                                long coloredCoinCount1 = 0;
+                                long coloredCoinCount2 = 0;
+
+                                BitcoinSecret[] secret = null;
+                                ScriptCoin[] uncoloredCoins = null;
+                                ColoredCoin[] coloredCoins = null;
+                                BitcoinScriptAddress destAddress = null;
+                                BitcoinScriptAddress changeAddress = null;
+                                AssetMoney coloredAmount = null;
+                                long uncoloredAmount = 0;
+                                string asset = null;
+
+                                uncoloredCoins = wallet1Coins?.ScriptCoins;
+                                coloredCoins = wallet1Coins?.AssetScriptCoins;
+                                destAddress = new Script(wallet2Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                                changeAddress = new Script(wallet1Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                                coloredAmount = (wallet1Coins?.Asset?.AssetId == null) ? null : new AssetMoney(new AssetId(new BitcoinAssetId(wallet1Coins?.Asset?.AssetId, WebSettings.ConnectionParams.BitcoinNetwork)), Convert.ToInt64((transferRequest.Amount1 * (wallet1Coins?.Asset?.AssetMultiplicationFactor ?? 0))));
+                                uncoloredAmount = Convert.ToInt64(transferRequest.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+                                asset = transferRequest.Asset1;
+
+                                TransactionBuilder builder = new TransactionBuilder();
+                                builder.BuildHalfOfSwap(secret, uncoloredCoins, coloredCoins, destAddress, changeAddress, coloredAmount,
+                                    uncoloredAmount, asset, out coloredCoinCount1);
+
+                                uncoloredCoins = wallet2Coins?.ScriptCoins;
+                                coloredCoins = wallet2Coins?.AssetScriptCoins;
+                                destAddress = new Script(wallet1Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                                changeAddress = new Script(wallet2Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                                coloredAmount = (wallet2Coins?.Asset?.AssetId == null) ? null : new AssetMoney(new AssetId(new BitcoinAssetId(wallet2Coins?.Asset?.AssetId, WebSettings.ConnectionParams.BitcoinNetwork)), Convert.ToInt64((transferRequest.Amount2 * (wallet2Coins?.Asset?.AssetMultiplicationFactor ?? 0))));
+                                uncoloredAmount = Convert.ToInt64(transferRequest.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+                                asset = transferRequest.Asset2;
+                                builder.BuildHalfOfSwap(secret, uncoloredCoins, coloredCoins, destAddress, changeAddress, coloredAmount,
+                                    uncoloredAmount, asset, out coloredCoinCount2);
+
+                                var reservedAddress = GenerateSwapAddressForReserving(transferRequest.MultisigCustomer1, transferRequest.MultisigCustomer2);
+                                var tx = (await builder.AddEnoughPaymentFee(entities, WebSettings.ConnectionParams,
+                                    WebSettings.FeeAddress, coloredCoinCount1 + coloredCoinCount2, -1, reservedAddress,
+                                    Guid.NewGuid().ToString())).BuildTransaction(true);
+
+                                var txHash = tx.GetHash().ToString();
+
+                                var unsignedTransaction = entities.UnsignedTransactions.Add(
+                                        new LykkeWalletServices.UnsignedTransaction
+                                        {
+                                            id = Guid.NewGuid(),
+                                            IsExchangeSignatureRequired = true,
+                                            IsClientSignatureRequired = true,
+                                            TransactionHex = tx.ToHex(),
+                                            OwnerAddress = reservedAddress,
+                                            CreationTime = DateTime.UtcNow
+                                        });
+                                await entities.SaveChangesAsync();
+
+                                foreach (var unspentOutput in tx.Inputs)
+                                {
+                                    entities.UnsignedTransactionSpentOutputs.Add
+                                        (new UnsignedTransactionSpentOutput
+                                        {
+                                            TransactionId = unspentOutput.PrevOut.Hash.ToString(),
+                                            OutputNumber = (int)unspentOutput.PrevOut.N,
+                                            UnsignedTransactionId = unsignedTransaction.id
+                                        });
+                                }
+                                await entities.SaveChangesAsync();
+
+                                unsignedTransactionResult = new Models.UnsignedTransaction { Id = unsignedTransaction.id.ToString(), TransactionHex = tx.ToHex() };
+
+                                if (error == null)
+                                {
+                                    transaction.Commit();
+                                }
+                                else
+                                {
+                                    transaction.Rollback();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                return InternalServerError(e);
+            }
+
+            if (error != null)
+            {
+                return InternalServerError(new Exception(error.ToString()));
+            }
+            else
+            {
+                return Json(unsignedTransactionResult);
+            }
+        }
+
         // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"TransactionToSign\":\"xyz\",\"PrivateKey\":\"xyz\"}" http://localhost:8989/Transactions/SignTransaction
         [System.Web.Http.HttpPost]
         public async Task<IHttpActionResult> SignTransaction(TransactionSignRequest signRequest)
@@ -143,20 +302,41 @@ namespace ServiceLykkeWallet.Controllers
                                                 finalTransaction = new Transaction(signBroadcastRequest.ClientSignedTransaction);
                                                 await entities.SaveChangesAsync();
 
+                                                PubKey[] clientPubKey = null;
                                                 if (txRecord.IsExchangeSignatureRequired ?? false)
                                                 {
-                                                    var clientPubKey = await OpenAssetsHelper.GetClientPubKeyForMultisig(txRecord.OwnerAddress, entities);
-                                                    TransactionSignRequest request = new TransactionSignRequest
+                                                    var numOfKeys = 1;
+                                                    if (txRecord.OwnerAddress.Length > 35)
                                                     {
-                                                        TransactionToSign = txRecord.TransactionHex,
-                                                        PrivateKey = clientPubKey.GetExchangePrivateKey(entities).ToWif()
-                                                    };
+                                                        var addr01 = txRecord.OwnerAddress.Substring(0, 35).Trim();
+                                                        var addr02 = txRecord.OwnerAddress.Substring(35, 35).Trim();
+                                                        var pubKey01 = await OpenAssetsHelper.GetClientPubKeyForMultisig(addr01, entities);
+                                                        var pubKey02 = await OpenAssetsHelper.GetClientPubKeyForMultisig(addr02, entities);
+                                                        clientPubKey = new PubKey[] { pubKey01, pubKey02 };
+                                                        numOfKeys = 2;
+                                                    }
+                                                    else
+                                                    {
+                                                        clientPubKey = new PubKey[] { await OpenAssetsHelper.GetClientPubKeyForMultisig(txRecord.OwnerAddress, entities) };
+                                                    }
 
-                                                    var exchangeSignResult = await SignTransactionWorker(request);
+                                                    string[] exchangeSignResult = new string[numOfKeys];
+                                                    Transaction[] exchangeSignedTx = new Transaction[numOfKeys];
 
+                                                    for (int i = 0; i < numOfKeys; i++)
+                                                    {
+                                                        TransactionSignRequest request = new TransactionSignRequest
+                                                        {
+                                                            TransactionToSign = txRecord.TransactionHex,
+                                                            PrivateKey = clientPubKey[i].GetExchangePrivateKey(entities).ToWif()
+                                                        };
+
+                                                        exchangeSignResult[i] = await SignTransactionWorker(request);
+                                                        exchangeSignedTx[i] = new Transaction(exchangeSignResult[i]);
+                                                    }
                                                     var unsignedTx = new Transaction(txRecord.TransactionHex);
                                                     var clientSignedTx = new Transaction(signBroadcastRequest.ClientSignedTransaction);
-                                                    var exchangeSignedTx = new Transaction(exchangeSignResult);
+
                                                     /*
                                                     TransactionBuilder builder = new TransactionBuilder();
                                                     finalTransaction = builder.ContinueToBuild(new Transaction(txRecord.TransactionHex)).CombineSignatures(new Transaction[] { new Transaction(txRecord.TransactionHex),
@@ -164,48 +344,54 @@ namespace ServiceLykkeWallet.Controllers
                                                         new Transaction(exchangeSignResult) });
                                                         */
 
-                                                    for (int i = 0; i < unsignedTx.Inputs.Count; i++)
+                                                    for (int k = 0; k < numOfKeys; k++)
                                                     {
-                                                        var input = unsignedTx.Inputs[i];
-                                                        var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
-                                                        if (txResponse.Item1)
+                                                        for (int i = 0; i < unsignedTx.Inputs.Count; i++)
                                                         {
-                                                            throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
-                                                                input.PrevOut.Hash.ToString(), txResponse.Item2));
-                                                        }
-
-                                                        var prevTransaction = new Transaction(txResponse.Item3);
-                                                        var output = prevTransaction.Outputs[input.PrevOut.N];
-                                                        if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
-                                                        {
-                                                            var redeemScript = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig).RedeemScript;
-                                                            if (PayToMultiSigTemplate.Instance.CheckScriptPubKey(redeemScript))
+                                                            var input = unsignedTx.Inputs[i];
+                                                            var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
+                                                            if (txResponse.Item1)
                                                             {
-                                                                var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
+                                                                throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
+                                                                    input.PrevOut.Hash.ToString(), txResponse.Item2));
+                                                            }
 
-                                                                var clientPushes = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(clientSignedTx.Inputs[i].ScriptSig).Pushes;
-                                                                var exchangePushes = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(exchangeSignedTx.Inputs[i].ScriptSig).Pushes;
-
-                                                                //scriptParams.Pushes = new byte[][] { clientPushes[1] , exchangePushes[2] };
-
-
-                                                                scriptParams.Pushes[1] = clientPushes[1];
-                                                                scriptParams.Pushes[2] = exchangePushes[2];
-
-
-                                                                finalTransaction.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
-                                                                /*
-                                                                var pubkeys = PayToMultiSigTemplate.Instance.ExtractScriptPubKeyParameters(redeemScript).PubKeys;
-                                                                for (int j = 0; j < pubkeys.Length; j++)
+                                                            var prevTransaction = new Transaction(txResponse.Item3);
+                                                            var output = prevTransaction.Outputs[input.PrevOut.N];
+                                                            if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
+                                                            {
+                                                                var redeemScript = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig).RedeemScript;
+                                                                if (PayToMultiSigTemplate.Instance.CheckScriptPubKey(redeemScript))
                                                                 {
-                                                                    if (secret.PubKey.ToHex() == pubkeys[j].ToHex())
+                                                                    if (PayToMultiSigTemplate.Instance.ExtractScriptPubKeyParameters(redeemScript).PubKeys.Intersect(new PubKey[] { clientPubKey[k] }).Any())
                                                                     {
                                                                         var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
-                                                                        scriptParams.Pushes[j + 1] = tx.SignInput(secret, new Coin(prevTransaction, output)).Signature.ToDER();
-                                                                        outputTx.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
+
+                                                                        var clientPushes = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(clientSignedTx.Inputs[i].ScriptSig).Pushes;
+                                                                        var exchangePushes = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(exchangeSignedTx[k].Inputs[i].ScriptSig).Pushes;
+
+                                                                        //scriptParams.Pushes = new byte[][] { clientPushes[1] , exchangePushes[2] };
+
+
+                                                                        scriptParams.Pushes[1] = clientPushes[1];
+                                                                        scriptParams.Pushes[2] = exchangePushes[2];
+
+
+                                                                        finalTransaction.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
+                                                                        /*
+                                                                        var pubkeys = PayToMultiSigTemplate.Instance.ExtractScriptPubKeyParameters(redeemScript).PubKeys;
+                                                                        for (int j = 0; j < pubkeys.Length; j++)
+                                                                        {
+                                                                            if (secret.PubKey.ToHex() == pubkeys[j].ToHex())
+                                                                            {
+                                                                                var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
+                                                                                scriptParams.Pushes[j + 1] = tx.SignInput(secret, new Coin(prevTransaction, output)).Signature.ToDER();
+                                                                                outputTx.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
+                                                                            }
+                                                                        }
+                                                                        */
                                                                     }
                                                                 }
-                                                                */
                                                             }
                                                         }
                                                     }
@@ -368,19 +554,19 @@ namespace ServiceLykkeWallet.Controllers
                                          tx.OwnerAddress == txRecord.OwnerAddress &&
                                          (tx.HasTimedout ?? false) == false &&
                                          tx.TransactionIdWhichMadeThisTransactionInvalid == null &&
-                                         (tx.TransactionSendingSuccessful ?? false ) == false
+                                         (tx.TransactionSendingSuccessful ?? false) == false
                                          select tx).ToList();
 
             IList<LykkeWalletServices.UnsignedTransaction> invalidTransactionList = new List<LykkeWalletServices.UnsignedTransaction>();
 
-            foreach(var transaction in sameOwnerTransactions)
+            foreach (var transaction in sameOwnerTransactions)
             {
-                if(transaction.id == txRecord.id)
+                if (transaction.id == txRecord.id)
                 {
                     continue;
                 }
 
-                if(MakesInvalidTransaction(new Transaction(txRecord.TransactionHex), new Transaction(transaction.TransactionHex)))
+                if (MakesInvalidTransaction(new Transaction(txRecord.TransactionHex), new Transaction(transaction.TransactionHex)))
                 {
                     invalidTransactionList.Add(transaction);
                     transaction.TransactionIdWhichMadeThisTransactionInvalid = txRecord.id;
@@ -400,7 +586,7 @@ namespace ServiceLykkeWallet.Controllers
 
                 foreach (var item in freedOutput)
                 {
-                    if(spentOutptuts.Where(o => o.TransactionId == item.TransactionId && o.OutputNumber == item.OutputNumber).Any())
+                    if (spentOutptuts.Where(o => o.TransactionId == item.TransactionId && o.OutputNumber == item.OutputNumber).Any())
                     {
                         // The item has been spent by current transaction
                         continue;
@@ -433,11 +619,11 @@ namespace ServiceLykkeWallet.Controllers
         {
             var spendingInputs = spendingTransaction.Inputs;
             var beingSpentInputs = beingSpentTransaction.Inputs;
-            foreach(var spendingInput in spendingInputs)
+            foreach (var spendingInput in spendingInputs)
             {
-                foreach(var beingSpentInput in beingSpentInputs)
+                foreach (var beingSpentInput in beingSpentInputs)
                 {
-                    if(spendingInput.PrevOut.Hash == beingSpentInput.PrevOut.Hash && spendingInput.PrevOut.N == spendingInput.PrevOut.N)
+                    if (spendingInput.PrevOut.Hash == beingSpentInput.PrevOut.Hash && spendingInput.PrevOut.N == spendingInput.PrevOut.N)
                     {
                         return true;
                     }
@@ -620,8 +806,12 @@ namespace ServiceLykkeWallet.Controllers
                                     foreach (var unspentOutput in tx.Inputs)
                                     {
                                         entities.UnsignedTransactionSpentOutputs.Add
-                                            (new UnsignedTransactionSpentOutput { TransactionId = unspentOutput.PrevOut.Hash.ToString(), OutputNumber = (int)unspentOutput.PrevOut.N ,
-                                                UnsignedTransactionId = unsignedTransaction.id });
+                                            (new UnsignedTransactionSpentOutput
+                                            {
+                                                TransactionId = unspentOutput.PrevOut.Hash.ToString(),
+                                                OutputNumber = (int)unspentOutput.PrevOut.N,
+                                                UnsignedTransactionId = unsignedTransaction.id
+                                            });
                                     }
                                     await entities.SaveChangesAsync();
 

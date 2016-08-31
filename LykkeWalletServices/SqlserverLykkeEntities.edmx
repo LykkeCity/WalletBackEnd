@@ -63,7 +63,7 @@
           <Property Name="AssetId" Type="varchar" MaxLength="100" />
           <Property Name="Address" Type="varchar" MaxLength="100" />
           <Property Name="Network" Type="varchar" MaxLength="10" />
-          <Property Name="ReservedForAddress" Type="varchar" MaxLength="35" />
+          <Property Name="ReservedForAddress" Type="varchar" MaxLength="70" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
         <EntityType Name="PregeneratedReserve">
@@ -163,7 +163,6 @@
           <Property Name="ClientSignedTransaction" Type="text" />
           <Property Name="IsExchangeSignatureRequired" Type="bit" />
           <Property Name="ExchangeSignedTransactionAfterClient" Type="text" />
-          <Property Name="OwnerAddress" Type="varchar" MaxLength="35" />
           <Property Name="TransactionSendingSuccessful" Type="bit" />
           <Property Name="TransactionSendingError" Type="text" />
           <Property Name="TransactionId" Type="varchar" MaxLength="64" />
@@ -172,6 +171,7 @@
           <Property Name="HasTimedout" Type="bit" />
           <Property Name="id" Type="uniqueidentifier" Nullable="false" />
           <Property Name="TransactionIdWhichMadeThisTransactionInvalid" Type="uniqueidentifier" />
+          <Property Name="OwnerAddress" Type="varchar" MaxLength="70" />
         </EntityType>
         <EntityType Name="UnsignedTransactionSpentOutputs">
           <Key>
@@ -450,7 +450,7 @@
           <Property Name="Address" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Network" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
-          <Property Name="ReservedForAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="ReservedForAddress" Type="String" MaxLength="70" FixedLength="false" Unicode="false" />
           <NavigationProperty Name="PregeneratedReserves" Relationship="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" FromRole="PreGeneratedOutput" ToRole="PregeneratedReserve" />
         </EntityType>
         <EntityType Name="SpentOutput">
@@ -671,7 +671,7 @@
           <Property Name="ClientSignedTransaction" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="IsExchangeSignatureRequired" Type="Boolean" />
           <Property Name="ExchangeSignedTransactionAfterClient" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
-          <Property Name="OwnerAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="OwnerAddress" Type="String" MaxLength="70" FixedLength="false" Unicode="false" />
           <Property Name="TransactionSendingSuccessful" Type="Boolean" />
           <Property Name="TransactionSendingError" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="TransactionId" Type="String" MaxLength="64" FixedLength="false" Unicode="false" />

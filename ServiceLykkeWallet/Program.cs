@@ -71,6 +71,7 @@ namespace ServiceLykkeWallet
                 Password = settings.RPCPassword, IpAddress = settings.RPCServerIpAddress, Network = settings.NetworkType.ToString() };
             WebSettings.ConnectionString = settings.ConnectionString;
             WebSettings.FeeAddress = settings.FeeAddress;
+            WebSettings.SwapMinimumConfirmationNumber = settings.SwapMinimumConfirmationNumber;
 
             var logger = new LogToConsole();
             var ioc = new IoC();

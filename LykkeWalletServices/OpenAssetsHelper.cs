@@ -1475,8 +1475,12 @@ namespace LykkeWalletServices
         {
             coloredCoinCount = 0;
 
-            builder
+            if(secret != null)
+            {
+                builder
                 .AddKeys(secret);
+            }
+            
             if (IsRealAsset(asset))
             {
                 builder
