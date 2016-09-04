@@ -368,7 +368,7 @@ namespace LykkeWalletServices
             for (int i = 0; i < usableOutputs.Length; i++)
             {
                 Coin bearer = usableOutputs[i].GetCoinFromOutput();
-                coins[i] = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), (int)usableOutputs[i].GetAssetAmount()),
+                coins[i] = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), usableOutputs[i].GetAssetAmount()),
                     bearer);
             }
             return coins;
