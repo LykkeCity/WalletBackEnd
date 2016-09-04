@@ -111,12 +111,6 @@ namespace LykkeWalletServices
             set;
         }
 
-        public static string LykkeJobsUrl
-        {
-            get;
-            set;
-        }
-
         public static int BroadcastGroup
         {
             get;
@@ -374,7 +368,7 @@ namespace LykkeWalletServices
             for (int i = 0; i < usableOutputs.Length; i++)
             {
                 Coin bearer = usableOutputs[i].GetCoinFromOutput();
-                coins[i] = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), (int)usableOutputs[i].GetAssetAmount()),
+                coins[i] = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), usableOutputs[i].GetAssetAmount()),
                     bearer);
             }
             return coins;
@@ -1481,8 +1475,12 @@ namespace LykkeWalletServices
         {
             coloredCoinCount = 0;
 
-            builder
+            if(secret != null)
+            {
+                builder
                 .AddKeys(secret);
+            }
+            
             if (IsRealAsset(asset))
             {
                 builder

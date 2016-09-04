@@ -25,11 +25,11 @@
         <EntityTypeShape EntityType="SqlexpressLykkeModel.PregeneratedReserve" Width="1.5" PointX="7" PointY="11.25" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" Width="1.5" PointX="10.375" PointY="4.75" />
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.UnsignedTransaction" Width="1.5" PointX="10.375" PointY="7.75" />
-        <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactions_UnsignedTransactions" />
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.UnsignedTransactionSpentOutput" Width="1.5" PointX="12.625" PointY="9" />
-        <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.SegKey" Width="1.5" PointX="3.375" PointY="11.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.UnsignedTransaction" Width="1.5" PointX="10.375" PointY="8" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.UnsignedTransactionSpentOutput" Width="1.5" PointX="12.625" PointY="9.25" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactions_UnsignedTransactions" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" />
         </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

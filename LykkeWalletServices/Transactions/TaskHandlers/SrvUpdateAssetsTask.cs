@@ -44,8 +44,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             public string QBitNinjaBaseUrl { get; set; }
             public int PreGeneratedOutputMinimumCount { get; set; }
 
-            public string LykkeJobsUrl { get; set; }
-
             [DefaultValue("outdata")]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public string OutdataQueueName

@@ -32,5 +32,11 @@ namespace LykkeWalletServices
             get;
             set;
         }
+
+        public static int SwapMinimumConfirmationNumber
+        {
+            get;
+            set;
+        }
     }
 }

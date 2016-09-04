@@ -20,7 +20,6 @@
   "RPCServerIpAddress": "xxx",
   "QBitNinjaBaseUrl": "http://tapi.qbit.ninja/balances/",
   "PreGeneratedOutputMinimumCount": 5,
-  "LykkeJobsUrl": "http://localhost:1088/HandledTx/",
   "SwapMinimumConfirmationNumber": null,
   "GenerateRefundingTransactionConfirmationNumber": 1,
   "DefaultNumberOfRequiredConfirmations": null,

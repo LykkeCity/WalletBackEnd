@@ -21,20 +21,20 @@ namespace LykkeWalletServices
             this.UnsignedTransactionSpentOutputs = new HashSet<UnsignedTransactionSpentOutput>();
         }
     
-        public long id { get; set; }
+        public string TransactionHex { get; set; }
         public Nullable<bool> IsClientSignatureRequired { get; set; }
         public string ClientSignedTransaction { get; set; }
         public Nullable<bool> IsExchangeSignatureRequired { get; set; }
-        public string TransactionHex { get; set; }
-        public string OwnerAddress { get; set; }
-        public byte[] Version { get; set; }
         public string ExchangeSignedTransactionAfterClient { get; set; }
+        public string OwnerAddress { get; set; }
         public Nullable<bool> TransactionSendingSuccessful { get; set; }
         public string TransactionSendingError { get; set; }
         public string TransactionId { get; set; }
+        public byte[] Version { get; set; }
         public Nullable<System.DateTime> CreationTime { get; set; }
         public Nullable<bool> HasTimedout { get; set; }
-        public Nullable<long> TransactionIdWhichMadeThisTransactionInvalid { get; set; }
+        public System.Guid id { get; set; }
+        public Nullable<System.Guid> TransactionIdWhichMadeThisTransactionInvalid { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<UnsignedTransaction> UnsignedTransactions1 { get; set; }
