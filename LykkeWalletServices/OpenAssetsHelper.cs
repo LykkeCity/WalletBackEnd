@@ -511,7 +511,7 @@ namespace LykkeWalletServices
         public static double GetAssetBalance(UniversalUnspentOutput[] outputs,
             string assetId, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
-            float total = 0;
+            double total = 0;
 
             getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
             var minimumConfirmationNumber = getMinimumConfirmationNumber();
@@ -525,7 +525,7 @@ namespace LykkeWalletServices
                     {
                         if (item.GetAssetId() != null)
                         {
-                            total += (float)item.GetAssetAmount();
+                            total += item.GetAssetAmount();
                         }
                         else
                         {
@@ -1209,7 +1209,7 @@ namespace LykkeWalletServices
                         {
                             var uncoloredOutputs = GetWalletOutputsUncolored(outputs.Item1);
                             double totalRequiredAmount = data.Count * data.FeeAmount * BTCToSathoshiMultiplicationFactor; // Convert to satoshi
-                            float minimumRequiredAmountForParticipation = Convert.ToInt64(0.001 * BTCToSathoshiMultiplicationFactor);
+                            double minimumRequiredAmountForParticipation = Convert.ToInt64(0.001 * BTCToSathoshiMultiplicationFactor);
                             var output = uncoloredOutputs.Where(o => (o.GetValue() > minimumRequiredAmountForParticipation)).ToList();
                             if (output.Count == 0)
                             {
