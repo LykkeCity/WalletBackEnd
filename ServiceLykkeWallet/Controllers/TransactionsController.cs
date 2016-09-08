@@ -21,9 +21,23 @@ namespace ServiceLykkeWallet.Controllers
 {
     public class TransactionsController : ApiController
     {
-        // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"SourceAddress\":\"xyz\",\"DestinationAddress\":\"xyz\", \"Amount\":10.25, \"Asset\":\"TestExchangeUSD\"}" http://localhost:8989/Transactions/CreateUnsignedTransfer
+        // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"SourceAddress\":\"xxx\",\"DestinationAddress\":\"xxx\", \"Amount\":0.0001, \"Asset\":\"BTC\"}" http://localhost:8989/Transactions/CreateUnsignedCashout
+        public async Task<IHttpActionResult> CreateUnsignedCashout(TransferRequest transferRequest)
+        {
+            transferRequest.MinimumConfirmationNumber = 1;
+            return await CreateUnsignedTransfer(transferRequest);
+        }
+
+        // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"SourceAddress\":\"xxx\",\"DestinationAddress\":\"xxx\", \"Amount\":0.05, \"Asset\":\"TestExchangeUSD\"}" http://localhost:8989/Transactions/CreateUnsignedTransferFromPrivateWallet
+        public async Task<IHttpActionResult> CreateUnsignedTransferFromPrivateWallet(TransferRequest transferRequest)
+        {
+            transferRequest.MinimumConfirmationNumber = 0;
+            return await CreateUnsignedTransfer(transferRequest);
+        }
+
+        // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"SourceAddress\":\"xyz\",\"DestinationAddress\":\"xyz\", \"Amount\":10.25, \"Asset\":\"TestExchangeUSD\",\"MinimumConfirmationNumber\":2}" http://localhost:8989/Transactions/CreateUnsignedTransfer
         [System.Web.Http.HttpPost]
-        public async Task<IHttpActionResult> CreateUnsignedTransfer(TransferRequest transferRequest)
+        public async Task<IHttpActionResult> CreateUnsignedTransfer(TransferRequest transferRequest, [System.Runtime.CompilerServices.CallerMemberName] string callerName = null)
         {
             IHttpActionResult result = null;
 
@@ -45,7 +59,7 @@ namespace ServiceLykkeWallet.Controllers
             }
 
             await OpenAssetsHelper.SendPendingEmailsAndLogInputOutput
-                (WebSettings.ConnectionString, "Transfer:" + JsonConvert.SerializeObject(transferRequest), ConvertResultToString(result));
+                (WebSettings.ConnectionString, (callerName ?? "CreateUnsignedTransfer") + ":" + JsonConvert.SerializeObject(transferRequest), ConvertResultToString(result));
             return result;
         }
 
@@ -462,7 +476,7 @@ namespace ServiceLykkeWallet.Controllers
             }
 
             await OpenAssetsHelper.SendPendingEmailsAndLogInputOutput
-                (WebSettings.ConnectionString, "Transfer:" + JsonConvert.SerializeObject(signBroadcastRequest), ConvertResultToString(result));
+                (WebSettings.ConnectionString, "SignTransactionIfRequiredAndBroadcast:" + JsonConvert.SerializeObject(signBroadcastRequest), ConvertResultToString(result));
 
             return result;
         }
@@ -682,8 +696,10 @@ namespace ServiceLykkeWallet.Controllers
         {
             ServiceLykkeWallet.Models.UnsignedTransaction result = null;
             Error error = null;
-            bool isClientSignatureRequired = false;
             bool isExchangeSignatureRequired = false;
+
+            Func<int> getMinimumConfirmationNumber = (() => { return data.MinimumConfirmationNumber; });
+
             try
             {
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(WebSettings.ConnectionString))
@@ -716,12 +732,12 @@ namespace ServiceLykkeWallet.Controllers
                             if (sourceAddress is BitcoinPubKeyAddress)
                             {
                                 walletCoins = (OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.SourceAddress, data.Asset.GetAssetBTCAmount(data.Amount), data.Amount, data.Asset,
-                                    WebSettings.Assets, WebSettings.ConnectionParams, WebSettings.ConnectionString, entities, true, false);
+                                    WebSettings.Assets, WebSettings.ConnectionParams, WebSettings.ConnectionString, entities, true, false, getMinimumConfirmationNumber);
                             }
                             else
                             {
                                 walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.SourceAddress, data.Asset.GetAssetBTCAmount(data.Amount), data.Amount, data.Asset,
-                                    WebSettings.Assets, WebSettings.ConnectionParams, WebSettings.ConnectionString, entities, false);
+                                    WebSettings.Assets, WebSettings.ConnectionParams, WebSettings.ConnectionString, entities, false, true, getMinimumConfirmationNumber);
                             }
                             if (walletCoins.Error != null)
                             {
@@ -737,7 +753,6 @@ namespace ServiceLykkeWallet.Controllers
                                         .SetChange(sourceAddress, ChangeType.Colored);
                                     if (sourceAddress is BitcoinPubKeyAddress)
                                     {
-                                        isClientSignatureRequired = true;
                                         isExchangeSignatureRequired = false;
 
                                         if (OpenAssetsHelper.IsRealAsset(data.Asset))
@@ -752,7 +767,6 @@ namespace ServiceLykkeWallet.Controllers
                                     }
                                     else
                                     {
-                                        isClientSignatureRequired = true;
                                         isExchangeSignatureRequired = true;
 
                                         if (OpenAssetsHelper.IsRealAsset(data.Asset))
@@ -788,8 +802,6 @@ namespace ServiceLykkeWallet.Controllers
                                     var tx = builder.BuildTransaction(true);
 
                                     var txHash = tx.GetHash().ToString();
-
-                                    OpenAssetsHelper.SentTransactionReturnValue transactionResult = null;
 
                                     var unsignedTransaction = entities.UnsignedTransactions.Add(
                                         new LykkeWalletServices.UnsignedTransaction
