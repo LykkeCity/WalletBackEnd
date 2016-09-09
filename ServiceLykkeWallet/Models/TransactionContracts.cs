@@ -39,6 +39,12 @@
             get;
             set;
         }
+
+        public int MinimumConfirmationNumber
+        {
+            get;
+            set;
+        }
     }
 
     public class SwapTransferRequest
