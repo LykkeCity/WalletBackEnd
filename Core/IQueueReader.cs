@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 
 namespace Core
 {
+    [Serializable]
     public class AssetDefinition
     {
         public string AssetId { get; set; }

@@ -22,6 +22,7 @@ namespace ServiceLykkeWallet.Controllers
     public class TransactionsController : ApiController
     {
         // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"SourceAddress\":\"xxx\",\"DestinationAddress\":\"xxx\", \"Amount\":0.0001, \"Asset\":\"BTC\"}" http://localhost:8989/Transactions/CreateUnsignedCashout
+        [System.Web.Http.HttpPost]
         public async Task<IHttpActionResult> CreateUnsignedCashout(TransferRequest transferRequest)
         {
             transferRequest.MinimumConfirmationNumber = 1;
@@ -29,6 +30,7 @@ namespace ServiceLykkeWallet.Controllers
         }
 
         // This should respond to curl -H "Content-Type: application/json" -X POST -d "{\"SourceAddress\":\"xxx\",\"DestinationAddress\":\"xxx\", \"Amount\":0.05, \"Asset\":\"TestExchangeUSD\"}" http://localhost:8989/Transactions/CreateUnsignedTransferFromPrivateWallet
+        [System.Web.Http.HttpPost]
         public async Task<IHttpActionResult> CreateUnsignedTransferFromPrivateWallet(TransferRequest transferRequest)
         {
             transferRequest.MinimumConfirmationNumber = 0;

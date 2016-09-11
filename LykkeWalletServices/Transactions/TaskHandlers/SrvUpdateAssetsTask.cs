@@ -6,6 +6,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -14,13 +15,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         private static bool settingsRead = false;
         private static TheSettings settings = null;
 
-        public class LykkeCredentials : ILykkeCredentials
-        {
-            public string PublicAddress { get; set; }
-            public string PrivateKey { get; set; }
-            public string CcPublicAddress { get; set; }
-        }
-
+        [Serializable]
         public class TheSettings
         {
             public string RestEndPoint { get; set; }
@@ -29,8 +24,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             public string ConnectionString { get; set; }
             public string LykkeSettingsConnectionString { get; set; }
-
-            public LykkeCredentials LykkeCredentials { get; set; }
 
             public AssetDefinition[] AssetDefinitions { get; set; }
             public NetworkType NetworkType { get; set; }
@@ -131,6 +124,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 get;
                 set;
             }
+
+            [DefaultValue(false)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public bool IsConfigurationEncrypted
+            {
+                get;
+                set;
+            }
         }
 
         public static async Task<TheSettings> ReadAppSettins(bool logToConsole = true)
@@ -189,6 +190,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 #else
         public const string SETTINGSFILEPATH = "settings.json";
 #endif
+        public static bool IsConfigurationEncrypted { get; set; }
+        public static string EncryptionKey { get; set; }
 
         SrvQueueReader QueueReaderInstance
         {
@@ -209,9 +212,9 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             {
                 // Updating the settings file
                 var settings = await SettingsReader.ReadAppSettins(false);
-                foreach(var item in data.Assets)
+                foreach (var item in data.Assets)
                 {
-                    if(string.IsNullOrEmpty(item.Name))
+                    if (string.IsNullOrEmpty(item.Name))
                     {
                         continue;
                     }
@@ -233,9 +236,26 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     }
                 }
 
+                var settingsToWrite = OpenAssetsHelper.DeepClone(settings);
+                if (settingsToWrite.IsConfigurationEncrypted)
+                {
+                    settingsToWrite.InQueueConnectionString = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.InQueueConnectionString);
+                    settingsToWrite.OutQueueConnectionString = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.OutQueueConnectionString);
+                    settingsToWrite.ConnectionString = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.ConnectionString);
+                    settingsToWrite.exchangePrivateKey = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.exchangePrivateKey);
+                    settingsToWrite.FeeAddressPrivateKey = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.FeeAddressPrivateKey);
+                    for (int i = 0; i < settings.AssetDefinitions.Length; i++)
+                    {
+                        if (!string.IsNullOrEmpty(settings.AssetDefinitions[i].PrivateKey))
+                        {
+                            settingsToWrite.AssetDefinitions[i].PrivateKey = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.AssetDefinitions[i].PrivateKey);
+                        }
+                    }
+                }
+
                 using (StreamWriter writer = new StreamWriter(SETTINGSFILEPATH))
                 {
-                    await writer.WriteAsync(Newtonsoft.Json.JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented));
+                    await writer.WriteAsync(Newtonsoft.Json.JsonConvert.SerializeObject(settingsToWrite, Newtonsoft.Json.Formatting.Indented));
                     writer.Flush();
                 }
 

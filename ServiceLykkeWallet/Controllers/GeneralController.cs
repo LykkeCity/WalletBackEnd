@@ -1,6 +1,7 @@
 ﻿using Core;
 using LykkeWalletServices;
 using LykkeWalletServices.Accounts;
+using LykkeWalletServices.Transactions.TaskHandlers;
 using NBitcoin;
 using ServiceLykkeWallet.Models;
 using System;
@@ -17,6 +18,74 @@ namespace ServiceLykkeWallet.Controllers
 {
     public class GeneralController : ApiController
     {
+        [System.Web.Http.HttpGet]
+        public IHttpActionResult HasTripleDESKeySubmitted()
+        {
+            if(SrvUpdateAssetsTask.EncryptionKey == null)
+            {
+                return Ok(false);
+            }
+            else
+            {
+                return Ok(true);
+            }
+        }
+
+        // curl http://localhost:8989/General/GetNewTripleDESIVKey
+        [System.Web.Http.HttpGet]
+        public IHttpActionResult GetNewTripleDESIVKey()
+        {
+            return Ok(BitConverter.ToString(TripleDESManaged.GetNewIVKey()).Replace("-", string.Empty));
+        }
+
+        // curl -X GET "http://localhost:8989/General/EncryptUsingTripleDES?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7&message=Hello\""
+        [System.Web.Http.HttpGet]
+        public IHttpActionResult EncryptUsingTripleDES(string key, string message)
+        {
+            return Ok(TripleDESManaged.Encrypt(key, message));
+        }
+
+        // curl -X GET "http://localhost:8989/General/DecryptUsingTripleDES?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7&encrypted=9436D1DC92F8232C"
+        [System.Web.Http.HttpGet]
+        public IHttpActionResult DecryptUsingTripleDES(string key, string encrypted)
+        {
+            return Ok(TripleDESManaged.Decrypt(key, encrypted));
+        }
+
+        // curl -X GET "http://localhost:8989/General/DecodeSettingsUsingTheProvidedPrivateKey?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7"
+        [System.Web.Http.HttpGet]
+        public async Task<IHttpActionResult> DecodeSettingsUsingTheProvidedPrivateKey(string key)
+        {
+            var settings = await SettingsReader.ReadAppSettins();
+            if (!settings.IsConfigurationEncrypted)
+            {
+                return BadRequest("Configuration is not encrypted.");
+            }
+            if(SrvUpdateAssetsTask.EncryptionKey != null)
+            {
+                return BadRequest("Encryption key has been submitted previously.");
+            }
+
+            settings.InQueueConnectionString = TripleDESManaged.Decrypt(key, settings.InQueueConnectionString);
+            settings.OutQueueConnectionString = TripleDESManaged.Decrypt(key, settings.OutQueueConnectionString);
+            settings.ConnectionString = TripleDESManaged.Decrypt(key, settings.ConnectionString);
+            settings.exchangePrivateKey = TripleDESManaged.Decrypt(key, settings.exchangePrivateKey);
+            settings.FeeAddressPrivateKey = TripleDESManaged.Decrypt(key, settings.FeeAddressPrivateKey);
+            for (int i = 0; i < settings.AssetDefinitions.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(settings.AssetDefinitions[i].PrivateKey))
+                {
+                    settings.AssetDefinitions[i].PrivateKey = TripleDESManaged.Decrypt(key, settings.AssetDefinitions[i].PrivateKey);
+                }
+            }
+
+            Program.ConfigureAppUsingSettings(settings);
+
+            SrvUpdateAssetsTask.EncryptionKey = key;
+
+            return Ok();
+        }
+
         // This should respond http://localhost:8989/General/GetPublicKeyFromPrivateKey?privatekey=cQKNnKS7TUFPdVc4muGXq8X9h5dxuGyYBSbnFUUuv9NVsLDNFP51
         [System.Web.Http.HttpGet]
         public HttpResponseMessage GetPublicKeyFromPrivateKey(string privatekey)
@@ -58,7 +127,7 @@ namespace ServiceLykkeWallet.Controllers
         [System.Web.Http.HttpGet]
         public IHttpActionResult SetFeeRate(uint feeRate)
         {
-            if(feeRate < 10000 || feeRate > 60000)
+            if (feeRate < 10000 || feeRate > 60000)
             {
                 return BadRequest("While setting manually feeRate should be between 10000 and 60000.");
             }
