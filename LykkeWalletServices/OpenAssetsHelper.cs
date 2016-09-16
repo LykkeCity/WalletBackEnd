@@ -15,6 +15,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Core.LykkeIntegration.Services;
 using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace LykkeWalletServices
 {
@@ -1394,6 +1396,17 @@ namespace LykkeWalletServices
         #endregion
 
         #region OtherUsefulFunctions
+        // From http://stackoverflow.com/questions/129389/how-do-you-do-a-deep-copy-an-object-in-net-c-specifically
+        public static T DeepClone<T>(T obj)
+        {
+            using (var ms = new MemoryStream())
+            {
+                var formatter = new BinaryFormatter();
+                formatter.Serialize(ms, obj);
+                ms.Position = 0;
+                return (T)formatter.Deserialize(ms);
+            }
+        }
         public static void AddPrivateKey(string privateKey, bool isP2PKH)
         {
             var secret = new BitcoinSecret(privateKey);

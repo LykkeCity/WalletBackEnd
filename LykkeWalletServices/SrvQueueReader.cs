@@ -30,12 +30,11 @@ namespace LykkeWalletServices
         private readonly string _feeAddressPrivateKey;
         private readonly IPreBroadcastHandler _preBroadcastHandler;
 
-        public SrvQueueReader(ILykkeAccountReader lykkeAccountReader, IQueueReader queueReader, IQueueWriter queueWriter, ILog log,
+        public SrvQueueReader(IQueueReader queueReader, IQueueWriter queueWriter, ILog log,
             Network network, AssetDefinition[] assets, string rpcUsername,
             string rpcPassword, string rpcServer, string connectionString, string feeAddress, string feeAddressPrivateKey, IPreBroadcastHandler preBroadcastHandler)
             : base("SrvQueueReader", 5000, log)
         {
-            _lykkeAccountReader = lykkeAccountReader;
             _queueReader = queueReader;
             _queueWriter = queueWriter;
             _log = log;

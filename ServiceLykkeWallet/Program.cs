@@ -25,12 +25,8 @@ namespace ServiceLykkeWallet
             private set;
         }
 
-        static void Main(string[] args)
+        public static void ConfigureAppUsingSettings(SettingsReader.TheSettings settings)
         {
-            var settingsTask = SettingsReader.ReadAppSettins();
-            settingsTask.Wait();
-            var settings = settingsTask.Result;
-
             // ToDo - Then we go production - put here log to Database
             var log = new LogToConsole();
 
@@ -39,26 +35,27 @@ namespace ServiceLykkeWallet
             var queueReader = new AzureQueueReader(new AzureQueueExt(settings.InQueueConnectionString, "indata"));
             var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, settings.OutdataQueueName));
             var emailQueueWriter = new AzureQueueExt(settings.OutQueueConnectionString, "emailsqueue");
-            var lykkeAccountReader = new LykkeAccountReader(settings.LykkeCredentials);
 
             OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
             OpenAssetsHelper.BroadcastGroup = settings.BroadcastGroup;
             OpenAssetsHelper.EnvironmentName = settings.EnvironmentName;
             OpenAssetsHelper.PreGeneratedOutputMinimumCount = settings.PreGeneratedOutputMinimumCount;
             OpenAssetsHelper.EmailQueueWriter = emailQueueWriter;
-            if(settings.SwapMinimumConfirmationNumber >= 0)
+            if (settings.SwapMinimumConfirmationNumber >= 0)
             {
                 SrvSwapTask.SwapMinimumConfirmationNumber = settings.SwapMinimumConfirmationNumber;
             }
-            if(settings.DefaultNumberOfRequiredConfirmations >= 0)
+            if (settings.DefaultNumberOfRequiredConfirmations >= 0)
             {
                 OpenAssetsHelper.MinimumNumberOfRequiredConfirmations = settings.DefaultNumberOfRequiredConfirmations;
             }
             if (settings.GenerateRefundingTransactionMinimumConfirmationNumber >= 0)
             {
-                SrvGenerateRefundingTransactionTask.GenerateRefundingTransactionMinimumConfirmationNumber = 
+                SrvGenerateRefundingTransactionTask.GenerateRefundingTransactionMinimumConfirmationNumber =
                     settings.GenerateRefundingTransactionMinimumConfirmationNumber;
             }
+            SrvTransferTask.TransferFromPrivateWalletMinimumConfirmationNumber = settings.TransferFromPrivateWalletMinimumConfirmationNumber;
+
             OpenAssetsHelper.PrivateKeyWillBeSubmitted = settings.PrivateKeyWillBeSubmitted;
             GeneralHelper.ExchangePrivateKey = settings.exchangePrivateKey;
             SrvGenerateNewWalletTask.ExchangePrivateKey = settings.exchangePrivateKey;
@@ -67,8 +64,13 @@ namespace ServiceLykkeWallet
             GeneralHelper.UseSegKeysTable = settings.UseSegKeysTable;
 
             WebSettings.Assets = settings.AssetDefinitions;
-            WebSettings.ConnectionParams = new OpenAssetsHelper.RPCConnectionParams { Username = settings.RPCUsername,
-                Password = settings.RPCPassword, IpAddress = settings.RPCServerIpAddress, Network = settings.NetworkType.ToString() };
+            WebSettings.ConnectionParams = new OpenAssetsHelper.RPCConnectionParams
+            {
+                Username = settings.RPCUsername,
+                Password = settings.RPCPassword,
+                IpAddress = settings.RPCServerIpAddress,
+                Network = settings.NetworkType.ToString()
+            };
             WebSettings.ConnectionString = settings.ConnectionString;
             WebSettings.FeeAddress = settings.FeeAddress;
             WebSettings.SwapMinimumConfirmationNumber = settings.SwapMinimumConfirmationNumber;
@@ -80,10 +82,10 @@ namespace ServiceLykkeWallet
                 var lykkeSettings = GeneralSettingsReader.ReadGeneralSettings<BaseSettings>(settings.LykkeSettingsConnectionString);
                 ioc.BindAzureRepositories(lykkeSettings.Db, logger);
             }
-            
+
             ioc.BindLykkeServices(settings.UseMockAsLykkeNotification);
-            
-            srvQueueReader = new SrvQueueReader(lykkeAccountReader, queueReader, queueWriter,
+
+            srvQueueReader = new SrvQueueReader(queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
                 settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
                 settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress, settings.FeeAddressPrivateKey,
@@ -102,12 +104,27 @@ namespace ServiceLykkeWallet
 
 
             Console.WriteLine("Queue reader is started");
-           
+        }
+
+        static void Main(string[] args)
+        {
+            var settingsTask = SettingsReader.ReadAppSettins();
+            settingsTask.Wait();
+            var settings = settingsTask.Result;
+            SrvUpdateAssetsTask.IsConfigurationEncrypted = settings.IsConfigurationEncrypted;
+
+            if (!settings.IsConfigurationEncrypted)
+            {
+                ConfigureAppUsingSettings(settings);
+            }
+
             using (WebApp.Start(settings.RestEndPoint))
             {
                 Console.WriteLine($"Http Server started: {settings.RestEndPoint}");
                 Console.ReadLine();
             }
+
+            
         }
     }
 }
