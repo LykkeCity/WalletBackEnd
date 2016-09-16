@@ -140,6 +140,7 @@ SourcePrivateKey is required only if the private keys are not submitted
 |UnsignedTransactionsUpdaterPeriod|10 minutes|The timer period for updating the unsigned transaction status and their consumed fees.|
 |UnsignedTransactionTimeoutInMinutes|5 minutes|Number of minutes after which unsigned transactions are timed out.|
 |IsConfigurationEncrypted|false|Wether the configuration is encrypted, if so InQueueConnectionString , OutQueueConnectionString , ConnectionString , exchangePrivateKey , FeeAddressPrivateKey and asset private keys are encrypted. Before component usage DecodeSettingsUsingTheProvidedPrivateKey should be called with proper key.|
+|TransferFromPrivateWalletMinimumConfirmationNumber|0|The number of confirmations required to send transaction from private wallet.|
 
 The AssetDefinitions is an array of json, with the following fields:
 
