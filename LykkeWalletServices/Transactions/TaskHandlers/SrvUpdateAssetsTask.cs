@@ -194,7 +194,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvUpdateAssetsTask
     {
 #if DEBUG
-        public const string SETTINGSFILEPATH = "F:\\Lykkex\\settings.json";
+        public const string SETTINGSFILEPATH = "D:\\Lykkex\\settings.json";
 #else
         public const string SETTINGSFILEPATH = "settings.json";
 #endif

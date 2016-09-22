@@ -18,6 +18,38 @@ namespace ServiceLykkeWallet.Controllers
 {
     public class GeneralController : ApiController
     {
+        // curl http://localhost:8989/General/IsAlive
+        [System.Web.Http.HttpGet]
+        public async Task<IHttpActionResult> IsAlive()
+        {
+            try
+            {
+                using (SqlexpressLykkeEntities entities = 
+                    new SqlexpressLykkeEntities(WebSettings.ConnectionString))
+                {
+                    // Checking if DB is 
+                    long count = entities.InputOutputMessageLogs.Count();
+
+                    // Checking if Blockchain explorer is accessable
+                    // The address is a random one taken from blockchain, does not have a special meaning
+                    var testAddress = (WebSettings.ConnectionParams.BitcoinNetwork == Network.Main ?
+                        "1F1hsoSN9rGPZdwk3SJHin2q7jQsftSteU" : " mt4BFpmdbGft3Q8eQDo5ehUVNq99uzBugy ");
+                    var walletOutputs = await OpenAssetsHelper.GetWalletOutputs
+                        (testAddress, WebSettings.ConnectionParams.BitcoinNetwork, entities);
+
+                    if(walletOutputs.Item2)
+                    {
+                        return BadRequest(walletOutputs.Item3);
+                    }
+                }
+            }
+            catch (Exception exp)
+            {
+                return InternalServerError(exp);
+            }
+            return Ok();
+        }
+
         [System.Web.Http.HttpGet]
         public IHttpActionResult HasTripleDESKeySubmitted()
         {
