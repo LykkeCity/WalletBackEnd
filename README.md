@@ -173,3 +173,7 @@ Database for the applicaion is currently sql server (developped with express ver
 ## Tests
 
 The details about tests is listed in the readme.md in tests folder
+
+## HTTP Methods
+
+Some HTTP Methods has been added to the component, they are available in the Controllers directory of ServiceLykkeWallet, method usage are available by a comment on the method, some of the methods may soon change in future.
