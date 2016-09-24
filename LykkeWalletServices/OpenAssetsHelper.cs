@@ -1126,29 +1126,7 @@ namespace LykkeWalletServices
                     */
                     try
                     {
-                        var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
-
-                        try
-                        {
-                            await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
-                                new string[] { tx.GetHash().ToString() }, null);
-                        }
-                        catch (Exception)
-                        {
-                        }
-
-                        var destAddresses = tx.Outputs.Select(o => o.ScriptPubKey.GetDestinationAddress(connectionParams.BitcoinNetwork)?.ToWif()).Where(c => !string.IsNullOrEmpty(c)).Distinct();
-                        foreach (var addr in destAddresses)
-                        {
-                            try
-                            {
-                                await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
-                                    new string[] { tx.GetHash().ToString() }, addr);
-                            }
-                            catch (Exception)
-                            {
-                            }
-                        }
+                        await IsTransactionFullyIndexed(tx, connectionParams);
                     }
                     catch (Exception)
                     {
@@ -1158,6 +1136,33 @@ namespace LykkeWalletServices
             }
 
             return new SentTransactionReturnValue { Error = error, SentTransactionId = sentTransactionId };
+        }
+
+        public static async Task IsTransactionFullyIndexed(Transaction tx, RPCConnectionParams connectionParams)
+        {
+            var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
+
+            try
+            {
+                await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
+                    new string[] { tx.GetHash().ToString() }, null);
+            }
+            catch (Exception)
+            {
+            }
+
+            var destAddresses = tx.Outputs.Select(o => o.ScriptPubKey.GetDestinationAddress(connectionParams.BitcoinNetwork)?.ToWif()).Where(c => !string.IsNullOrEmpty(c)).Distinct();
+            foreach (var addr in destAddresses)
+            {
+                try
+                {
+                    await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
+                        new string[] { tx.GetHash().ToString() }, addr);
+                }
+                catch (Exception)
+                {
+                }
+            }
         }
 
         public static async Task<Tuple<GenerateMassOutputsTaskResult, Error>> GenerateMassOutputs(TaskToDoGenerateMassOutputs data, string purpose,
