@@ -18,26 +18,32 @@ namespace ServiceLykkeWallet.Controllers
         [System.Web.Http.HttpGet]
         public async Task<IHttpActionResult> IsTransactionFullyIndexed(string txHash)
         {
+            IHttpActionResult result = null;
             try
             {
                 var txHex = await OpenAssetsHelper.GetTransactionHex(txHash, WebSettings.ConnectionParams);
 
                 if (txHex.Item1)
                 {
-                    return BadRequest(txHex.Item2);
+                    result = BadRequest(txHex.Item2);
                 }
                 else
                 {
                     await OpenAssetsHelper.IsTransactionFullyIndexed(new Transaction(txHex.Item3),
                         WebSettings.ConnectionParams);
 
-                    return Ok();
+                    result = Ok();
                 }
             }
             catch(Exception exp)
             {
-                return InternalServerError(exp);
+                result = InternalServerError(exp);
             }
+
+            await OpenAssetsHelper.SendPendingEmailsAndLogInputOutput
+                (WebSettings.ConnectionString, "IsTransactionFullyIndexed:" + txHash,
+                TransactionsController.ConvertResultToString(result));
+            return result;
         }
 
         // curl -H "Content-Type: application/json" -X POST -d "{\"ClientPubKey\":\"xyz\",\"ExchangePrivateKey\":\"xyz\"}" http://localhost:8989/Wallet/AddWallet

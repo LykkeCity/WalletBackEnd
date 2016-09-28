@@ -669,7 +669,7 @@ namespace ServiceLykkeWallet.Controllers
             await entities.SaveChangesAsync();
         }
 
-        public string ConvertResultToString(IHttpActionResult result)
+        public static string ConvertResultToString(IHttpActionResult result)
         {
             if (result is ExceptionResult)
             {
