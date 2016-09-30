@@ -85,6 +85,12 @@ namespace LykkeWalletServices
         public const APIProvider apiProvider = APIProvider.QBitNinja;
         public const int LocktimeMinutesAllowance = 120;
 
+        public static ILog GeneralLogger
+        {
+            get;
+            set;
+        }
+
         public static string QBitNinjaBalanceUrl
         {
             get
@@ -1126,7 +1132,7 @@ namespace LykkeWalletServices
                     */
                     try
                     {
-                        await IsTransactionFullyIndexed(tx, connectionParams);
+                        await IsTransactionFullyIndexed(tx, connectionParams, entitiesContext);
                     }
                     catch (Exception)
                     {
@@ -1138,14 +1144,15 @@ namespace LykkeWalletServices
             return new SentTransactionReturnValue { Error = error, SentTransactionId = sentTransactionId };
         }
 
-        public static async Task IsTransactionFullyIndexed(Transaction tx, RPCConnectionParams connectionParams)
+        public static async Task IsTransactionFullyIndexed(Transaction tx, RPCConnectionParams connectionParams,
+            SqlexpressLykkeEntities entities)
         {
             var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
 
             try
             {
                 await WaitUntillQBitNinjaHasIndexed(settings, HasTransactionIndexed,
-                    new string[] { tx.GetHash().ToString() }, null);
+                    new string[] { tx.GetHash().ToString() }, null, entities);
             }
             catch (Exception)
             {
@@ -1157,7 +1164,7 @@ namespace LykkeWalletServices
                 try
                 {
                     await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
-                        new string[] { tx.GetHash().ToString() }, addr);
+                        new string[] { tx.GetHash().ToString() }, addr, entities);
                 }
                 catch (Exception)
                 {
@@ -1493,12 +1500,12 @@ namespace LykkeWalletServices
         {
             coloredCoinCount = 0;
 
-            if(secret != null)
+            if (secret != null)
             {
                 builder
                 .AddKeys(secret);
             }
-            
+
             if (IsRealAsset(asset))
             {
                 builder
@@ -2377,10 +2384,10 @@ namespace LykkeWalletServices
                             asset_quantity = c.quantity
                         });
 
-                    /*
-                    await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
-                        convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
-                        */
+                        /*
+                        await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
+                            convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
+                            */
 
                         (await convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))))
                         .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));
@@ -2486,25 +2493,17 @@ namespace LykkeWalletServices
 
         public static async Task<bool> IsUrlSuccessful(string url)
         {
-            try
+            using (HttpClient client = new HttpClient())
             {
-                using (HttpClient client = new HttpClient())
+                HttpResponseMessage result = await client.GetAsync(url);
+                if (!result.IsSuccessStatusCode)
                 {
-
-                    HttpResponseMessage result = await client.GetAsync(url);
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return true;
-                    }
+                    return false;
                 }
-            }
-            catch (Exception)
-            {
-                return true;
+                else
+                {
+                    return true;
+                }
             }
         }
 
@@ -2521,7 +2520,8 @@ namespace LykkeWalletServices
         }
 
         public static async Task WaitUntillQBitNinjaHasIndexed(TheSettings settings,
-            Func<TheSettings, string, string, Task<bool>> checkIndexed, IEnumerable<string> ids, string id2 = null)
+            Func<TheSettings, string, string, Task<bool>> checkIndexed, IEnumerable<string> ids, string id2 = null,
+            SqlexpressLykkeEntities entities = null)
         {
             var indexed = false;
             foreach (var id in ids)
@@ -2529,15 +2529,25 @@ namespace LykkeWalletServices
                 indexed = false;
                 for (int i = 0; i < 30; i++)
                 {
-                    if (await checkIndexed(settings, id, id2))
+                    bool result = false;
+                    try
+                    {
+                        result = await checkIndexed(settings, id, id2);
+                    }
+                    catch (Exception exp)
+                    {
+                        if (entities != null)
+                        {
+                            await GeneralLogger.WriteError("OpenAssetsHelper", string.Empty, string.Empty, exp, null, entities);
+                        }
+                    }
+
+                    if (result)
                     {
                         indexed = true;
                         break;
                     }
-                    else
-                    {
-                        await Task.Delay(1000);
-                    }
+                    await Task.Delay(1000);
                 }
 
                 if (!indexed)

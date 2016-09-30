@@ -5,6 +5,14 @@
     <!-- SSDL content -->
     <edmx:StorageModels>
     <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="DBLog">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Message" Type="text" Nullable="false" />
+          <Property Name="CreationDate" Type="datetime" Nullable="false" />
+        </EntityType>
         <EntityType Name="EmailMessages">
           <Key>
             <PropertyRef Name="id" />
@@ -63,8 +71,8 @@
           <Property Name="AssetId" Type="varchar" MaxLength="100" />
           <Property Name="Address" Type="varchar" MaxLength="100" />
           <Property Name="Network" Type="varchar" MaxLength="10" />
-          <Property Name="ReservedForAddress" Type="varchar" MaxLength="70" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+          <Property Name="ReservedForAddress" Type="varchar" MaxLength="70" />
         </EntityType>
         <EntityType Name="PregeneratedReserve">
           <Key>
@@ -302,6 +310,7 @@
           </ReferentialConstraint>
         </Association>
         <EntityContainer Name="SqlexpressLykkeModelStoreContainer">
+          <EntitySet Name="DBLog" EntityType="Self.DBLog" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="EmailMessages" EntityType="Self.EmailMessages" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="InputOutputMessageLog" EntityType="Self.InputOutputMessageLog" Schema="dbo" store:Type="Tables" />
@@ -406,6 +415,7 @@
             <End Role="UnsignedTransaction" EntitySet="UnsignedTransactions" />
             <End Role="UnsignedTransactionSpentOutput" EntitySet="UnsignedTransactionSpentOutputs" />
           </AssociationSet>
+          <EntitySet Name="DBLogs" EntityType="SqlexpressLykkeModel.DBLog" />
         </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -719,6 +729,14 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <EntityType Name="DBLog">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Message" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="CreationDate" Type="DateTime" Nullable="false" Precision="3" />
+        </EntityType>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -932,6 +950,15 @@
                 <ScalarProperty Name="UnsignedTransactionId" ColumnName="UnsignedTransactionId" />
                 <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
                 <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="DBLogs">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.DBLog">
+              <MappingFragment StoreEntitySet="DBLog">
+                <ScalarProperty Name="CreationDate" ColumnName="CreationDate" />
+                <ScalarProperty Name="Message" ColumnName="Message" />
+                <ScalarProperty Name="id" ColumnName="id" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

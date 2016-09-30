@@ -47,5 +47,6 @@ namespace LykkeWalletServices
         public virtual DbSet<SegKey> SegKeys { get; set; }
         public virtual DbSet<UnsignedTransaction> UnsignedTransactions { get; set; }
         public virtual DbSet<UnsignedTransactionSpentOutput> UnsignedTransactionSpentOutputs { get; set; }
+        public virtual DbSet<DBLog> DBLogs { get; set; }
     }
 }

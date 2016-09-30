@@ -17,7 +17,7 @@ namespace Common.Log
         private readonly GuiTableLastData _guiTableLastData = new GuiTableLastData(50, LogUtils.GuiHeader);
 
         private void WriteRecordToMemory(string level, string component, string process,
-            string context, string type, string msg, DateTime? dateTime)
+            string context, string type, string msg, DateTime? dateTime, object extraLoggerParam = null)
         {
             if (dateTime == null)
                 dateTime = DateTime.UtcNow;
@@ -31,27 +31,27 @@ namespace Common.Log
                 msg);
         }
 
-        public Task WriteInfo(string component, string process, string context, string info, DateTime? dateTime = null)
+        public Task WriteInfo(string component, string process, string context, string info, DateTime? dateTime = null, object extraLoggerParam = null)
         {
             WriteRecordToMemory("info", component, process, context, string.Empty, info, dateTime);
 
             return Task.FromResult(0);
         }
 
-        public Task WriteWarning(string component, string process, string context, string info, DateTime? dateTime = null)
+        public Task WriteWarning(string component, string process, string context, string info, DateTime? dateTime = null, object extraLoggerParam = null)
         {
             WriteRecordToMemory("warning", component, process, context, string.Empty, info, dateTime);
             return Task.FromResult(0);
         }
 
-        public Task WriteError(string component, string process, string context, Exception type, DateTime? dateTime = null)
+        public Task WriteError(string component, string process, string context, Exception type, DateTime? dateTime = null, object extraLoggerParam = null)
         {
             WriteRecordToMemory("error", component, process, context, type.GetType().ToString(), type.Message, dateTime);
             return Task.FromResult(0);
         }
 
  
-        public Task WriteFatalError(string component, string process, string context, Exception type, DateTime? dateTime = null)
+        public Task WriteFatalError(string component, string process, string context, Exception type, DateTime? dateTime = null, object extraLoggerParam = null)
         {
             WriteRecordToMemory("fatalerror", component, process, context, type.GetType().ToString(), type.Message, dateTime);
             return Task.FromResult(0);

@@ -5,7 +5,7 @@ namespace Common.Log
 {
     public class LogToConsole : ILog
     {
-        public Task WriteInfo(string component, string process, string context, string info, DateTime? dateTime = null)
+        public Task WriteInfo(string component, string process, string context, string info, DateTime? dateTime = null, object extraLoggerParam = null)
         {
             Console.WriteLine("---------LOG INFO-------");
             Console.WriteLine("Component: "+ component);
@@ -17,7 +17,7 @@ namespace Common.Log
             return Task.FromResult(0);
         }
 
-        public Task WriteWarning(string component, string process, string context, string info, DateTime? dateTime = null)
+        public Task WriteWarning(string component, string process, string context, string info, DateTime? dateTime = null, object extraLoggerParam = null)
         {
             Console.WriteLine("---------LOG WARNING-------");
             Console.WriteLine("Component: " + component);
@@ -29,7 +29,7 @@ namespace Common.Log
             return Task.FromResult(0);
         }
 
-        public Task WriteError(string component, string process, string context, Exception exeption, DateTime? dateTime = null)
+        public Task WriteError(string component, string process, string context, Exception exeption, DateTime? dateTime = null, object extraLoggerParam = null)
         {
             Console.WriteLine("---------LOG ERROR-------");
             Console.WriteLine("Component: " + component);
@@ -43,7 +43,7 @@ namespace Common.Log
         }
 
 
-        public Task WriteFatalError(string component, string process, string context, Exception exeption, DateTime? dateTime = null)
+        public Task WriteFatalError(string component, string process, string context, Exception exeption, DateTime? dateTime = null, object extraLoggerParam = null)
         {
             Console.WriteLine("---------LOG FATALERROR-------");
             Console.WriteLine("Component: " + component);

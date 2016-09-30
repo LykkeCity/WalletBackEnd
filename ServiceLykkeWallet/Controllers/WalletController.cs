@@ -29,13 +29,15 @@ namespace ServiceLykkeWallet.Controllers
                 }
                 else
                 {
-                    await OpenAssetsHelper.IsTransactionFullyIndexed(new Transaction(txHex.Item3),
-                        WebSettings.ConnectionParams);
-
+                    using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(WebSettings.ConnectionString))
+                    {
+                        await OpenAssetsHelper.IsTransactionFullyIndexed(new Transaction(txHex.Item3),
+                            WebSettings.ConnectionParams, entities);
+                    }
                     result = Ok();
                 }
             }
-            catch(Exception exp)
+            catch (Exception exp)
             {
                 result = InternalServerError(exp);
             }
@@ -58,10 +60,13 @@ namespace ServiceLykkeWallet.Controllers
                                            where record.ClientPubKey == wallet.ClientPubKey
                                            select record).FirstOrDefault();
 
-                    if(exisitingRecord == null)
+                    if (exisitingRecord == null)
                     {
-                        entities.SegKeys.Add(new SegKey { ClientPubKey = wallet.ClientPubKey,
-                            ExchangePrivateKey = wallet.ExchangePrivateKey });
+                        entities.SegKeys.Add(new SegKey
+                        {
+                            ClientPubKey = wallet.ClientPubKey,
+                            ExchangePrivateKey = wallet.ExchangePrivateKey
+                        });
                     }
                     else
                     {
@@ -101,7 +106,7 @@ namespace ServiceLykkeWallet.Controllers
                         entities.SegKeys.Add(new SegKey
                         {
                             ClientPubKey = ClientPublicKey,
-                            ExchangePrivateKey =  exchangeSecret.ToWif()
+                            ExchangePrivateKey = exchangeSecret.ToWif()
                         });
                         await entities.SaveChangesAsync();
                     }
