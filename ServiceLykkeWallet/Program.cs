@@ -40,6 +40,7 @@ namespace ServiceLykkeWallet
             OpenAssetsHelper.BroadcastGroup = settings.BroadcastGroup;
             OpenAssetsHelper.EnvironmentName = settings.EnvironmentName;
             OpenAssetsHelper.PreGeneratedOutputMinimumCount = settings.PreGeneratedOutputMinimumCount;
+            OpenAssetsHelper.GeneralLogger = new LogToDB();
             OpenAssetsHelper.EmailQueueWriter = emailQueueWriter;
             if (settings.SwapMinimumConfirmationNumber >= 0)
             {
