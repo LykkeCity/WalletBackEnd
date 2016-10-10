@@ -2460,7 +2460,7 @@ namespace LykkeWalletServices
             {
                 string url = null;
                 exists = false;
-                url = settings.QBitNinjaBaseUrl + "balances/" + btcAddress + "?headeronly=true";
+                url = settings.QBitNinjaBaseUrl + "balances/" + btcAddress + "?unspentonly=true&colored=true";
                 result = await client.GetAsync(url);
             }
 
@@ -2509,7 +2509,7 @@ namespace LykkeWalletServices
 
         public static async Task<bool> HasTransactionIndexed(TheSettings settings, string txId, string dummy)
         {
-            string url = settings.QBitNinjaBaseUrl + "transactions/" + txId + "?headeronly=true";
+            string url = settings.QBitNinjaBaseUrl + "transactions/" + txId + "?colored=true";
             return await IsUrlSuccessful(url);
         }
 
