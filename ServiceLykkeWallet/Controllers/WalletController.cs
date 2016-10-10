@@ -32,7 +32,7 @@ namespace ServiceLykkeWallet.Controllers
                     using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(WebSettings.ConnectionString))
                     {
                         await OpenAssetsHelper.IsTransactionFullyIndexed(new Transaction(txHex.Item3),
-                            WebSettings.ConnectionParams, entities);
+                            WebSettings.ConnectionParams, entities, true);
                     }
                     result = Ok();
                 }

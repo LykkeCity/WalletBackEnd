@@ -1151,7 +1151,7 @@ namespace LykkeWalletServices
         }
 
         public static async Task IsTransactionFullyIndexed(Transaction tx, RPCConnectionParams connectionParams,
-            SqlexpressLykkeEntities entities)
+            SqlexpressLykkeEntities entities, bool confirmationRequired = false)
         {
             var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
 
@@ -1169,8 +1169,16 @@ namespace LykkeWalletServices
             {
                 try
                 {
-                    await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
-                        new string[] { tx.GetHash().ToString() }, addr, entities);
+                    if (confirmationRequired)
+                    {
+                        await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexed,
+                            new string[] { tx.GetHash().ToString() }, addr, entities);
+                    }
+                    else
+                    {
+                        await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexedZeroConfirmation,
+                            new string[] { tx.GetHash().ToString() }, addr, entities);
+                    }
                 }
                 catch (Exception)
                 {
