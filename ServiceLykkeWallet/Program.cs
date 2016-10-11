@@ -57,6 +57,7 @@ namespace ServiceLykkeWallet
                     settings.GenerateRefundingTransactionMinimumConfirmationNumber;
             }
             SrvTransferTask.TransferFromPrivateWalletMinimumConfirmationNumber = settings.TransferFromPrivateWalletMinimumConfirmationNumber;
+            SrvTransferTask.TransferFromMultisigWalletMinimumConfirmationNumber = settings.TransferFromMultisigWalletMinimumConfirmationNumber;
 
             OpenAssetsHelper.PrivateKeyWillBeSubmitted = settings.PrivateKeyWillBeSubmitted;
             GeneralHelper.ExchangePrivateKey = settings.exchangePrivateKey;
