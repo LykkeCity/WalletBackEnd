@@ -21,6 +21,12 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             set;
         }
 
+        public static int TransferFromMultisigWalletMinimumConfirmationNumber
+        {
+            get;
+            set;
+        }
+
         public SrvTransferTask(Network network, AssetDefinition[] assets, string username,
             string password, string ipAddress, string feeAddress, string connectionString, IPreBroadcastHandler preBroadcastHandler) :
                 base(network, assets, username, password, ipAddress, feeAddress, connectionString)
@@ -61,17 +67,20 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             }
 
                             OpenAssetsHelper.GetCoinsForWalletReturnType walletCoins = null;
+                            Func<int> MinimumConfirmationNumberFunc = null;
                             if (sourceAddress is BitcoinPubKeyAddress)
                             {
-                                Func<int> MinimumConfirmationNumberFunc = (() => { return TransferFromPrivateWalletMinimumConfirmationNumber; });
+                                MinimumConfirmationNumberFunc = (() => { return TransferFromPrivateWalletMinimumConfirmationNumber; });
         
                                 walletCoins = (OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.SourceAddress, data.Asset.GetAssetBTCAmount(data.Amount), data.Amount, data.Asset,
                                     Assets, connectionParams, ConnectionString, entities, true, false, MinimumConfirmationNumberFunc);
                             }
                             else
                             {
+                                MinimumConfirmationNumberFunc = (() => { return TransferFromMultisigWalletMinimumConfirmationNumber; });
+
                                 walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.SourceAddress, data.Asset.GetAssetBTCAmount(data.Amount), data.Amount, data.Asset,
-                                    Assets, connectionParams, ConnectionString, entities, false);
+                                    Assets, connectionParams, ConnectionString, entities, false, true,  MinimumConfirmationNumberFunc);
                             }
                             if (walletCoins.Error != null)
                             {
