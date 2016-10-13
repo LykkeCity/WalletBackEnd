@@ -39,6 +39,7 @@ namespace ServiceLykkeWallet
             OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
             OpenAssetsHelper.BroadcastGroup = settings.BroadcastGroup;
             OpenAssetsHelper.FeeMultiplicationFactor = settings.FeeMultiplicationFactor;
+            OpenAssetsHelper.FeeType = settings.FeeType;
             OpenAssetsHelper.EnvironmentName = settings.EnvironmentName;
             OpenAssetsHelper.PreGeneratedOutputMinimumCount = settings.PreGeneratedOutputMinimumCount;
             OpenAssetsHelper.GeneralLogger = new LogToDB();

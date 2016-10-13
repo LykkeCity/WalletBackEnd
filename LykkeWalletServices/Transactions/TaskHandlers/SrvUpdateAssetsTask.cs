@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
+using LykkeWalletServices.TimerServices;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -56,6 +57,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             [DefaultValue(1)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public uint FeeMultiplicationFactor
+            {
+                get;
+                set;
+            }
+
+            [DefaultValue(FeeType21co.HalfHourFee)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public FeeType21co FeeType
             {
                 get;
                 set;
