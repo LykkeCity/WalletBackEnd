@@ -1,5 +1,6 @@
 ﻿using Common;
 using Common.Log;
+using LykkeWalletServices.TimerServices;
 using System;
 using System.Collections.Generic;
 using System.Linq;

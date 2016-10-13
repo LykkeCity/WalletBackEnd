@@ -17,6 +17,7 @@ using Core.LykkeIntegration.Services;
 using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using LykkeWalletServices.TimerServices;
 
 namespace LykkeWalletServices
 {
@@ -126,6 +127,12 @@ namespace LykkeWalletServices
         }
 
         public static uint FeeMultiplicationFactor
+        {
+            get;
+            set;
+        }
+
+        public static FeeType21co FeeType
         {
             get;
             set;
@@ -1500,7 +1507,23 @@ namespace LykkeWalletServices
                 {
                     var str = await webClient.GetStringAsync(url);
                     var deserialize = JsonConvert.DeserializeObject<TwentyOneFeeReport>(str);
-                    return (uint)Math.Max(deserialize.hourFee * 1000, MinimumTransactionSendFeesInSatoshi);
+                    int feeToUse = 0;
+                    switch(FeeType)
+                    {
+                        case FeeType21co.FastestFee:
+                            feeToUse = deserialize.fastestFee;
+                            break;
+                        case FeeType21co.HalfHourFee:
+                            feeToUse = deserialize.halfHourFee;
+                            break;
+                        case FeeType21co.HourFee:
+                            feeToUse = deserialize.hourFee;
+                            break;
+                        default:
+                            feeToUse = deserialize.halfHourFee;
+                            break;
+                    }
+                    return (uint)Math.Max(feeToUse * 1000, MinimumTransactionSendFeesInSatoshi);
                 }
             }
             catch (Exception e)

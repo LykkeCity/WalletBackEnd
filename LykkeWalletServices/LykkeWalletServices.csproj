@@ -121,10 +121,11 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
     </Compile>
-    <Compile Include="SrvUnsignedTransactionsUpdater.cs" />
-    <Compile Include="SrvFeeReserveCleaner.cs" />
-    <Compile Include="SrvFeeUpdater.cs" />
-    <Compile Include="SrvQueueReader.cs" />
+    <Compile Include="TimerServices\FeeType21co.cs" />
+    <Compile Include="TimerServices\SrvUnsignedTransactionsUpdater.cs" />
+    <Compile Include="TimerServices\SrvFeeReserveCleaner.cs" />
+    <Compile Include="TimerServices\SrvFeeUpdater.cs" />
+    <Compile Include="TimerServices\SrvQueueReader.cs" />
     <Compile Include="TransactionsToBeSigned.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>

@@ -143,6 +143,7 @@ SourcePrivateKey is required only if the private keys are not submitted
 |TransferFromPrivateWalletMinimumConfirmationNumber|0|The number of confirmations required to send transaction from private wallet.|
 |TransferFromMultisigWalletMinimumConfirmationNumber|0|The number of confirmations required to send transaction from private wallet.|
 |FeeMultiplicationFactor|1|The multiplication factor used for fee generation.|
+|FeeType|HalfHourFee|21.co fee type to be used, valid values are FastestFee , HalfHourFee , HourFee|
 
 The AssetDefinitions is an array of json, with the following fields:
 
