@@ -149,6 +149,7 @@ namespace Core
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
         public string PublicWallet { get; set; }
+        public bool IgnoreUnconfirmed { get; set; }
     }
 
     public class TaskToDoOrdinaryCashIn : TransactionToDoBase
@@ -186,6 +187,7 @@ namespace Core
         public string MultisigCustomer2 { get; set; }
         public double Amount2 { get; set; }
         public string Asset2 { get; set; }
+        public bool IgnoreUnconfirmed { get; set; }
     }
 
     public class TaskToDoGetBalance : TransactionToDoBase

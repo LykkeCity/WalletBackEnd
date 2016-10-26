@@ -18,6 +18,7 @@ using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using LykkeWalletServices.TimerServices;
+using Newtonsoft.Json.Linq;
 
 namespace LykkeWalletServices
 {
@@ -319,6 +320,14 @@ namespace LykkeWalletServices
             return builder;
         }
 
+        // From transaction 0cb81047ab5945a59d578ca015804bc539d3af78523d90287335de57fdfe7fd8
+        // Following is what a signed input will add to a transaction (143 bytes)
+        // a172379843146d35b29fc4524a6ef9f9cba2e6dbe8956e3e76c1619cdda35e0b
+        // 6b000000
+        // 6a
+        // 47304402202ae6c3693442d090285ae0b37ed7020e7490af4a3cce20f6e83d0918e8e5e04f02205248928b5eac2df48d13d72bc70e91152deec38efe80f044900f3d4e83367db6012103958ff7db47a01390f4a0ba0266a1750f00468c2d1d749ef872aa2b2b34d1a6ef
+        // ffffffff
+
         public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
             RPCConnectionParams connectionParams, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1,
             string reservedForAddress = null, string reserveId = null)
@@ -326,6 +335,9 @@ namespace LykkeWalletServices
             builder.SetChange(BitcoinAddress.Create(feeAddress), ChangeType.Uncolored);
 
             long totalAddedFee = 0;
+
+            var feeRate = await GetFeeRate();
+            var feeConsumptionItself = (long)((143.0 / 1024) * feeRate.FeePerK.Satoshi);
 
             if (estimatedFee == -1)
             {
@@ -341,7 +353,7 @@ namespace LykkeWalletServices
                     }
                     catch (NotEnoughFundsException ex)
                     {
-                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, null,
+                        PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, 2 * feeConsumptionItself, null,
                             reservedForAddress, reserveId);
                         Coin feePayerCoin = feePayer.GetCoin();
 
@@ -352,7 +364,7 @@ namespace LykkeWalletServices
                     }
                 }
 
-                estimatedFee = builder.EstimateFees(tx, await GetFeeRate());
+                estimatedFee = builder.EstimateFees(tx, feeRate);
             }
 
             var requiredFee = estimatedFee + requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi;
@@ -365,11 +377,12 @@ namespace LykkeWalletServices
                     break;
                 }
 
-                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, null, reservedForAddress, reserveId);
+                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, 2 * feeConsumptionItself, reservedForAddress, reserveId);
                 Coin feePayerCoin = feePayer.GetCoin();
 
                 totalAddedFee += feePayer.Amount;
                 builder.AddKeys(new BitcoinSecret(feePayer.PrivateKey)).AddCoins(feePayerCoin);
+                requiredFee += feeConsumptionItself;
             }
             builder
                 .SendFees(new Money(totalAddedFee - requiredNumberOfColoredCoinFee * NBitcoinColoredCoinOutputInSatoshi)); // We put all added fee here, since estimate is under estimate
@@ -471,13 +484,13 @@ namespace LykkeWalletServices
         }
 
         public static async Task<Tuple<UniversalUnspentOutput[], bool, string>> GetWalletOutputs(string walletAddress,
-            Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null)
+            Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
         {
             Tuple<UniversalUnspentOutput[], bool, string> ret = null;
             switch (apiProvider)
             {
                 case APIProvider.QBitNinja:
-                    var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, entities, getMinimumConfirmationNumber);
+                    var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, entities, getMinimumConfirmationNumber, ignoreUnconfirmed);
                     ret = new Tuple<UniversalUnspentOutput[], bool, string>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
                         qbitResult.Item2, qbitResult.Item3);
                     break;
@@ -643,7 +656,7 @@ namespace LykkeWalletServices
         public static async Task<GetCoinsForWalletReturnType> GetCoinsForWallet
             (string multiSigAddress, long requiredSatoshiAmount, double requiredAssetAmount, string asset, AssetDefinition[] assets,
             RPCConnectionParams connectionParams, string connectionString, SqlexpressLykkeEntities entities,
-            bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true, Func<int> getMinimumConfirmationNumber = null)
+            bool isOrdinaryReturnTypeRequired, bool isAddressMultiSig = true, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
         {
             GetCoinsForWalletReturnType ret;
             if (!IsRealAsset(asset))
@@ -669,7 +682,7 @@ namespace LykkeWalletServices
 
                 // Getting wallet outputs
                 var walletOutputs = await GetWalletOutputs
-                    (multiSigAddress, connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);
+                    (multiSigAddress, connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber, ignoreUnconfirmed);
                 if (walletOutputs.Item2)
                 {
                     ret.Error = new Error();
@@ -1508,7 +1521,7 @@ namespace LykkeWalletServices
                     var str = await webClient.GetStringAsync(url);
                     var deserialize = JsonConvert.DeserializeObject<TwentyOneFeeReport>(str);
                     int feeToUse = 0;
-                    switch(FeeType)
+                    switch (FeeType)
                     {
                         case FeeType21co.FastestFee:
                             feeToUse = deserialize.fastestFee;
@@ -1728,14 +1741,14 @@ namespace LykkeWalletServices
         }
 
         public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
-            RPCConnectionParams connectionParams, string assetId = null, string reservedForAddress = null, string reserveId = null)
+            RPCConnectionParams connectionParams, long minimumSatoshiOfTheOutput = 0, string assetId = null, string reservedForAddress = null, string reserveId = null)
         {
             bool pregeneratedCoinFound = false;
 
             if (!string.IsNullOrEmpty(reservedForAddress))
             {
                 var reservedCoins = (from item in entities.PreGeneratedOutputs
-                                     where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) &&
+                                     where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && item.Amount >= minimumSatoshiOfTheOutput &&
                                      (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) &&
                                      item.ReservedForAddress == reservedForAddress
                                      select item).ToList();
@@ -1762,7 +1775,7 @@ namespace LykkeWalletServices
             }
 
             var coins = from item in entities.PreGeneratedOutputs
-                        where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) && string.IsNullOrEmpty(item.ReservedForAddress)
+                        where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && item.Amount >= minimumSatoshiOfTheOutput && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) && string.IsNullOrEmpty(item.ReservedForAddress)
                         select item;
 
             int count = await coins.CountAsync();
@@ -1777,7 +1790,8 @@ namespace LykkeWalletServices
 
                 if (count == 0)
                 {
-                    throw new Exception("There is no coins to use for fee payment");
+                    throw new Exception(string.Format("There is no proper coins to use for fee payment. Either no coin or no coin with at least {0} satoshi.",
+                        minimumSatoshiOfTheOutput));
                 }
                 else
                 {
@@ -2274,7 +2288,7 @@ namespace LykkeWalletServices
         }
 
         public static async Task<QBitNinjaOutputResponse> GetAddressBalance(string walletAddress, Action<HttpResponseMessage> onNotSuccessfulReturn,
-            bool colored = true, bool unspentonly = true)
+            bool colored = true, bool unspentonly = true, bool ignoreUnconfirmed = false)
         {
             string continuation = null;
             List<QBitNinjaOperation> operations = new List<QBitNinjaOperation>();
@@ -2287,6 +2301,24 @@ namespace LykkeWalletServices
                     string url = null;
                     url = string.Format("{0}?unspentonly={1}&colored={2}",
                         QBitNinjaBalanceUrl + walletAddress, unspentonly.ToString().ToLower(), colored.ToString().ToLower());
+                    if (ignoreUnconfirmed)
+                    {
+                        string blockNumberUrl = string.Format("{0}/blocks/tip?headeronly=true",
+                            QBitNinjaBaseUrl);
+                        HttpResponseMessage blockNumberResult = await client.GetAsync(blockNumberUrl);
+                        if (!blockNumberResult.IsSuccessStatusCode)
+                        {
+                            onNotSuccessfulReturn.Invoke(blockNumberResult);
+                            return null;
+                        }
+                        else
+                        {
+                            var webResponse = await blockNumberResult.Content.ReadAsStringAsync();
+                            dynamic blockNumberUnprocessed = JObject.Parse(webResponse);
+                            int blockHeight = blockNumberUnprocessed.additionalInformation.height;
+                            url += string.Format("&from={0}", blockHeight);
+                        }
+                    }
                     if (!string.IsNullOrEmpty(continuation))
                     {
                         url += string.Format("&continuation={0}", continuation);
@@ -2369,7 +2401,7 @@ namespace LykkeWalletServices
         delegate Task PopulateUnspentOupt(QBitNinjaOperation operation);
 
         public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
-            Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null)
+            Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
         {
             bool errorOccured = false;
             string errorMessage = string.Empty;
@@ -2404,7 +2436,7 @@ namespace LykkeWalletServices
                 */
                 notProcessedUnspentOutputs = await GetAddressBalance(walletAddress,
                     (result) => { errorOccured = true; errorMessage = result.ReasonPhrase; }
-                    , true, true);
+                    , true, true, ignoreUnconfirmed);
 
                 if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
                 {
