@@ -33,7 +33,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 {
                     OpenAssetsHelper.GetScriptCoinsForWalletReturnType walletCoins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)
                         await OpenAssetsHelper.GetCoinsForWallet(data.MultisigAddress, !OpenAssetsHelper.IsRealAsset(data.Currency) ? Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount, data.Currency,
-                        Assets, connectionParams, ConnectionString, entities, false);
+                        Assets, connectionParams, ConnectionString, entities, false, true, null, data.IgnoreUnconfirmed);
                     if (walletCoins.Error != null)
                     {
                         error = walletCoins.Error;

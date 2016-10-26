@@ -44,7 +44,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             {
                                 using (var transaction = entities.Database.BeginTransaction())
                                 {
-                                    PreGeneratedOutput issuancePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, connectionParams,
+                                    PreGeneratedOutput issuancePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, connectionParams, 0,
                                         asset.AssetId);
                                     Coin issuancePayerCoin = issuancePayer.GetCoin();
                                     IssuanceCoin issueCoin = new IssuanceCoin(issuancePayerCoin);

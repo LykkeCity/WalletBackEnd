@@ -194,7 +194,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         if (destAmount < 0)
                                         {
                                             throw new Exception
-                                                ("The amount to be refunded is smaller than than the fee, no refund will be generated.");
+                                                ("The amount to be refunded is smaller than the fee, no refund will be generated.");
                                         }
 
                                         refundTx = builder

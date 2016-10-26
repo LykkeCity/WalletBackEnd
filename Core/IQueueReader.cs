@@ -149,6 +149,7 @@ namespace Core
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
         public string PublicWallet { get; set; }
+        public bool IgnoreUnconfirmed { get; set; }
     }
 
     public class TaskToDoOrdinaryCashIn : TransactionToDoBase
