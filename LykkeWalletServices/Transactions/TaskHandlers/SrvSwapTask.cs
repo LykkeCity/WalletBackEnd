@@ -49,7 +49,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
                     OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet1Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer1, !OpenAssetsHelper.IsRealAsset(data.Asset1) ? Convert.ToInt64(data.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount1, data.Asset1,
-                    Assets, connectionParams, ConnectionString, entities, false, true, getMinimumConfirmationNumber);
+                    Assets, connectionParams, ConnectionString, entities, false, true, getMinimumConfirmationNumber, data.IgnoreUnconfirmed);
                     if (wallet1Coins.Error != null)
                     {
                         error = wallet1Coins.Error;
@@ -57,7 +57,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     else
                     {
                         OpenAssetsHelper.GetScriptCoinsForWalletReturnType wallet2Coins = (OpenAssetsHelper.GetScriptCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(data.MultisigCustomer2, !OpenAssetsHelper.IsRealAsset(data.Asset2) ? Convert.ToInt64(data.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount2, data.Asset2,
-                         Assets, connectionParams, ConnectionString, entities, false, true, getMinimumConfirmationNumber);
+                         Assets, connectionParams, ConnectionString, entities, false, true, getMinimumConfirmationNumber, data.IgnoreUnconfirmed);
                         if (wallet2Coins.Error != null)
                         {
                             error = wallet2Coins.Error;

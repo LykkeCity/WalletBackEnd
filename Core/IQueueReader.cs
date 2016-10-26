@@ -187,6 +187,7 @@ namespace Core
         public string MultisigCustomer2 { get; set; }
         public double Amount2 { get; set; }
         public string Asset2 { get; set; }
+        public bool IgnoreUnconfirmed { get; set; }
     }
 
     public class TaskToDoGetBalance : TransactionToDoBase
