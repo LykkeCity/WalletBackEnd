@@ -57,6 +57,10 @@ namespace ServiceLykkeWallet
                 SrvGenerateRefundingTransactionTask.GenerateRefundingTransactionMinimumConfirmationNumber =
                     settings.GenerateRefundingTransactionMinimumConfirmationNumber;
             }
+            if(settings.MaximumTransactionSendFeesInSatoshi > 0)
+            {
+                OpenAssetsHelper.MaximumTransactionSendFeesInSatoshi = settings.MaximumTransactionSendFeesInSatoshi;
+            }
             SrvTransferTask.TransferFromPrivateWalletMinimumConfirmationNumber = settings.TransferFromPrivateWalletMinimumConfirmationNumber;
             SrvTransferTask.TransferFromMultisigWalletMinimumConfirmationNumber = settings.TransferFromMultisigWalletMinimumConfirmationNumber;
 

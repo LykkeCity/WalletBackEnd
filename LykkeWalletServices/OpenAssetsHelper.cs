@@ -72,7 +72,7 @@ namespace LykkeWalletServices
         }
 
         public const uint MinimumRequiredSatoshi = 50000; // 100000000 satoshi is one BTC
-        public static uint TransactionSendFeesInSatoshi
+        public static long TransactionSendFeesInSatoshi
         {
             get;
             set;
@@ -80,7 +80,12 @@ namespace LykkeWalletServices
 
         public const uint DefaultTransactionSendFeesInSatoshi = 20000;
         public const int MinimumTransactionSendFeesInSatoshi = 10000;
-        public const int MaximumTransactionSendFeesInSatoshi = 100000;
+        public static int MaximumTransactionSendFeesInSatoshi
+        {
+            get;
+            set;
+        }
+
         public const ulong BTCToSathoshiMultiplicationFactor = 100000000;
         public const uint ConcurrencyRetryCount = 3;
         public const uint NBitcoinColoredCoinOutputInSatoshi = 2730;
@@ -1485,7 +1490,7 @@ namespace LykkeWalletServices
                 }
             }
 
-            TransactionSendFeesInSatoshi = FeeMultiplicationFactor * Math.Min(TransactionSendFeesInSatoshi,
+            TransactionSendFeesInSatoshi = FeeMultiplicationFactor * Math.Min((long)TransactionSendFeesInSatoshi,
                 MaximumTransactionSendFeesInSatoshi);
             return new FeeRate(new Money(TransactionSendFeesInSatoshi));
         }
@@ -1511,7 +1516,7 @@ namespace LykkeWalletServices
             }
         }
 
-        public static async Task<uint> UpdateFeeRateFromInternet()
+        public static async Task<long> UpdateFeeRateFromInternet()
         {
             string url = "https://bitcoinfees.21.co/api/v1/fees/recommended";
             try
@@ -1541,7 +1546,7 @@ namespace LykkeWalletServices
             }
             catch (Exception e)
             {
-                return Math.Max(TransactionSendFeesInSatoshi, MinimumTransactionSendFeesInSatoshi);
+                return Math.Max(TransactionSendFeesInSatoshi, (long)MinimumTransactionSendFeesInSatoshi);
             }
         }
 

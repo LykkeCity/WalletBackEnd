@@ -118,6 +118,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 set;
             }
 
+            [DefaultValue(200000)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int MaximumTransactionSendFeesInSatoshi
+            {
+                get;
+                set;
+            }
+
             [DefaultValue(false)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public bool PrivateKeyWillBeSubmitted
