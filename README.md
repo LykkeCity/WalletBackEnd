@@ -156,10 +156,22 @@ The AssetDefinitions is an array of json, with the following fields:
 |Divisibility|Number of decimal places for the asset|
 
 
-
 *   The exchange private key could be generated using TestConsole project, Program.cs, function TestBitcoinScripts, for the configured Main or TestNet.
 
 *   For debug install latest [Microsoft Azure Storage Emulator](http://download.microsoft.com/download/0/F/E/0FE64840-9806-4D3C-9C11-84B743162618/MicrosoftAzureStorageEmulator.msi)
+
+## Configuration encryption
+
+*   If IsConfigurationEncrypted is enabled the configuration strings mentioned in the flag description are encrypted, and the following command should be invoked after startup (With the proper key, instead of the one provided).
+
+*   This command should be called at the beginning to decrypt the encrypted settings:  curl -X GET "http://localhost:8989/General/DecodeSettingsUsingTheProvidedPrivateKey?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7"
+
+*   A new key could be generated using command: curl http://localhost:8989/General/GetNewTripleDESIVKey
+
+*   To encrypt a string: curl -X GET "http://localhost:8989/General/EncryptUsingTripleDES?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7&message=Hello\""
+
+*   To decrypt a string: curl -X GET "http://localhost:8989/General/DecryptUsingTripleDES?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7&encrypted=9436D1DC92F8232C"
+
 
 ## Mixing signatures
 
