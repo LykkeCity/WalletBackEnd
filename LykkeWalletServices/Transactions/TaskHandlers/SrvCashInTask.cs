@@ -46,9 +46,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             IssuanceCoin issueCoin = new IssuanceCoin(issuancePayerCoin);
                             issueCoin.DefinitionUrl = new Uri(asset.AssetDefinitionUrl);
 
-                            var debugAsset = new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, connectionParams.BitcoinNetwork);
-                            var debugSecret = new BitcoinSecret(issuancePayer.PrivateKey, connectionParams.BitcoinNetwork);
-
                             // Issuing the asset
                             TransactionBuilder builder = new TransactionBuilder();
                             builder = builder
