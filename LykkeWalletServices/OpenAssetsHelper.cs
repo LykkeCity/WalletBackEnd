@@ -19,6 +19,9 @@ using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using LykkeWalletServices.TimerServices;
 using Newtonsoft.Json.Linq;
+using LykkeWalletServices;
+using System.Runtime.CompilerServices;
+using System.Data.Entity.Infrastructure;
 
 namespace LykkeWalletServices
 {
@@ -1746,90 +1749,113 @@ namespace LykkeWalletServices
         }
 
         public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
-            RPCConnectionParams connectionParams, long minimumSatoshiOfTheOutput = 0, string assetId = null, string reservedForAddress = null, string reserveId = null)
+            RPCConnectionParams connectionParams, long minimumSatoshiOfTheOutput = 0, string assetId = null, string reservedForAddress = null, string reserveId = null,
+            uint retryCount = OpenAssetsHelper.ConcurrencyRetryCount)
         {
-            bool pregeneratedCoinFound = false;
-
-            if (!string.IsNullOrEmpty(reservedForAddress))
+            await entities.SaveChangesAsync();
+            int retries = 0;
+            while (true)
             {
-                var reservedCoins = (from item in entities.PreGeneratedOutputs
-                                     where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && item.Amount >= minimumSatoshiOfTheOutput &&
-                                     (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) &&
-                                     item.ReservedForAddress == reservedForAddress
-                                     select item).ToList();
-
-                foreach (var c in reservedCoins)
+                try
                 {
-                    var isPreviouslyUsed = (from item in entities.PregeneratedReserves
-                                            where item.PreGeneratedOutputN == c.OutputNumber
-                                            && item.PreGeneratedOutputTxId == c.TransactionId
-                                            && item.ReserveId == reserveId
-                                            select item).Any();
+                    bool pregeneratedCoinFound = false;
 
-                    if (isPreviouslyUsed)
+                    if (!string.IsNullOrEmpty(reservedForAddress))
                     {
-                        continue;
-                    }
-                    else
-                    {
-                        await CreateNewReserve(entities, reserveId, c, true);
+                        var reservedCoins = (from item in entities.PreGeneratedOutputs
+                                             where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && item.Amount >= minimumSatoshiOfTheOutput &&
+                                             (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) &&
+                                             item.ReservedForAddress == reservedForAddress
+                                             select item).ToList();
 
-                        return c;
-                    }
-                }
-            }
-
-            var coins = from item in entities.PreGeneratedOutputs
-                        where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && item.Amount >= minimumSatoshiOfTheOutput && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) && string.IsNullOrEmpty(item.ReservedForAddress)
-                        select item;
-
-            int count = await coins.CountAsync();
-
-            PreGeneratedOutput f = null;
-            while (!pregeneratedCoinFound)
-            {
-                if (count < PreGeneratedOutputMinimumCount)
-                {
-                    await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount, entities);
-                }
-
-                if (count == 0)
-                {
-                    throw new Exception(string.Format("There is no proper coins to use for fee payment. Either no coin or no coin with at least {0} satoshi.",
-                        minimumSatoshiOfTheOutput));
-                }
-                else
-                {
-                    int index = new Random().Next(coins.Count());
-                    f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
-                    if (string.IsNullOrEmpty(reserveId))
-                    {
-                        f.Consumed = 1;
-                    }
-                    else
-                    {
-                        f.ReservedForAddress = reservedForAddress;
-                        await CreateNewReserve(entities, reserveId, f, false);
-                    }
-                    await entities.SaveChangesAsync();
-
-                    if (!await PregeneratedHasBeenSpentInBlockchain(f, connectionParams))
-                    {
-                        pregeneratedCoinFound = true;
-                    }
-                    else
-                    {
-                        if (!string.IsNullOrEmpty(reserveId))
+                        foreach (var c in reservedCoins)
                         {
-                            f.Consumed = 1;
-                            f.ReservedForAddress = null;
-                            await entities.SaveChangesAsync();
+                            var isPreviouslyUsed = (from item in entities.PregeneratedReserves
+                                                    where item.PreGeneratedOutputN == c.OutputNumber
+                                                    && item.PreGeneratedOutputTxId == c.TransactionId
+                                                    && item.ReserveId == reserveId
+                                                    select item).Any();
+
+                            if (isPreviouslyUsed)
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                await CreateNewReserve(entities, reserveId, c, true);
+
+                                return c;
+                            }
                         }
                     }
+
+                    var coins = from item in entities.PreGeneratedOutputs
+                                where item.Consumed.Equals(0) && item.Network.Equals(connectionParams.Network) && item.Amount >= minimumSatoshiOfTheOutput && (assetId == null ? item.AssetId == null : item.AssetId.Equals(assetId.ToString())) && string.IsNullOrEmpty(item.ReservedForAddress)
+                                select item;
+
+                    int count = await coins.CountAsync();
+
+                    PreGeneratedOutput f = null;
+                    while (!pregeneratedCoinFound)
+                    {
+                        if (count < PreGeneratedOutputMinimumCount)
+                        {
+                            await SendAlertForPregenerateOutput(assetId, count, PreGeneratedOutputMinimumCount, entities);
+                        }
+
+                        if (count == 0)
+                        {
+                            throw new Exception(string.Format("There is no proper coins to use for fee payment. Either no coin or no coin with at least {0} satoshi.",
+                                minimumSatoshiOfTheOutput));
+                        }
+                        else
+                        {
+                            int index = new Random().Next(coins.Count());
+                            f = await coins.OrderBy(c => c.TransactionId).Skip(index).Take(1).FirstAsync();
+                            if (string.IsNullOrEmpty(reserveId))
+                            {
+                                f.Consumed = 1;
+                            }
+                            else
+                            {
+                                f.ReservedForAddress = reservedForAddress;
+                                await CreateNewReserve(entities, reserveId, f, false);
+                            }
+                            await entities.SaveChangesAsync();
+
+                            if (!await PregeneratedHasBeenSpentInBlockchain(f, connectionParams))
+                            {
+                                pregeneratedCoinFound = true;
+                            }
+                            else
+                            {
+                                if (!string.IsNullOrEmpty(reserveId))
+                                {
+                                    f.Consumed = 1;
+                                    f.ReservedForAddress = null;
+                                    await entities.SaveChangesAsync();
+                                }
+                            }
+                        }
+                    }
+
+                    return f;
+                }
+                catch (DbUpdateConcurrencyException exp)
+                {
+                    retries++;
+
+                    if (retries >= retryCount)
+                    {
+                        throw exp;
+                    }
+                    else
+                    {
+                        await exp.Entries.Single().ReloadAsync();
+                        continue;
+                    }
                 }
             }
-
-            return f;
         }
 
         public static async Task CheckForFeeOutputAndFree(SqlexpressLykkeEntities entities, UnsignedTransactionSpentOutput item)
@@ -2301,7 +2327,7 @@ namespace LykkeWalletServices
             do
             {
                 QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
-                using (HttpClient client = new HttpClient())
+                using (WalletBackendHTTPClient client = new WalletBackendHTTPClient())
                 {
                     string url = null;
                     url = string.Format("{0}?unspentonly={1}&colored={2}",
@@ -2403,6 +2429,14 @@ namespace LykkeWalletServices
             }
         }
 
+        private static string GetCaller(
+                        [CallerFilePath] string file = "",
+                        [CallerMemberName] string member = "",
+                        [CallerLineNumber] int line = 0)
+        {
+            return string.Format("{0}_{1}({2})", Path.GetFileName(file), member, line);
+        }
+
         delegate Task PopulateUnspentOupt(QBitNinjaOperation operation);
 
         public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
@@ -2440,64 +2474,67 @@ namespace LykkeWalletServices
                 }
                 */
                 notProcessedUnspentOutputs = await GetAddressBalance(walletAddress,
-                    (result) => { errorOccured = true; errorMessage = result.ReasonPhrase; }
+                    (result) => { errorOccured = true; errorMessage = GetCaller() + " " + result.ToString(); }
                     , true, true, ignoreUnconfirmed);
 
-                if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
+                if (!errorOccured)
                 {
-                    PopulateUnspentOupt t = async (o) =>
+                    if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
                     {
-                        var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
+                        PopulateUnspentOupt t = async (o) =>
                         {
-                            confirmations = o.confirmations,
-                            output_index = c.index,
-                            transaction_hash = c.transactionId,
-                            value = c.value,
-                            script_hex = c.scriptPubKey,
-                            asset_id = c.assetId,
-                            asset_quantity = c.quantity
-                        });
+                            var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
+                            {
+                                confirmations = o.confirmations,
+                                output_index = c.index,
+                                transaction_hash = c.transactionId,
+                                value = c.value,
+                                script_hex = c.scriptPubKey,
+                                asset_id = c.assetId,
+                                asset_quantity = c.quantity
+                            });
 
-                        /*
-                        await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
-                            convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
-                            */
-
-                        (await convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))))
-                        .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));
-                    };
-                    var tasks = notProcessedUnspentOutputs.operations.Select(o => t(o));
-                    await Task.WhenAll(tasks);
-                    /*
-                    notProcessedUnspentOutputs.operations.ForEach(async (o) =>
-                    {
-                        var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
-                        {
-                            confirmations = o.confirmations,
-                            output_index = c.index,
-                            transaction_hash = c.transactionId,
-                            value = c.value,
-                            script_hex = c.scriptPubKey,
-                            asset_id = c.assetId,
-                            asset_quantity = c.quantity
-                        });
-
-                        try
-                        {
+                            /*
                             await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
                                 convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
-                        }
-                        catch (Exception)
+                                */
+
+                            (await convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))))
+                            .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));
+                        };
+                        var tasks = notProcessedUnspentOutputs.operations.Select(o => t(o));
+                        await Task.WhenAll(tasks);
+                        /*
+                        notProcessedUnspentOutputs.operations.ForEach(async (o) =>
                         {
-                            throw;
-                        }
-                    });
-                    */
-                }
-                else
-                {
-                    errorOccured = true;
-                    errorMessage = "No coins to retrieve.";
+                            var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
+                            {
+                                confirmations = o.confirmations,
+                                output_index = c.index,
+                                transaction_hash = c.transactionId,
+                                value = c.value,
+                                script_hex = c.scriptPubKey,
+                                asset_id = c.assetId,
+                                asset_quantity = c.quantity
+                            });
+
+                            try
+                            {
+                                await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
+                                    convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
+                            }
+                            catch (Exception)
+                            {
+                                throw;
+                            }
+                        });
+                        */
+                    }
+                    else
+                    {
+                        errorOccured = true;
+                        errorMessage = "No coins to retrieve.";
+                    }
                 }
             }
             catch (Exception e)

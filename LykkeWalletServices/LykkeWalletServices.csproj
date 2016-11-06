@@ -170,6 +170,7 @@
     <Compile Include="UnsignedTransactionSpentOutput.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="WalletBackendHTTPClient.cs" />
     <Compile Include="WebSettings.cs" />
     <Compile Include="WholeRefund.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
