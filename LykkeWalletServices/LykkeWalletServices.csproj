@@ -138,6 +138,7 @@
     <Compile Include="Transactions\Responses\TaskResultGenerateExchangeTransfer.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetBalance.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetExpiredUnclaimedRefundingTransactionsTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvUncolorTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvTransferAllAssetsToAddress.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvUpdateAssetsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateRefundingTransactionTask.cs" />

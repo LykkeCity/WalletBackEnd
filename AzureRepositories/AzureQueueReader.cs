@@ -17,6 +17,7 @@ namespace AzureRepositories
                 QueueType.Create("CashIn", typeof(TaskToDoCashIn)),
                 QueueType.Create("OrdinaryCashIn", typeof(TaskToDoOrdinaryCashIn)),
                 QueueType.Create("CashOut", typeof(TaskToDoCashOut)),
+                QueueType.Create("Uncolor", typeof(TaskToDoUncolor)),
                 QueueType.Create("CashOutSeparateSignatures", typeof(TaskToDoCashOutSeparateSignatures)),
                 QueueType.Create("OrdinaryCashOut", typeof(TaskToDoOrdinaryCashOut)),
                 QueueType.Create("GetCurrentBalance", typeof(TaskToDoGetCurrentBalance)),

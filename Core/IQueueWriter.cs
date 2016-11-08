@@ -99,6 +99,10 @@ namespace Core
     {
     }
 
+    public class UncolorTaskResult : TransactionSenderTaskResult
+    {
+    }
+
     public class OrdinaryCashOutTaskResult : TransactionSenderTaskResult
     {
     }

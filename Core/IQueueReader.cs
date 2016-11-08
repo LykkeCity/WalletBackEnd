@@ -141,6 +141,16 @@ namespace Core
         public string PrivateKey { get; set; }
     }
 
+    public class TaskToDoUncolor : TransactionToDoBase
+    {
+        public string MultisigAddress { get; set; }
+        // ToDo - At first we assume the currency is not divisable
+        public double Amount { get; set; }
+        public string Currency { get; set; }
+        public string PrivateKey { get; set; }
+        public bool IgnoreUnconfirmed { get; set; }
+    }
+
     public class TaskToDoOrdinaryCashOut : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }

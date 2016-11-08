@@ -385,7 +385,7 @@ namespace LykkeWalletServices
                     break;
                 }
 
-                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, 2 * feeConsumptionItself, reservedForAddress, reserveId);
+                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, 2 * feeConsumptionItself, null, reservedForAddress, reserveId);
                 Coin feePayerCoin = feePayer.GetCoin();
 
                 totalAddedFee += feePayer.Amount;
@@ -1450,6 +1450,100 @@ namespace LykkeWalletServices
         #endregion
 
         #region OtherUsefulFunctions
+        public class TransactionSignRequest
+        {
+            public string TransactionToSign
+            {
+                get;
+                set;
+            }
+
+            public string PrivateKey
+            {
+                get;
+                set;
+            }
+        }
+
+        public static async Task<string> SignTransactionWorker(TransactionSignRequest signRequest)
+        {
+            Transaction tx = new Transaction(signRequest.TransactionToSign);
+            Transaction outputTx = new Transaction(signRequest.TransactionToSign);
+            var secret = new BitcoinSecret(signRequest.PrivateKey);
+
+            TransactionBuilder builder = new TransactionBuilder();
+            tx = builder.ContinueToBuild(tx).AddKeys(new BitcoinSecret[] { secret }).SignTransaction(tx);
+
+            for (int i = 0; i < tx.Inputs.Count; i++)
+            {
+                var input = tx.Inputs[i];
+                var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
+                if (txResponse.Item1)
+                {
+                    throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
+                        input.PrevOut.Hash.ToString(), txResponse.Item2));
+                }
+
+                ///var builder = new TransactionBuilder();
+
+                var prevTransaction = new Transaction(txResponse.Item3);
+                var output = prevTransaction.Outputs[input.PrevOut.N];
+                if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
+                {
+                    var redeemScript = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig).RedeemScript;
+                    if (PayToMultiSigTemplate.Instance.CheckScriptPubKey(redeemScript))
+                    {
+                        var pubkeys = PayToMultiSigTemplate.Instance.ExtractScriptPubKeyParameters(redeemScript).PubKeys;
+                        for (int j = 0; j < pubkeys.Length; j++)
+                        {
+                            if (secret.PubKey.ToHex() == pubkeys[j].ToHex())
+                            {
+                                var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
+                                var hash = Script.SignatureHash(scriptParams.RedeemScript, tx, i, SigHash.All);
+                                var signature = secret.PrivateKey.Sign(hash, SigHash.All);
+                                scriptParams.Pushes[j + 1] = signature.Signature.ToDER().Concat(new byte[] { 0x01 }).ToArray();
+                                outputTx.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
+                            }
+                        }
+                    }
+                    continue;
+                }
+
+                if (PayToPubkeyHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
+                {
+                    var address = PayToPubkeyHashTemplate.Instance.ExtractScriptPubKeyParameters(output.ScriptPubKey).GetAddress(WebSettings.ConnectionParams.BitcoinNetwork).ToWif();
+                    if (address == secret.GetAddress().ToWif())
+                    {
+                        var hash = Script.SignatureHash(output.ScriptPubKey, tx, i, SigHash.All);
+                        var signature = secret.PrivateKey.Sign(hash, SigHash.All);
+
+                        outputTx.Inputs[i].ScriptSig = PayToPubkeyHashTemplate.Instance.GenerateScriptSig(signature, secret.PubKey);
+                    }
+
+                    continue;
+                }
+            }
+
+            /*
+            for (int i = 0; i < outputTx.Inputs.Count; i++)
+            {
+                var input = outputTx.Inputs[i];
+                var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(),
+                    WebSettings.ConnectionParams);
+                if (txResponse.Item1)
+                {
+                    throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
+                        input.PrevOut.Hash.ToString(), txResponse.Item2));
+                }
+
+                builder.AddCoins(new Transaction(txResponse.Item3));
+            }
+            var verify = builder.Verify(outputTx);
+            */
+
+            return outputTx.ToHex();
+        }
+
         // From http://stackoverflow.com/questions/129389/how-do-you-do-a-deep-copy-an-object-in-net-c-specifically
         public static T DeepClone<T>(T obj)
         {
