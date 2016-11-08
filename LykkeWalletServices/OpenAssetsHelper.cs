@@ -385,7 +385,7 @@ namespace LykkeWalletServices
                     break;
                 }
 
-                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, 2 * feeConsumptionItself, reservedForAddress, reserveId);
+                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, 2 * feeConsumptionItself, null, reservedForAddress, reserveId);
                 Coin feePayerCoin = feePayer.GetCoin();
 
                 totalAddedFee += feePayer.Amount;
