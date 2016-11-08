@@ -96,20 +96,7 @@
         }
     }
 
-    public class TransactionSignRequest
-    {
-        public string TransactionToSign
-        {
-            get;
-            set;
-        }
-
-        public string PrivateKey
-        {
-            get;
-            set;
-        }
-    }
+    
 
     public class TransactionSignResponse
     {

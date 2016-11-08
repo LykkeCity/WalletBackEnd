@@ -147,6 +147,19 @@ namespace LykkeWalletServices
                 knownTaskType = true;
             }
 
+            var transactionUncolor = @event as TaskToDoUncolor;
+            if (transactionUncolor != null)
+            {
+                var service = new SrvUncolorTask(_network, _assets, _rpcUsername, _rpcPassword, _rpcServer,
+                    _feeAddress, _connectionString, _preBroadcastHandler);
+                service.Execute(transactionUncolor, async result =>
+                {
+                    await ProcessTaskResult(@event, TransactionResultModel.Create
+                        ("Uncolor", @event.TransactionId, result.Item1, result.Item2));
+                });
+                knownTaskType = true;
+            }
+
             var transactionCashOutSeparateSignatures = @event as TaskToDoCashOutSeparateSignatures;
             if (transactionCashOutSeparateSignatures != null)
             {
