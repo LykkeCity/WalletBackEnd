@@ -174,7 +174,6 @@
     <None Include="packages.config" />
     <None Include="settings.json" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\AzureRepositories\AzureRepositories.csproj">
       <Project>{1e08675a-d5ff-4424-94f5-e5d20b007b3f}</Project>

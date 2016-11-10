@@ -285,6 +285,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     settingsToWrite.ConnectionString = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.ConnectionString);
                     settingsToWrite.exchangePrivateKey = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.exchangePrivateKey);
                     settingsToWrite.FeeAddressPrivateKey = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.FeeAddressPrivateKey);
+                    settings.LykkeSettingsConnectionString = TripleDESManaged.Encrypt(EncryptionKey, settingsToWrite.LykkeSettingsConnectionString);
                     for (int i = 0; i < settings.AssetDefinitions.Length; i++)
                     {
                         if (!string.IsNullOrEmpty(settings.AssetDefinitions[i].PrivateKey))
