@@ -103,6 +103,7 @@ namespace ServiceLykkeWallet.Controllers
             settings.ConnectionString = TripleDESManaged.Decrypt(key, settings.ConnectionString);
             settings.exchangePrivateKey = TripleDESManaged.Decrypt(key, settings.exchangePrivateKey);
             settings.FeeAddressPrivateKey = TripleDESManaged.Decrypt(key, settings.FeeAddressPrivateKey);
+            settings.LykkeSettingsConnectionString = TripleDESManaged.Decrypt(key, settings.LykkeSettingsConnectionString);
             for (int i = 0; i < settings.AssetDefinitions.Length; i++)
             {
                 if (!string.IsNullOrEmpty(settings.AssetDefinitions[i].PrivateKey))

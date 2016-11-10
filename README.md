@@ -144,7 +144,7 @@ SourcePrivateKey is required only if the private keys are not submitted
 |UseSegKeysTable|true|If the SegKeys table will be used for exchange private key|
 |UnsignedTransactionsUpdaterPeriod|10 minutes|The timer period for updating the unsigned transaction status and their consumed fees.|
 |UnsignedTransactionTimeoutInMinutes|5 minutes|Number of minutes after which unsigned transactions are timed out.|
-|IsConfigurationEncrypted|false|Wether the configuration is encrypted, if so InQueueConnectionString , OutQueueConnectionString , ConnectionString , exchangePrivateKey , FeeAddressPrivateKey and asset private keys are encrypted. Before component usage DecodeSettingsUsingTheProvidedPrivateKey should be called with proper key.|
+|IsConfigurationEncrypted|false|Wether the configuration is encrypted, if so InQueueConnectionString , OutQueueConnectionString , ConnectionString, LykkeSettingsConnectionString , exchangePrivateKey , FeeAddressPrivateKey and asset private keys are encrypted. Before component usage DecodeSettingsUsingTheProvidedPrivateKey should be called with proper key.|
 |TransferFromPrivateWalletMinimumConfirmationNumber|0|The number of confirmations required to send transaction from private wallet.|
 |TransferFromMultisigWalletMinimumConfirmationNumber|0|The number of confirmations required to send transaction from private wallet.|
 |FeeMultiplicationFactor|1|The multiplication factor used for fee generation.|
@@ -176,6 +176,8 @@ The AssetDefinitions is an array of json, with the following fields:
 *   To encrypt a string: curl -X GET "http://localhost:8989/General/EncryptUsingTripleDES?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7&message=Hello\""
 
 *   To decrypt a string: curl -X GET "http://localhost:8989/General/DecryptUsingTripleDES?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7&encrypted=9436D1DC92F8232C"
+
+*   There is a GeneralHelper solution which could be used for encrypting/decrypting the string as a helper.
 
 
 ## Mixing signatures
