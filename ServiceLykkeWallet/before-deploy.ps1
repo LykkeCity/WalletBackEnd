@@ -1,2 +1,2 @@
 Stop-Service ServiceLykkeWallet
-DeploymentSettingsManager C:\ServiceLykkeWallet\ C:\Configs\
+C:\ServiceLykkeWallet\DeploymentSettingsManager.exe C:\ServiceLykkeWallet\ C:\Configs\
