@@ -1563,8 +1563,7 @@ namespace LykkeWalletServices
             {
                 return;
             }
-            P2PKHDictionary.AddThreadSafe(p2pkhAddr.ToWif(), privateKey);
-
+            
             if (!isP2PKH)
             {
                 var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { secret.PubKey ,
@@ -1574,6 +1573,8 @@ namespace LykkeWalletServices
                 MultisigDictionary.AddThreadSafe(multiSigAddressStorage, privateKey);
                 MultisigScriptDictionary.AddThreadSafe(multiSigAddressStorage, multiSigAddress.ToString());
             }
+
+            P2PKHDictionary.AddThreadSafe(p2pkhAddr.ToWif(), privateKey);
         }
         // This is written as a function instead of a constant since we may need to change the implementation
         // to adaptable one in future
