@@ -1,0 +1,3 @@
+﻿This is a exectuable which copies the probably updated settings file (for example because of asset update) from final deployment directory to where the settings file are present for copying after deployment (The master directory). This happens before deployment, after deployment using a batch file settings.json is copied to the final directory.
+
+ServiceLykkeWalletConfigCopy.bat in the batch file invoked after deployment to copy the settings.json file.

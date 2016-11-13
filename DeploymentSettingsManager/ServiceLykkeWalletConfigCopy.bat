@@ -1,0 +1,1 @@
+copy /Y C:\Configs\ServiceLykkeWalletsettings.json C:\ServiceLykkeWallet\settings.json
