@@ -24,12 +24,12 @@ namespace DeploymentSettingsManager
 
         private static void UpdateMasterSettingsFile(string masterDirectory, string backupFilename)
         {
-            var mainSettingsFile = masterDirectory + "\\settings.json";
+            var mainSettingsFile = masterDirectory + "\\ServiceLykkeWalletsettings.json";
             if (File.Exists(mainSettingsFile))
             {
                 File.Delete(mainSettingsFile);
             }
-            File.Copy(masterDirectory + "\\" + backupFilename, masterDirectory + "\\settings.json");
+            File.Copy(masterDirectory + "\\" + backupFilename, mainSettingsFile);
         }
 
         private static void BackupTheSettingsFile(string masterDirectory, string deploymentDirectory,
