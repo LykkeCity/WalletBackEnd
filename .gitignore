@@ -214,4 +214,4 @@ LykkeWalletServices/DB/LykkeServices
 LykkeWalletServices/DB/LykkeServicesRemote
 
 # Private Configuration file
-#PrivateSettings.config
+PrivateSettings.config
