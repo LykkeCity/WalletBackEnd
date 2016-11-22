@@ -84,6 +84,9 @@ namespace Core
         public uint timeoutInMinutes { get; set; }
         public string RefundAddress { get; set; }
         public bool? JustRefundTheNonRefunded { get; set; }
+
+        // Default value will be true
+        public bool? FeeWillBeInsertedNow { get; set; }
     }
 
     public class TaskToDoGetInputWalletAddresses : TransactionToDoBase
@@ -159,6 +162,13 @@ namespace Core
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
         public string PublicWallet { get; set; }
+        // This flag has been added while the transaction mempool and thus fees was raised sharply in october 2016.
+        // What it does is to ignore the unconfirmed transactions although the configured required confirmation maybe 0 
+        // (it maybe considered the same as 1 minimum required configuration [written in settings.json], this comment was written somehow after code design at time of sharp fee increase)
+        // This was mostly done to recreate a transaction with higher fees and ignoring the the current unconfirmed transaction because of low fees. This was unsuccessful because node
+        // considered the new transaction as double spend and rejected it.
+        // The better solution seems to be RBF
+        // This parameter is not documented by design in readme.md
         public bool IgnoreUnconfirmed { get; set; }
     }
 

@@ -28,7 +28,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Func<int> getMinimumConfirmationNumber = (() => { return data.MinimumConfirmation; });
             try
             {
-                Tuple<UniversalUnspentOutput[], bool, string> walletOuputs = null;
+                Tuple<UniversalUnspentOutput[], bool, string, bool> walletOuputs = null;
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
                     walletOuputs = await GetWalletOutputs(data.MultisigAddress, connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);

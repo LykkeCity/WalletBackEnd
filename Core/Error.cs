@@ -32,6 +32,7 @@ namespace Core
         NoCoinsToRefund,
         NoCoinsFound,
         InvalidAddress,
-        OperationNotSupported
+        OperationNotSupported,
+        RaceWithRefund
     }
 }
