@@ -22,9 +22,15 @@ namespace ServiceLykkeWallet.Controllers
         [System.Web.Http.HttpGet]
         public async Task<IHttpActionResult> IsAlive()
         {
+            var settings = await SettingsReader.ReadAppSettins();
+            if (settings.IsConfigurationEncrypted && SrvUpdateAssetsTask.EncryptionKey == null)
+            {
+                return InternalServerError(new Exception("Decryption key has not been submitted yet."));
+            }
+
             try
             {
-                using (SqlexpressLykkeEntities entities = 
+                using (SqlexpressLykkeEntities entities =
                     new SqlexpressLykkeEntities(WebSettings.ConnectionString))
                 {
                     // Checking if DB is 
@@ -33,11 +39,11 @@ namespace ServiceLykkeWallet.Controllers
                     // Checking if Blockchain explorer is accessable
                     // The address is a random one taken from blockchain, does not have a special meaning
                     var testAddress = (WebSettings.ConnectionParams.BitcoinNetwork == Network.Main ?
-                        "1Ge8w4BRYnxg96pCQftHTwquKreHxCKzBJ" : " mt4BFpmdbGft3Q8eQDo5ehUVNq99uzBugy ");
+                        "1Ge8w4BRYnxg96pCQftHTwquKreHxCKzBJ" : "n4n59uCrRgHTcA2Nunw3vjxbthVBVsUKFN");
                     var walletOutputs = await OpenAssetsHelper.GetWalletOutputs
                         (testAddress, WebSettings.ConnectionParams.BitcoinNetwork, entities);
 
-                    if(walletOutputs.Item2)
+                    if (walletOutputs.Item2)
                     {
                         return BadRequest(walletOutputs.Item3);
                     }
@@ -53,7 +59,7 @@ namespace ServiceLykkeWallet.Controllers
         [System.Web.Http.HttpGet]
         public IHttpActionResult HasTripleDESKeySubmitted()
         {
-            if(SrvUpdateAssetsTask.EncryptionKey == null)
+            if (SrvUpdateAssetsTask.EncryptionKey == null)
             {
                 return Ok(false);
             }
@@ -93,7 +99,7 @@ namespace ServiceLykkeWallet.Controllers
             {
                 return BadRequest("Configuration is not encrypted.");
             }
-            if(SrvUpdateAssetsTask.EncryptionKey != null)
+            if (SrvUpdateAssetsTask.EncryptionKey != null)
             {
                 return BadRequest("Encryption key has been submitted previously.");
             }
