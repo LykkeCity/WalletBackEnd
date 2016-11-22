@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 
 namespace Core
 {
+    [Serializable]
     public class AssetDefinition
     {
         public string AssetId { get; set; }
@@ -79,6 +80,7 @@ namespace Core
     public class TaskToDoGenerateRefundingTransaction : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }
+        public string PubKey { get; set; }
         public uint timeoutInMinutes { get; set; }
         public string RefundAddress { get; set; }
         public bool? JustRefundTheNonRefunded { get; set; }
@@ -139,6 +141,16 @@ namespace Core
         public string PrivateKey { get; set; }
     }
 
+    public class TaskToDoUncolor : TransactionToDoBase
+    {
+        public string MultisigAddress { get; set; }
+        // ToDo - At first we assume the currency is not divisable
+        public double Amount { get; set; }
+        public string Currency { get; set; }
+        public string PrivateKey { get; set; }
+        public bool IgnoreUnconfirmed { get; set; }
+    }
+
     public class TaskToDoOrdinaryCashOut : TransactionToDoBase
     {
         public string MultisigAddress { get; set; }
@@ -147,6 +159,7 @@ namespace Core
         public string Currency { get; set; }
         public string PrivateKey { get; set; }
         public string PublicWallet { get; set; }
+        public bool IgnoreUnconfirmed { get; set; }
     }
 
     public class TaskToDoOrdinaryCashIn : TransactionToDoBase
@@ -169,6 +182,13 @@ namespace Core
         public string Asset { get; set; }
     }
 
+    public class TaskToDoTransferAllAssetsToAddress : TransactionToDoBase
+    {
+        public string SourceAddress { get; set; }
+        public string SourcePrivateKey { get; set; }
+        public string DestinationAddress { get; set; }
+    }
+
     public class TaskToDoSwap : TransactionToDoBase
     {
         public string MultisigCustomer1 { get; set; }
@@ -177,6 +197,7 @@ namespace Core
         public string MultisigCustomer2 { get; set; }
         public double Amount2 { get; set; }
         public string Asset2 { get; set; }
+        public bool IgnoreUnconfirmed { get; set; }
     }
 
     public class TaskToDoGetBalance : TransactionToDoBase

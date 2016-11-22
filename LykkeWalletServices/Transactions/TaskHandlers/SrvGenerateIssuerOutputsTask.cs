@@ -26,8 +26,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         {
             using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
             {
-                return await OpenAssetsHelper.GenerateMassOutputs(data, "asset:" + data.AssetName, Username, Password, IpAddress,
-                Network, ConnectionString, Assets, null, null);
+                return await OpenAssetsHelper.GenerateMassOutputs(data, "asset:" + data.AssetName, connectionParams,
+                    ConnectionString, Assets, null, null);
             }
         }
 

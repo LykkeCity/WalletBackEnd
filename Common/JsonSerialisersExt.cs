@@ -1,4 +1,5 @@
 ﻿using System;
+using Newtonsoft.Json;
 
 namespace Common
 {
@@ -22,9 +23,10 @@ namespace Common
            return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json);
         }
 
-        public static string ToJson(this object src)
+        public static string ToJson(this object src, bool ignoreNulls = false)
         {
-            return Newtonsoft.Json.JsonConvert.SerializeObject(src);
+            return Newtonsoft.Json.JsonConvert.SerializeObject(src,
+                new JsonSerializerSettings { NullValueHandling = ignoreNulls ? NullValueHandling.Ignore : NullValueHandling.Include });
         }
     }
 }

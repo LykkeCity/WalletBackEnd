@@ -7,6 +7,9 @@ using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
 using System.Linq;
 using System.Threading.Tasks;
+using Core.LykkeIntegration;
+using Core.LykkeIntegration.Services;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -14,9 +17,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample response CashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvCashInTask : SrvNetworkBase
     {
+        private readonly IPreBroadcastHandler _preBroadcastHandler;
+
         public SrvCashInTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string connectionString, string feeAddress) : base(network, assets, username, password, ipAddress, connectionString, feeAddress)
+            string password, string ipAddress, string connectionString, string feeAddress, IPreBroadcastHandler preBroadcastHandler) :
+                base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
+            _preBroadcastHandler = preBroadcastHandler;
         }
 
         public async Task<Tuple<CashInTaskResult, Error>> ExecuteTask(TaskToDoCashIn data)
@@ -25,81 +32,65 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             try
             {
-                var asset = OpenAssetsHelper.GetAssetFromName(Assets, data.Currency, Network);
+                var asset = OpenAssetsHelper.GetAssetFromName(Assets, data.Currency, connectionParams.BitcoinNetwork);
 
                 if (asset != null)
                 {
-                    for (int retryCount = 0; retryCount < OpenAssetsHelper.ConcurrencyRetryCount; retryCount++)
+                    using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                     {
-                        try
+                        using (var transaction = entities.Database.BeginTransaction())
                         {
-                            using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
+                            PreGeneratedOutput issuancePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, connectionParams, 0,
+                                asset.AssetId);
+                            Coin issuancePayerCoin = issuancePayer.GetCoin();
+                            IssuanceCoin issueCoin = new IssuanceCoin(issuancePayerCoin);
+                            issueCoin.DefinitionUrl = new Uri(asset.AssetDefinitionUrl);
+
+                            // Issuing the asset
+                            TransactionBuilder builder = new TransactionBuilder();
+                            builder = builder
+                                .AddKeys(new BitcoinSecret(issuancePayer.PrivateKey, connectionParams.BitcoinNetwork))
+                                .AddCoins(issueCoin)
+                                .IssueAsset(Base58Data.GetFromBase58Data(data.MultisigAddress) as BitcoinAddress, new NBitcoin.OpenAsset.AssetMoney(
+                                    new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, connectionParams.BitcoinNetwork)),
+                                    Convert.ToInt64(data.Amount * asset.AssetMultiplicationFactor)));
+
+                            var tx = (await builder.AddEnoughPaymentFee(entities, connectionParams, FeeAddress))
+                                .BuildTransaction(true);
+
+                            var txHash = tx.GetHash().ToString();
+
+                            var handledTxRequest = new HandleTxRequest
                             {
-                                using (var transaction = entities.Database.BeginTransaction())
+                                Operation = "CashIn",
+                                TransactionId = data.TransactionId,
+                                BlockchainHash = txHash
+                            };
+
+                            Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                (tx, connectionParams, entities, ConnectionString, handledTxRequest, _preBroadcastHandler)).Error;
+
+                            if (localerror == null)
+                            {
+                                result = new CashInTaskResult
                                 {
-                                    PreGeneratedOutput issuancePayer = await OpenAssetsHelper.GetOnePreGeneratedOutput(entities, Network.ToString(), asset.AssetId);
-                                    Coin issuancePayerCoin = issuancePayer.GetCoin();
-                                    IssuanceCoin issueCoin = new IssuanceCoin(issuancePayerCoin);
-                                    issueCoin.DefinitionUrl = new Uri(asset.AssetDefinitionUrl);
-
-                                    var multiSigScript = new Script((await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities)).MultiSigScript);
-                                    
-                                    // Issuing the asset
-                                    TransactionBuilder builder = new TransactionBuilder();
-                                    builder = builder
-                                        .AddKeys(new BitcoinSecret(issuancePayer.PrivateKey, Network))
-                                        .AddCoins(issueCoin)
-                                        .IssueAsset(multiSigScript.GetScriptAddress(Network), new NBitcoin.OpenAsset.AssetMoney(
-                                            new NBitcoin.OpenAsset.AssetId(new NBitcoin.OpenAsset.BitcoinAssetId(asset.AssetId, Network)),
-                                            Convert.ToInt64(data.Amount * asset.AssetMultiplicationFactor)));
-
-                                    var tx = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress))
-                                        .BuildTransaction(true);
-
-                                    var txHash = tx.GetHash().ToString();
-
-                                    OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
-                                        new OpenAssetsHelper.LykkeJobsNotificationMessage();
-                                    lykkeJobsNotificationMessage.Operation = "CashIn";
-                                    lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
-                                    lykkeJobsNotificationMessage.BlockchainHash = txHash;
-
-                                    Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                        (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
-
-                                    if (localerror == null)
-                                    {
-                                        result = new CashInTaskResult
-                                        {
-                                            TransactionHex = tx.ToHex(),
-                                            TransactionHash = txHash
-                                        };
-                                    }
-                                    else
-                                    {
-                                        error = localerror;
-                                    }
-
-
-                                    if (error == null)
-                                    {
-                                        transaction.Commit();
-                                    }
-                                    else
-                                    {
-                                        transaction.Rollback();
-                                    }
-                                    break;
-                                }
+                                    TransactionHex = tx.ToHex(),
+                                    TransactionHash = txHash
+                                };
                             }
-                        }
-                        catch (DbUpdateConcurrencyException e)
-                        {
-                            if (retryCount == OpenAssetsHelper.ConcurrencyRetryCount - 1)
+                            else
                             {
-                                error = new Error();
-                                error.Code = ErrorCode.PersistantConcurrencyProblem;
-                                error.Message = "A concurrency problem which could not be solved: The exact error message " + e.ToString();
+                                error = localerror;
+                            }
+
+
+                            if (error == null)
+                            {
+                                transaction.Commit();
+                            }
+                            else
+                            {
+                                transaction.Rollback();
                             }
                         }
                     }

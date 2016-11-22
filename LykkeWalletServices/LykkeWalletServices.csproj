@@ -40,34 +40,17 @@
       <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="NBitcoin, Version=2.1.5.10, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.dll</HintPath>
+    <Reference Include="NBitcoin, Version=3.0.0.41, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NBitcoin.3.0.0.41\lib\net45\NBitcoin.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="NBitcoin.BouncyCastle, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\OriginalNBitcoin\NBitcoin\NBitcoin\bin\Debug\NBitcoin.BouncyCastle.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.8.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Data.SQLite, Version=1.0.99.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Data.SQLite.Core.1.0.99.0\lib\net451\System.Data.SQLite.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Data.SQLite.EF6, Version=1.0.99.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Data.SQLite.EF6.1.0.99.0\lib\net451\System.Data.SQLite.EF6.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Data.SQLite.Linq, Version=1.0.99.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Data.SQLite.Linq.1.0.99.0\lib\net451\System.Data.SQLite.Linq.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Net.Http.Formatting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security" />
@@ -82,17 +65,29 @@
     <Compile Include="Accounts\LykkeAccountReader.cs" />
     <Compile Include="Accounts\SrvAccountBalanceAccess.cs" />
     <Compile Include="Accounts\SrvAccountGenerator.cs" />
+    <Compile Include="DBLog.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="EmailMessage.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="ExchangeRequest.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="GeneralHelper.cs" />
+    <Compile Include="InputOutputMessageLog.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="KeyStorage.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="LogToDB.cs" />
+    <Compile Include="LykkeExtenddedRPCClient.cs" />
     <Compile Include="OpenAssetsHelper.cs" />
     <Compile Include="PreGeneratedOutput.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="PregeneratedReserve.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -100,6 +95,9 @@
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="RefundTransaction.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="SegKey.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="SentTransaction.cs">
@@ -123,8 +121,11 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
     </Compile>
-    <Compile Include="SrvFeeUpdater.cs" />
-    <Compile Include="SrvQueueReader.cs" />
+    <Compile Include="TimerServices\FeeType21co.cs" />
+    <Compile Include="TimerServices\SrvUnsignedTransactionsUpdater.cs" />
+    <Compile Include="TimerServices\SrvFeeReserveCleaner.cs" />
+    <Compile Include="TimerServices\SrvFeeUpdater.cs" />
+    <Compile Include="TimerServices\SrvQueueReader.cs" />
     <Compile Include="TransactionsToBeSigned.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
@@ -137,6 +138,8 @@
     <Compile Include="Transactions\Responses\TaskResultGenerateExchangeTransfer.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetBalance.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetExpiredUnclaimedRefundingTransactionsTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvUncolorTask.cs" />
+    <Compile Include="Transactions\TaskHandlers\SrvTransferAllAssetsToAddress.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvUpdateAssetsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateRefundingTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateIssuerOutputsTask.cs" />
@@ -161,6 +164,15 @@
     <Compile Include="Transactions\TaskHandlers\SrvNetworkBase.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetTransactionToSignTask.cs" />
+    <Compile Include="TripleDES.cs" />
+    <Compile Include="UnsignedTransaction.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="UnsignedTransactionSpentOutput.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="WalletBackendHTTPClient.cs" />
+    <Compile Include="WebSettings.cs" />
     <Compile Include="WholeRefund.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
@@ -176,6 +188,10 @@
     <ProjectReference Include="..\Core\Core.csproj">
       <Project>{ab96ba47-c6d1-4b08-9e24-1cceb723be39}</Project>
       <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LykkeIntegrationServices\LykkeIntegrationServices.csproj">
+      <Project>{db455119-e9a9-4249-bc92-08b004e60185}</Project>
+      <Name>LykkeIntegrationServices</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -208,12 +224,10 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="..\packages\System.Data.SQLite.Core.1.0.99.0\build\net451\System.Data.SQLite.Core.targets" Condition="Exists('..\packages\System.Data.SQLite.Core.1.0.99.0\build\net451\System.Data.SQLite.Core.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\System.Data.SQLite.Core.1.0.99.0\build\net451\System.Data.SQLite.Core.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.Data.SQLite.Core.1.0.99.0\build\net451\System.Data.SQLite.Core.targets'))" />
   </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

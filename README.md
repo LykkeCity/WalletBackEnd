@@ -74,8 +74,17 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   Generating the refund transaction
 
-        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360}
+        Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "PubKey":"PubKeyInHex", "timeoutInMinutes":360 , "JustRefundTheNonRefunded":true}
         Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
+
+*   Uncoloring colored transactions
+
+        Sample request: Uncolor:{"TransactionId":"10","MultisigAddress":"2N8Uvcw6NmJKndpJw1V2qEghSHUvbrjcDPL","Amount":3,"Currency":"TestExchangeUSD"}
+        Sample response: Uncolor:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
+
+JustRefundTheNonRefunded flag indicates the old refund method should be used. If false or omitted the new refunding method will be used. Old refund method is deprecated.
+
+If PubKey is null or not provided the conventional method of retrieving public key from private key is used, otherwise the provided public key is used to build the multi sig.
 
 *   Getting correspondent wallet addresses
 
@@ -95,6 +104,13 @@ Primary key for updating is the asset name. If a field is absent for an asset, t
         Sample response: GetExpiredUnclaimedRefundingTransactions:{"TransactionId":"10","Result":{"Elements":[{"TxId":"xxx","TxHex":"xxx"}]},"Error":null}
 
 If MultisigAddress is null (not passed), appropriate transactions for all addresses are returned.
+
+*   Transfer all assets to an address
+
+        Sample request: TransferAllAssetsToAddress:{"TransactionId":"10","SourceAddress":"xxx","SourcePrivateKey":"xxx","DestinationAddress":"xxx"}
+        Sample response: TransferAllAssetsToAddress:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
+
+SourcePrivateKey is required only if the private keys are not submitted
 
 ## Some notes
 *   The API used to explore blockchain, is now default to QBit.Ninja (hardcoded in OpenAssetsHelper.cs, the previous code still usable); The QBit.Ninja is connected to Bitcoin Regtest mode, after a new block issued one should issue the console command "bitcoin-cli generate 1" to create a new block and then in NBitcoin.Indexer console issue the command "NBitcoin.Indexer.Console.exe --All" to index the new block and have the new transaction available for API calls.
@@ -119,12 +135,20 @@ If MultisigAddress is null (not passed), appropriate transactions for all addres
 |FeeAddressPrivateKey|Nothing|The private key of the above address|
 |QBitNinjaBaseUrl|Nothing|The qbit ninja url used for querying bitcoin network|
 |PreGeneratedOutputMinimumCount|Nothing|Minimum number of pregenerated outptuts required, either for fee payment or coin issuance. When the number of pregenerated outputs fell below this number and such an output was required, an alert email would be sent (using emailsqueue)|
-|LykkeJobsUrl|Nothing|The url used by code, to post the notification for the new transaction before sending it (Like CashIn, CashOut and ...).|
 |DefaultNumberOfRequiredConfirmations|1|Minimum number of confirmations required to consider the transaction as final (optional).|
 |SwapMinimumConfirmationNumber|0|Minimum number of confirmations required to consider the transaction as final for the swap operation (optional).|
+|GenerateRefundingTransactionMinimumConfirmationNumber|1|Minimum number of confirmations required to consider the transaction as final for the generate refunding transaction operation|
 |BroadcastGroup|400|The Broadcast Group used to send the email for insufficient fee outputs to (optional).|
 |EnvironmentName|null|The name environment in which the program is being runned, for example test or production.|
 |PrivateKeyWillBeSubmitted|false|If the private key will be submitted through POST via url [RestEndPoint]/PrivateKey/Add |
+|UseSegKeysTable|true|If the SegKeys table will be used for exchange private key|
+|UnsignedTransactionsUpdaterPeriod|10 minutes|The timer period for updating the unsigned transaction status and their consumed fees.|
+|UnsignedTransactionTimeoutInMinutes|5 minutes|Number of minutes after which unsigned transactions are timed out.|
+|IsConfigurationEncrypted|false|Wether the configuration is encrypted, if so InQueueConnectionString , OutQueueConnectionString , ConnectionString, LykkeSettingsConnectionString , exchangePrivateKey , FeeAddressPrivateKey and asset private keys are encrypted. Before component usage DecodeSettingsUsingTheProvidedPrivateKey should be called with proper key.|
+|TransferFromPrivateWalletMinimumConfirmationNumber|0|The number of confirmations required to send transaction from private wallet.|
+|TransferFromMultisigWalletMinimumConfirmationNumber|0|The number of confirmations required to send transaction from private wallet.|
+|FeeMultiplicationFactor|1|The multiplication factor used for fee generation.|
+|FeeType|HalfHourFee|21.co fee type to be used, valid values are FastestFee , HalfHourFee , HourFee|
 
 The AssetDefinitions is an array of json, with the following fields:
 
@@ -137,10 +161,24 @@ The AssetDefinitions is an array of json, with the following fields:
 |Divisibility|Number of decimal places for the asset|
 
 
-
 *   The exchange private key could be generated using TestConsole project, Program.cs, function TestBitcoinScripts, for the configured Main or TestNet.
 
 *   For debug install latest [Microsoft Azure Storage Emulator](http://download.microsoft.com/download/0/F/E/0FE64840-9806-4D3C-9C11-84B743162618/MicrosoftAzureStorageEmulator.msi)
+
+## Configuration encryption
+
+*   If IsConfigurationEncrypted is enabled the configuration strings mentioned in the flag description are encrypted, and the following command should be invoked after startup (With the proper key, instead of the one provided).
+
+*   This command should be called at the beginning to decrypt the encrypted settings:  curl -X GET "http://localhost:8989/General/DecodeSettingsUsingTheProvidedPrivateKey?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7"
+
+*   A new key could be generated using command: curl http://localhost:8989/General/GetNewTripleDESIVKey
+
+*   To encrypt a string: curl -X GET "http://localhost:8989/General/EncryptUsingTripleDES?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7&message=Hello\""
+
+*   To decrypt a string: curl -X GET "http://localhost:8989/General/DecryptUsingTripleDES?key=1F396986D834792CB3A530B37086E690400A2C426140DE9DF4C4CF8593D802D7&encrypted=9436D1DC92F8232C"
+
+*   There is a GeneralHelper solution which could be used for encrypting/decrypting the string as a helper.
+
 
 ## Mixing signatures
 
@@ -157,3 +195,7 @@ Database for the applicaion is currently sql server (developped with express ver
 ## Tests
 
 The details about tests is listed in the readme.md in tests folder
+
+## HTTP Methods
+
+Some HTTP Methods has been added to the component, they are available in the Controllers directory of ServiceLykkeWallet, method usage are available by a comment on the method, some of the methods may soon change in future.

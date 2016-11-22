@@ -5,22 +5,33 @@
     <!-- Diagram content (shape and connector positions) -->
     <edmx:Diagrams>
       <Diagram DiagramId="d523726b297847c08799f73063d84813" Name="Diagram1">
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.ExchangeRequest" Width="1.5" PointX="0.75" PointY="3.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.ExchangeRequest" Width="1.5" PointX="0.75" PointY="4.125" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.KeyStorage" Width="1.5" PointX="2.75" PointY="3.75" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.PreGeneratedOutput" Width="1.5" PointX="4.75" PointY="3.75" />
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.SentTransaction" Width="1.5" PointX="0.75" PointY="1" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.SpentOutput" Width="1.5" PointX="3" PointY="0.875" />
-        <AssociationConnector Association="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions" />
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" Width="1.5" PointX="5.375" PointY="0.75" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.RefundedOutput" Width="1.5" PointX="9.625" PointY="1" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.RefundTransaction" Width="1.5" PointX="7.375" PointY="1.5" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_RefundedOutputs_RefundTransactions" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.EmailMessage" Width="1.5" PointX="0.75" PointY="7.75" />
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.WholeRefund" Width="1.5" PointX="3.375" PointY="7.75" />
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.TransactionsWaitForConfirmation" Width="1.5" PointX="7.375" PointY="4.75" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.WholeRefundSpentOutput" Width="1.875" PointX="5.375" PointY="7.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.WholeRefund" Width="1.5" PointX="3.125" PointY="7.5" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_WholeRefundSpentOutputs_WholeRefund" />
-      </Diagram>
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.TransactionsWaitForConfirmation" Width="1.5" PointX="8" PointY="4.75" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_TransactionsWaitForConfirmations_RefundTransactions" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_TransactionsWaitForConfirmations_WholeRefund" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.InputOutputMessageLog" Width="1.5" PointX="8.375" PointY="7.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.SentTransaction" Width="1.5" PointX="0.75" PointY="10" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.PregeneratedReserve" Width="1.5" PointX="7" PointY="11.25" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" Width="1.5" PointX="10.375" PointY="4.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.SegKey" Width="1.5" PointX="3.375" PointY="11.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.UnsignedTransaction" Width="1.5" PointX="10.375" PointY="8" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.UnsignedTransactionSpentOutput" Width="1.5" PointX="12.625" PointY="9.25" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactions_UnsignedTransactions" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.DBLog" Width="1.5" PointX="12.375" PointY="0.75" />
+        </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>
 </edmx:Edmx>

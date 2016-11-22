@@ -29,8 +29,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
         public async Task<Tuple<GenerateMassOutputsTaskResult, Error>> ExecuteTask(TaskToDoGenerateFeeOutputs data)
         {
-            return await OpenAssetsHelper.GenerateMassOutputs(data, "fee", Username, Password, IpAddress,
-                Network, ConnectionString, Assets, feeAddress, feeAddressPrivateKey);
+            return await OpenAssetsHelper.GenerateMassOutputs(data, "fee", connectionParams, ConnectionString, Assets, feeAddress, feeAddressPrivateKey);
         }
 
         public void Execute(TaskToDoGenerateFeeOutputs data, Func<Tuple<GenerateMassOutputsTaskResult, Error>, Task> invokeResult)

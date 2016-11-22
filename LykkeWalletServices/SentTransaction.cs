@@ -23,6 +23,14 @@ namespace LykkeWalletServices
         public int id { get; set; }
         public string TransactionHex { get; set; }
         public byte[] Version { get; set; }
+        public Nullable<System.DateTime> CreationDate { get; set; }
+        public Nullable<bool> IsClientSignatureRequired { get; set; }
+        public string ClientSignedTransaction { get; set; }
+        public Nullable<bool> IsExchangeSignatureRequired { get; set; }
+        public string ExchangeSignedTransactionAfterClient { get; set; }
+        public string TransactionId { get; set; }
+        public Nullable<bool> TransactionSendingSuccessful { get; set; }
+        public string TransactionSendingError { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<SpentOutput> SpentOutputs { get; set; }

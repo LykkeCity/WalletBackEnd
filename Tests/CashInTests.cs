@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using System.Threading.Tasks;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace Lykkex.WalletBackend.Tests
 {

@@ -12,6 +12,8 @@ namespace ServiceLykkeWallet
             app.UseCors(CorsOptions.AllowAll);
 
             var config = new HttpConfiguration();
+
+            config.IncludeErrorDetailPolicy = IncludeErrorDetailPolicy.Always;
             
             config.Routes.MapHttpRoute(
                 name: "DefaultApi",

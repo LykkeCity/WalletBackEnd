@@ -18,16 +18,19 @@ namespace LykkeWalletServices
         public WholeRefund()
         {
             this.WholeRefundSpentOutputs = new HashSet<WholeRefundSpentOutput>();
+            this.TransactionsWaitForConfirmations = new HashSet<TransactionsWaitForConfirmation>();
         }
     
         public long id { get; set; }
         public string BitcoinAddress { get; set; }
         public string TransactionHex { get; set; }
         public string TransactionId { get; set; }
+        public System.DateTimeOffset LockTime { get; set; }
         public System.DateTime CreationTime { get; set; }
-        public System.DateTime LockTime { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<WholeRefundSpentOutput> WholeRefundSpentOutputs { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<TransactionsWaitForConfirmation> TransactionsWaitForConfirmations { get; set; }
     }
 }

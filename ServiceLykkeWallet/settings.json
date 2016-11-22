@@ -3,6 +3,8 @@
   "InQueueConnectionString": "UseDevelopmentStorage=true",
   "OutQueueConnectionString": "UseDevelopmentStorage=true;",
   "ConnectionString": "metadata=res://*/SqlserverLykkeEntities.csdl|res://*/SqlserverLykkeEntities.ssdl|res://*/SqlserverLykkeEntities.msl;provider=System.Data.SqlClient;provider connection string=\"data source=.\\SQLEXPRESS;initial catalog=Lykke;integrated security=True;MultipleActiveResultSets=True;App=EntityFramework",
+  "LykkeSettingsConnectionString": "UseDevelopmentStorage=true",
+  "UseMockAsLykkeNotification": true,
   "NetworkType": "TestNet",
   "exchangePrivateKey": "xxx",
   "FeeAddress": "moTLjH5p8hxgEm7a7pKh2BsjqDWABRCHBm",
@@ -18,8 +20,8 @@
   "RPCServerIpAddress": "xxx",
   "QBitNinjaBaseUrl": "http://tapi.qbit.ninja/balances/",
   "PreGeneratedOutputMinimumCount": 5,
-  "LykkeJobsUrl": "http://localhost:1088/HandledTx/",
   "SwapMinimumConfirmationNumber": null,
+  "GenerateRefundingTransactionConfirmationNumber": 1,
   "DefaultNumberOfRequiredConfirmations": null,
   "PrivateKeyWillBeSubmitted": false,
   "AssetDefinitions": [

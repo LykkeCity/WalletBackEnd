@@ -99,6 +99,10 @@ namespace Core
     {
     }
 
+    public class UncolorTaskResult : TransactionSenderTaskResult
+    {
+    }
+
     public class OrdinaryCashOutTaskResult : TransactionSenderTaskResult
     {
     }
@@ -107,6 +111,10 @@ namespace Core
     }
 
     public class TransferTaskResult : TransactionSenderTaskResult
+    {
+    }
+
+    public class TransferAllAssetsToAddressTaskResult : TransactionSenderTaskResult
     {
     }
 

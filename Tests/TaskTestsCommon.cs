@@ -15,10 +15,12 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Tests;
 using static LykkeWalletServices.OpenAssetsHelper;
+using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
 
 namespace Lykkex.WalletBackend.Tests
 {
-    public class Settings
+    
+    public class Settings : TheSettings
     {
         public string AzureStorageEmulatorPath
         {
@@ -74,18 +76,6 @@ namespace Lykkex.WalletBackend.Tests
             set;
         }
 
-        public string InQueueConnectionString
-        {
-            get;
-            set;
-        }
-
-        public string OutQueueConnectionString
-        {
-            get;
-            set;
-        }
-
         public string DBConnectionString
         {
             get;
@@ -99,12 +89,6 @@ namespace Lykkex.WalletBackend.Tests
         }
 
         public string ExchangePrivateKey
-        {
-            get;
-            set;
-        }
-
-        public string QBitNinjaBaseUrl
         {
             get;
             set;
@@ -216,7 +200,7 @@ namespace Lykkex.WalletBackend.Tests
 
         public async Task InitializeBitcoinNetwork(Settings settings)
         {
-            await GenerateBlocks(Settings, 101);
+            await GenerateBlocks(settings, 101);
 
             var txId = await SendBTC(settings,
                     MassBitcoinHolder,
@@ -263,21 +247,21 @@ namespace Lykkex.WalletBackend.Tests
         {
             Settings settings = new Settings();
             Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-            settings.AzureStorageEmulatorPath = config.AppSettings.Settings["AzureStorageEmulatorPath"].Value;
-            settings.BitcoinDaemonPath = config.AppSettings.Settings["BitcoinDaemonPath"].Value;
-            settings.BitcoinWorkingPath = config.AppSettings.Settings["BitcoinWorkingPath"].Value;
-            settings.RegtestRPCUsername = config.AppSettings.Settings["RegtestRPCUsername"].Value;
+            settings.AzureStorageEmulatorPath = config.AppSettings.Settings["AzureStorageEmulatorPath"]?.Value;
+            settings.BitcoinDaemonPath = config.AppSettings.Settings["BitcoinDaemonPath"]?.Value;
+            settings.BitcoinWorkingPath = config.AppSettings.Settings["BitcoinWorkingPath"]?.Value;
+            settings.RegtestRPCUsername = config.AppSettings.Settings["RegtestRPCUsername"]?.Value;
             settings.RegtestRPCPassword = config.AppSettings.Settings["RegtestRPCPassword"].Value;
-            settings.RegtestRPCIP = config.AppSettings.Settings["RegtestRPCIP"].Value;
-            settings.RegtestPort = int.Parse(config.AppSettings.Settings["RegtestPort"].Value);
-            settings.QBitNinjaListenerConsolePath = config.AppSettings.Settings["QBitNinjaListenerConsolePath"].Value;
-            settings.WalletBackendExecutablePath = config.AppSettings.Settings["WalletBackendExecutablePath"].Value;
-            settings.InQueueConnectionString = config.AppSettings.Settings["InQueueConnectionString"].Value;
-            settings.OutQueueConnectionString = config.AppSettings.Settings["OutQueueConnectionString"].Value;
-            settings.DBConnectionString = config.AppSettings.Settings["DBConnectionString"].Value;
-            settings.ExchangePrivateKey = config.AppSettings.Settings["ExchangePrivateKey"].Value;
+            settings.RegtestRPCIP = config.AppSettings.Settings["RegtestRPCIP"]?.Value;
+            settings.RegtestPort = int.Parse(config.AppSettings.Settings["RegtestPort"]?.Value);
+            settings.QBitNinjaListenerConsolePath = config.AppSettings.Settings["QBitNinjaListenerConsolePath"]?.Value;
+            settings.WalletBackendExecutablePath = config.AppSettings.Settings["WalletBackendExecutablePath"]?.Value;
+            settings.InQueueConnectionString = config.AppSettings.Settings["InQueueConnectionString"]?.Value;
+            settings.OutQueueConnectionString = config.AppSettings.Settings["OutQueueConnectionString"]?.Value;
+            settings.DBConnectionString = config.AppSettings.Settings["DBConnectionString"]?.Value;
+            settings.ExchangePrivateKey = config.AppSettings.Settings["ExchangePrivateKey"]?.Value;
             settings.Network = config.AppSettings.Settings["Network"].Value.ToLower().Equals("main") ? NBitcoin.Network.Main : NBitcoin.Network.TestNet;
-            settings.QBitNinjaBaseUrl = config.AppSettings.Settings["QBitNinjaBaseUrl"].Value;
+            settings.QBitNinjaBaseUrl = config.AppSettings.Settings["QBitNinjaBaseUrl"]?.Value;
             return settings;
         }
 
@@ -411,105 +395,6 @@ namespace Lykkex.WalletBackend.Tests
                 else
                 {
                     return false;
-                }
-            }
-        }
-
-        public async Task<bool> HasBalanceIndexed(Settings settings, string txId, string btcAddress)
-        {
-            using (HttpClient client = new HttpClient())
-            {
-                string url = null;
-                var exists = false;
-                url = settings.QBitNinjaBaseUrl + "balances/" + btcAddress + "?headeronly=true";
-                HttpResponseMessage result = await client.GetAsync(url);
-                if (!result.IsSuccessStatusCode)
-                {
-                    return false;
-                }
-                else
-                {
-                    var webResponse = await result.Content.ReadAsStringAsync();
-                    var notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                        (webResponse);
-                    if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
-                    {
-                        notProcessedUnspentOutputs.operations.ForEach((o) =>
-                        {
-                            exists = o.receivedCoins
-                           .Where(c => c.transactionId.Equals(txId) && o.confirmations > 0)
-                           .Any() | exists;
-                            if (exists)
-                            {
-                                return;
-                            }
-                        });
-                    }
-
-                    return exists;
-                }
-            }
-        }
-
-        public static async Task<bool> IsUrlSuccessful(string url)
-        {
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-
-                    HttpResponseMessage result = await client.GetAsync(url);
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                return true;
-            }
-        }
-
-        public async Task<bool> HasTransactionIndexed(Settings settings, string txId, string dummy)
-        {
-            string url = settings.QBitNinjaBaseUrl + "transactions/" + txId + "?headeronly=true";
-            return await IsUrlSuccessful(url);
-        }
-
-        public async Task<bool> HasBlockIndexed(Settings settings, string blockId, string dummy)
-        {
-            string url = settings.QBitNinjaBaseUrl + "blocks/" + blockId + "?headeronly=true";
-            return await IsUrlSuccessful(url);
-        }
-
-        public async Task WaitUntillQBitNinjaHasIndexed(Settings settings,
-            Func<Settings, string, string, Task<bool>> checkIndexed, IEnumerable<string> ids, string id2 = null)
-        {
-            var indexed = false;
-            foreach (var id in ids)
-            {
-                indexed = false;
-                for (int i = 0; i < 30; i++)
-                {
-                    if (await checkIndexed(settings, id, id2))
-                    {
-                        indexed = true;
-                        break;
-                    }
-                    else
-                    {
-                        await Task.Delay(1000);
-                    }
-                }
-
-                if (!indexed)
-                {
-                    throw new Exception(string.IsNullOrEmpty(id2) ? string.Format("Item with id: {0} did not get indexed yet.", id) : string.Format("Item with id: {0} did not get indexed yet. Provided id2 is {1}", id, id2));
                 }
             }
         }

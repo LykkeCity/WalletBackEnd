@@ -4,6 +4,9 @@ using NBitcoin.OpenAsset;
 using System;
 using System.Threading.Tasks;
 using System.Linq;
+using Core.LykkeIntegration;
+using Core.LykkeIntegration.Services;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -11,9 +14,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     // Sample Output: OrdinaryCashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
     public class SrvOrdinaryCashInTask : SrvNetworkBase
     {
+        private readonly IPreBroadcastHandler _preBroadcastHandler;
+
         public SrvOrdinaryCashInTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string connectionString, string feeAddress) : base(network, assets, username, password, ipAddress, connectionString, feeAddress)
+            string password, string ipAddress, string connectionString, string feeAddress, IPreBroadcastHandler preBroadcastHandler) : 
+                base(network, assets, username, password, ipAddress, connectionString, feeAddress)
         {
+            _preBroadcastHandler = preBroadcastHandler;
         }
 
         public async Task<Tuple<OrdinaryCashInTaskResult, Error>> ExecuteTask(TaskToDoOrdinaryCashIn data)
@@ -27,7 +34,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     var MultisigAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities);
                     OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType walletCoins =
                         (OpenAssetsHelper.GetOrdinaryCoinsForWalletReturnType)await OpenAssetsHelper.GetCoinsForWallet(MultisigAddress.WalletAddress, !OpenAssetsHelper.IsRealAsset(data.Currency) ? Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor) : 0, data.Amount, data.Currency,
-                         Assets, Network, Username, Password, IpAddress, ConnectionString, entities, true, false);
+                         Assets, connectionParams, ConnectionString, entities, true, false);
                     if (walletCoins.Error != null)
                     {
                         error = walletCoins.Error;
@@ -43,17 +50,19 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                             if (OpenAssetsHelper.IsRealAsset(data.Currency))
                             {
                                 builder = builder.AddCoins(walletCoins.AssetCoins)
-                                    .SendAsset(new Script(MultisigAddress.MultiSigScript).GetScriptAddress(Network), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, Network)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 2));
+                                    .SendAsset(new Script(MultisigAddress.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork), new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
+                                builder = (await builder.AddEnoughPaymentFee(entities, connectionParams,
+                                    FeeAddress, 2));
                             }
                             else
                             {
                                 builder.AddCoins(walletCoins.Coins);
-                                builder.SendWithChange(new Script(MultisigAddress.MultiSigScript).GetScriptAddress(Network),
+                                builder.SendWithChange(new Script(MultisigAddress.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork),
                                     Convert.ToInt64(data.Amount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
                                     walletCoins.Coins,
                                     BitcoinAddress.Create(MultisigAddress.WalletAddress));
-                                builder = (await builder.AddEnoughPaymentFee(entities, Network.ToString(), FeeAddress, 0));
+                                builder = (await builder.AddEnoughPaymentFee(entities, connectionParams,
+                                    FeeAddress, 0));
                             }
 
                             var tx = builder
@@ -61,14 +70,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                             var txHash = tx.GetHash().ToString();
 
-                            OpenAssetsHelper.LykkeJobsNotificationMessage lykkeJobsNotificationMessage =
-                                new OpenAssetsHelper.LykkeJobsNotificationMessage();
-                            lykkeJobsNotificationMessage.Operation = "OrdinaryCashIn";
-                            lykkeJobsNotificationMessage.TransactionId = data.TransactionId;
-                            lykkeJobsNotificationMessage.BlockchainHash = txHash;
+                            var handledTxRequest = new HandleTxRequest
+                            {
+                                Operation = "OrdinaryCashIn",
+                                TransactionId = data.TransactionId,
+                                BlockchainHash = txHash
+                            };
 
-                            Error localerror = await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
-                                (tx, Username, Password, IpAddress, Network, entities, ConnectionString, lykkeJobsNotificationMessage);
+                            Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
+                                (tx, connectionParams, entities, ConnectionString, handledTxRequest, _preBroadcastHandler)).Error;
 
                             if (localerror == null)
                             {

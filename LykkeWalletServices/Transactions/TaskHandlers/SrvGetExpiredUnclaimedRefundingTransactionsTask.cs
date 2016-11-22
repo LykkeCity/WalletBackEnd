@@ -13,7 +13,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
     public class SrvGetExpiredUnclaimedRefundingTransactionsTask : SrvNetworkInvolvingExchangeBase
     {
         public SrvGetExpiredUnclaimedRefundingTransactionsTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string feePrivateKey, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string feePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, connectionString)
         {
         }
 
@@ -39,7 +39,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     foreach(var tx in records)
                     {
                         var txHexResult = await OpenAssetsHelper.GetTransactionHex
-                            (tx.TxId, Network, Username, Password, IpAddress);
+                            (tx.TxId, connectionParams);
                         if (txHexResult.Item1)
                         {
                             // In case of error, we consider it unbroadcasted, since we do not know actually it is or not

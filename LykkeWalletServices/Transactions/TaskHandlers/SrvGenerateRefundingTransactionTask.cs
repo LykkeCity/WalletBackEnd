@@ -8,13 +8,27 @@ using System.Threading.Tasks;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
-    // Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360}
+    // Sample request: GenerateRefundingTransaction:{"TransactionId":"10","MultisigAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU", "RefundAddress":"mt2rMXYZNUxkpHhyUhLDgMZ4Vfb1um1XvT", "timeoutInMinutes":360, "JustRefundTheNonRefunded":true}
     // Sample response: GenerateRefundingTransaction:{"TransactionId":"10","Result":{"RefundTransaction":"xxx"},"Error":null}
     // If refund transaction is sent early, one gets "64: non-final (code -26)"
     public class SrvGenerateRefundingTransactionTask : SrvNetworkInvolvingExchangeBase
     {
+        private static int generateRefundingTransactionMinimumConfirmationNumber = 0;
+
+        public static int GenerateRefundingTransactionMinimumConfirmationNumber
+        {
+            get
+            {
+                return generateRefundingTransactionMinimumConfirmationNumber;
+            }
+            set
+            {
+                generateRefundingTransactionMinimumConfirmationNumber = value;
+            }
+        }
+
         public SrvGenerateRefundingTransactionTask(Network network, AssetDefinition[] assets, string username,
-            string password, string ipAddress, string feeAddress, string feePrivateKey, string exchangePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, exchangePrivateKey, connectionString)
+            string password, string ipAddress, string feeAddress, string feePrivateKey, string connectionString) : base(network, assets, username, password, ipAddress, feeAddress, connectionString)
         {
         }
 
@@ -26,28 +40,46 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             Error error = null;
             Transaction refundTx = null;
 
-            // This should be corrected, default means Whole refund
-            // Just not to change the default behaviour
-            // bool wholeRefund = !(data.JustRefundTheNonRefunded ?? false);
-            bool wholeRefund = !(data.JustRefundTheNonRefunded ?? true);
+            Func<int> getMinimumConfirmationNumber = (() => { return GenerateRefundingTransactionMinimumConfirmationNumber; });
+
+            bool wholeRefund = !(data.JustRefundTheNonRefunded ?? false);
+
             try
             {
                 for (int retryCount = 0; retryCount < OpenAssetsHelper.ConcurrencyRetryCount; retryCount++)
                 {
                     try
                     {
-                        PubKey exchangePubKey = (new BitcoinSecret(ExchangePrivateKey, Network)).PubKey;
+                        BitcoinSecret exchangePrivateKey = null;
 
                         using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                         {
                             using (var transaction = entities.Database.BeginTransaction())
                             {
-                                var multiSig = (await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities));
-                                PubKey clientPubKey = (new BitcoinSecret(multiSig.WalletPrivateKey)).PubKey;
+                                Script multiSigScript = null;
+                                PubKey clientPubKey = null;
+                                if (data.PubKey == null)
+                                {
+                                    var multiSig = (await OpenAssetsHelper.GetMatchingMultisigAddress(data.MultisigAddress, entities));
+                                    multiSigScript = new Script(multiSig.MultiSigScript);
+                                    clientPubKey = (new BitcoinSecret(multiSig.WalletPrivateKey)).PubKey;
+                                    exchangePrivateKey = clientPubKey.GetExchangePrivateKey(entities);
+                                }
+                                else
+                                {
+                                    clientPubKey = new PubKey(data.PubKey);
+                                    exchangePrivateKey = clientPubKey.GetExchangePrivateKey(entities);
+                                    multiSigScript = PayToMultiSigTemplate.Instance.GenerateScriptPubKey
+                                        (2, new PubKey[] { clientPubKey, exchangePrivateKey.PubKey });
+                                    
+                                }
+                                var multiSigAddress = multiSigScript.GetScriptAddress(connectionParams.BitcoinNetwork).ToString();
+
                                 DateTimeOffset lockTimeValue = new DateTimeOffset(DateTime.UtcNow) + new TimeSpan(0, (int)data.timeoutInMinutes, 0);
                                 LockTime lockTime = new LockTime(lockTimeValue);
 
-                                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(multiSig.MultiSigAddress, Network, entities, false);
+                                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(multiSigAddress,
+                                    connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);
                                 if (walletOuputs.Item2)
                                 {
                                     error = new Error();
@@ -58,15 +90,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 {
                                     var toBeRefundedCoins = new List<Coin>();
 
-                                    var coins = await OpenAssetsHelper.GetColoredUnColoredCoins(walletOuputs.Item1, null,
-                                        Network, Username, Password, IpAddress);
+                                    var coins = OpenAssetsHelper.GetColoredUnColoredCoins(walletOuputs.Item1, null);
 
                                     if (!wholeRefund)
                                     {
                                         // ToDo: Possible bug fix for "System.Data.Entity.Core.EntityCommandExecutionException: An error occurred while executing the command definition. See the inner exception for details. --->System.InvalidOperationException: There is already an open DataReader associated with this Command which must be closed first.
                                         // ToList may cause performance issues, but it should be neligable
                                         var previousUnspentCoins = (from c in entities.RefundedOutputs
-                                                                    where c.RefundedAddress.Equals(multiSig.MultiSigAddress) && c.HasBeenSpent.Equals(false)
+                                                                    where c.RefundedAddress.Equals(multiSigAddress) && c.HasBeenSpent.Equals(false)
                                                                     select c).ToList();
 
                                         // Finding the coins which has never been refunded
@@ -110,7 +141,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                             {
                                                 cr.RefundInvalid = true;
                                                 var getTransactionRetValue = await OpenAssetsHelper.GetTransactionHex
-                                                    (cr.RefundedTxId, Network, Username, Password, IpAddress);
+                                                    (cr.RefundedTxId, connectionParams);
                                                 if (getTransactionRetValue.Item1)
                                                 {
                                                     error = new Error();
@@ -127,8 +158,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     }
                                     else
                                     {
-                                        throw new NotImplementedException();
-
                                         toBeRefundedCoins.AddRange(coins.Item2);
                                     }
 
@@ -141,17 +170,17 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                                     if (error == null)
                                     {
-                                        
+
                                         IList<ScriptCoin> scriptCoinsToBeRefunded = new List<ScriptCoin>();
                                         foreach (var item in toBeRefundedCoins)
                                         {
-                                            scriptCoinsToBeRefunded.Add(new ScriptCoin(item, new Script(multiSig.MultiSigScript)));
+                                            scriptCoinsToBeRefunded.Add(new ScriptCoin(item, multiSigScript));
                                         }
 
                                         IDestination dest = null;
                                         if (string.IsNullOrEmpty(data.RefundAddress))
                                         {
-                                            dest = OpenAssetsHelper.GetBitcoinAddressFormBase58Date(multiSig.WalletAddress);
+                                            dest = OpenAssetsHelper.GetBitcoinAddressFormBase58Date(clientPubKey.GetAddress(connectionParams.BitcoinNetwork).ToWif());
                                         }
                                         else
                                         {
@@ -162,9 +191,15 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         var feeAmount = OpenAssetsHelper.TransactionSendFeesInSatoshi;
                                         var destAmount = scriptCoinsToBeRefunded.Sum(c => c.Amount) - feeAmount;
 
+                                        if (destAmount < 0)
+                                        {
+                                            throw new Exception
+                                                ("The amount to be refunded is smaller than the fee, no refund will be generated.");
+                                        }
+
                                         refundTx = builder
                                         .SetLockTime(lockTime)
-                                        .AddKeys(new BitcoinSecret(multiSig.WalletPrivateKey), new BitcoinSecret(ExchangePrivateKey))
+                                        .AddKeys(exchangePrivateKey)
                                         .AddCoins(scriptCoinsToBeRefunded)
                                         .Send(dest, destAmount)
                                         .SendFees(new Money(feeAmount))
@@ -173,8 +208,6 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         refundTx.Inputs[0].Sequence = Sequence.SEQUENCE_FINAL - 1;
 
                                         refundTx = builder.SignTransactionInPlace(refundTx);
-
-                                        bool verify = builder.Verify(refundTx);
 
                                         if (!wholeRefund)
                                         {
@@ -189,7 +222,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                             {
                                                 var refunded = new RefundedOutput();
                                                 refunded.LockTime = lockTimeValue.UtcDateTime;
-                                                refunded.RefundedAddress = multiSig.MultiSigAddress;
+                                                refunded.RefundedAddress = multiSigAddress;
                                                 refunded.RefundedOutputNumber = (int)item.Outpoint.N;
                                                 refunded.RefundTransaction = refund;
                                                 refunded.RefundedTxId = item.Outpoint.Hash.ToString();
@@ -199,10 +232,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                         }
                                         else
                                         {
-                                            throw new NotImplementedException();
-
                                             var refund = new WholeRefund();
-                                            refund.BitcoinAddress = multiSig.MultiSigAddress;
+                                            refund.BitcoinAddress = multiSigAddress;
                                             refund.CreationTime = DateTime.UtcNow;
                                             refund.LockTime = lockTime.Date.DateTime;
                                             refund.TransactionHex = refundTx.ToHex();
