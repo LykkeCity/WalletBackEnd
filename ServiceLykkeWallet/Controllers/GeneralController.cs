@@ -33,7 +33,7 @@ namespace ServiceLykkeWallet.Controllers
                     // Checking if Blockchain explorer is accessable
                     // The address is a random one taken from blockchain, does not have a special meaning
                     var testAddress = (WebSettings.ConnectionParams.BitcoinNetwork == Network.Main ?
-                        "1F1hsoSN9rGPZdwk3SJHin2q7jQsftSteU" : " mt4BFpmdbGft3Q8eQDo5ehUVNq99uzBugy ");
+                        "1F1hsoSN9rGPZdwk3SJHin2q7jQsftSteU" : "mt4BFpmdbGft3Q8eQDo5ehUVNq99uzBugy");
                     var walletOutputs = await OpenAssetsHelper.GetWalletOutputs
                         (testAddress, WebSettings.ConnectionParams.BitcoinNetwork, entities);
 
