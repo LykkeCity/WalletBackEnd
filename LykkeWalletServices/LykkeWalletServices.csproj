@@ -65,6 +65,9 @@
     <Compile Include="Accounts\LykkeAccountReader.cs" />
     <Compile Include="Accounts\SrvAccountBalanceAccess.cs" />
     <Compile Include="Accounts\SrvAccountGenerator.cs" />
+    <Compile Include="ChannelPreGeneratedOutput.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="DBLog.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>

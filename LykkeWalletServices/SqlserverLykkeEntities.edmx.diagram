@@ -31,6 +31,7 @@
         <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactions_UnsignedTransactions" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.DBLog" Width="1.5" PointX="12.375" PointY="0.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.ChannelPreGeneratedOutput" Width="1.5" PointX="12.375" PointY="3.75" />
         </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>
