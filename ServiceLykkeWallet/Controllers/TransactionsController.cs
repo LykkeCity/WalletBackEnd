@@ -645,12 +645,6 @@ namespace ServiceLykkeWallet.Controllers
                         }
                         else
                         {
-                            KeyStorage SourceMultisigAddress = null;
-                            if (sourceAddress is BitcoinScriptAddress)
-                            {
-                                SourceMultisigAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.SourceAddress, entities);
-                            }
-
                             OpenAssetsHelper.GetCoinsForWalletReturnType walletCoins = null;
                             if (sourceAddress is BitcoinPubKeyAddress)
                             {
