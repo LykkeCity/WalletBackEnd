@@ -131,6 +131,8 @@
           <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="ClientPubKey" Type="varchar" MaxLength="130" Nullable="false" />
           <Property Name="ExchangePrivateKey" Type="varchar" MaxLength="52" Nullable="false" />
+          <Property Name="ClientAddress" Type="varchar" MaxLength="35" />
+          <Property Name="MultiSigAddress" Type="varchar" MaxLength="35" />
         </EntityType>
         <EntityType Name="SentTransactions">
           <Key>
@@ -689,6 +691,8 @@
           <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
           <Property Name="ClientPubKey" Type="String" Nullable="false" MaxLength="130" FixedLength="false" Unicode="false" />
           <Property Name="ExchangePrivateKey" Type="String" Nullable="false" MaxLength="52" FixedLength="false" Unicode="false" />
+          <Property Name="ClientAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="MultiSigAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="UnsignedTransaction">
           <Key>
@@ -952,6 +956,8 @@
           <EntitySetMapping Name="SegKeys">
             <EntityTypeMapping TypeName="SqlexpressLykkeModel.SegKey">
               <MappingFragment StoreEntitySet="SegKeys">
+                <ScalarProperty Name="MultiSigAddress" ColumnName="MultiSigAddress" />
+                <ScalarProperty Name="ClientAddress" ColumnName="ClientAddress" />
                 <ScalarProperty Name="ExchangePrivateKey" ColumnName="ExchangePrivateKey" />
                 <ScalarProperty Name="ClientPubKey" ColumnName="ClientPubKey" />
                 <ScalarProperty Name="id" ColumnName="id" />

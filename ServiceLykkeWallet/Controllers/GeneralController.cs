@@ -24,7 +24,7 @@ namespace ServiceLykkeWallet.Controllers
         {
             try
             {
-                using (SqlexpressLykkeEntities entities = 
+                using (SqlexpressLykkeEntities entities =
                     new SqlexpressLykkeEntities(WebSettings.ConnectionString))
                 {
                     // Checking if DB is 
@@ -37,7 +37,7 @@ namespace ServiceLykkeWallet.Controllers
                     var walletOutputs = await OpenAssetsHelper.GetWalletOutputs
                         (testAddress, WebSettings.ConnectionParams.BitcoinNetwork, entities);
 
-                    if(walletOutputs.Item2)
+                    if (walletOutputs.Item2)
                     {
                         return BadRequest(walletOutputs.Item3);
                     }
@@ -50,10 +50,45 @@ namespace ServiceLykkeWallet.Controllers
             return Ok();
         }
 
+        // curl http://localhost:8989/General/UpdateSegkeysTableForClientAndMultisigAddress
+        // ToDo: This method is required for upgrade, probably it should be deleted later
+        [System.Web.Http.HttpGet]
+        public async Task<IHttpActionResult> UpdateSegkeysTableForClientAndMultisigAddress()
+        {
+            try
+            {
+                using (SqlexpressLykkeEntities entities =
+                        new SqlexpressLykkeEntities(WebSettings.ConnectionString))
+                {
+                    var allSegKeys = (from s in entities.SegKeys
+                                      select s).ToArray();
+
+                    for (int i = 0; i < allSegKeys.Count(); i++)
+                    {
+                        var clientPubKey = new PubKey(allSegKeys[i].ClientPubKey);
+                        var network = OpenAssetsHelper.ConvertStringNetworkToNBitcoinNetwork(WebSettings.ConnectionParams.Network);
+                        allSegKeys[i].ClientAddress = clientPubKey.GetAddress(network).ToString();
+
+                        var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] {  clientPubKey ,
+                        (new BitcoinSecret(allSegKeys[i].ExchangePrivateKey, network)).PubKey });
+                        allSegKeys[i].MultiSigAddress = multiSigAddress.GetScriptAddress(network).ToString();
+                    }
+
+                    await entities.SaveChangesAsync();
+
+                    return Ok();
+                }
+            }
+            catch (Exception e)
+            {
+                return InternalServerError(e);
+            }
+        }
+
         [System.Web.Http.HttpGet]
         public IHttpActionResult HasTripleDESKeySubmitted()
         {
-            if(SrvUpdateAssetsTask.EncryptionKey == null)
+            if (SrvUpdateAssetsTask.EncryptionKey == null)
             {
                 return Ok(false);
             }
@@ -93,7 +128,7 @@ namespace ServiceLykkeWallet.Controllers
             {
                 return BadRequest("Configuration is not encrypted.");
             }
-            if(SrvUpdateAssetsTask.EncryptionKey != null)
+            if (SrvUpdateAssetsTask.EncryptionKey != null)
             {
                 return BadRequest("Encryption key has been submitted previously.");
             }

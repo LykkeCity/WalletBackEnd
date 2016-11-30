@@ -17,5 +17,7 @@ namespace LykkeWalletServices
         public long id { get; set; }
         public string ClientPubKey { get; set; }
         public string ExchangePrivateKey { get; set; }
+        public string ClientAddress { get; set; }
+        public string MultiSigAddress { get; set; }
     }
 }

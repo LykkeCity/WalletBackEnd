@@ -15,8 +15,9 @@ namespace ServiceLykkeWallet.Controllers
             return Ok();
         }
 
-        public async Task<IHttpActionResult> GenerateOnChainTx0(string clientMultiSig, string clientContributedTransactionHex,
-            string clientContributedAmount, string ChannelAssetName)
+        public async Task<IHttpActionResult> GenerateChannelSetupTransaction(string ClientAddress, double ClientContributedContributedAmount,
+            string HubAddress, double HubContributedAmount, string ChannelAssetName)
+
         {
             return Ok();
         }

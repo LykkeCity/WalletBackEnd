@@ -70,6 +70,7 @@ namespace ServiceLykkeWallet
             OpenAssetsHelper.Network = settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet;
 
             GeneralHelper.UseSegKeysTable = settings.UseSegKeysTable;
+            WebSettings.UseSegKeysTable = settings.UseSegKeysTable;
 
             WebSettings.Assets = settings.AssetDefinitions;
             WebSettings.ConnectionParams = new OpenAssetsHelper.RPCConnectionParams

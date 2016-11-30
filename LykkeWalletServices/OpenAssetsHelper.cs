@@ -703,7 +703,7 @@ namespace LykkeWalletServices
             {
                 if (isAddressMultiSig)
                 {
-                    ret.MatchingAddress = await GetMatchingMultisigAddress(multiSigAddress, entities);
+                    ret.MatchingAddress = await GetMatchingMultisigAddress(multiSigAddress, entities, true);
                 }
 
                 // Getting wallet outputs
@@ -2019,16 +2019,34 @@ namespace LykkeWalletServices
             throw new Exception(string.Format("Could not parse the address {0} successfully.", address));
         }
 
+        
+
         public static async Task<PubKey> GetClientPubKeyForMultisig(string multisigAddr, SqlexpressLykkeEntities entities)
         {
-            var multisig = await GetMatchingMultisigAddress(multisigAddr, entities);
-            return (new BitcoinSecret(multisig.WalletPrivateKey)).PubKey;
+            var multisig = await GetMatchingMultisigAddress(multisigAddr, entities, true);
+            if (multisig.ClientPubKey != null)
+            {
+                return multisig.ClientPubKey;
+            }
+            else
+            {
+                return (new BitcoinSecret(multisig.WalletPrivateKey)).PubKey;
+            }
         }
 
-
-        public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
+        public class OpenAssetsHelperKeyStorage : KeyStorage
         {
-            KeyStorage ret = null;
+            public PubKey ClientPubKey
+            {
+                get;
+                set;
+            }
+        }
+
+        public static async Task<OpenAssetsHelperKeyStorage> GetMatchingMultisigAddress(string multiSigAddress,
+            SqlexpressLykkeEntities entities, bool walletPrivateKeyOptional = false)
+        {
+            OpenAssetsHelperKeyStorage ret = null;
 
             var base58Data = Base58Data.GetFromBase58Data(multiSigAddress);
             if (base58Data is BitcoinColoredAddress)
@@ -2036,24 +2054,49 @@ namespace LykkeWalletServices
                 multiSigAddress = (base58Data as BitcoinColoredAddress).Address.ToWif();
             }
 
-            if (PrivateKeyWillBeSubmitted)
+            if (WebSettings.UseSegKeysTable && walletPrivateKeyOptional)
             {
-                if (MultisigDictionary.ContainsKey(multiSigAddress))
+                var record = await (from item in entities.SegKeys
+                                    where item.MultiSigAddress == multiSigAddress
+                                    select item).FirstOrDefaultAsync();
+
+                if (record != null)
                 {
-                    ret = new KeyStorage();
-                    ret.ExchangePrivateKey = (new BitcoinSecret(MultisigDictionary[multiSigAddress])).PubKey.GetExchangePrivateKey(entities).ToWif();
+                    var multiSig = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { new PubKey( record.ClientPubKey) ,
+                                (new BitcoinSecret(record.ExchangePrivateKey)).PubKey });
+
+                    ret = new OpenAssetsHelperKeyStorage();
+                    ret.ExchangePrivateKey = record.ExchangePrivateKey;
                     ret.MultiSigAddress = multiSigAddress;
-                    ret.MultiSigScript = MultisigScriptDictionary[multiSigAddress];
+                    ret.MultiSigScript = multiSig.ToString();
                     ret.Network = Network.ToString();
-                    ret.WalletPrivateKey = MultisigDictionary[multiSigAddress];
-                    ret.WalletAddress = (new BitcoinSecret(ret.WalletPrivateKey)).GetAddress().ToWif();
+                    ret.WalletPrivateKey = null;
+                    ret.WalletAddress = record.ClientAddress;
+                    ret.ClientPubKey = new PubKey(record.ClientPubKey);
                 }
             }
             else
             {
-                ret = await (from item in entities.KeyStorages
-                             where item.MultiSigAddress.Equals(multiSigAddress)
-                             select item).SingleOrDefaultAsync();
+                if (PrivateKeyWillBeSubmitted)
+                {
+                    if (MultisigDictionary.ContainsKey(multiSigAddress))
+                    {
+                        ret = new OpenAssetsHelperKeyStorage();
+                        ret.ExchangePrivateKey = (new BitcoinSecret(MultisigDictionary[multiSigAddress])).PubKey.GetExchangePrivateKey(entities).ToWif();
+                        ret.MultiSigAddress = multiSigAddress;
+                        ret.MultiSigScript = MultisigScriptDictionary[multiSigAddress];
+                        ret.Network = Network.ToString();
+                        ret.WalletPrivateKey = MultisigDictionary[multiSigAddress];
+                        ret.WalletAddress = (new BitcoinSecret(ret.WalletPrivateKey)).GetAddress().ToWif();
+                    }
+                }
+                else
+                {
+                    ret = await (from item in entities.KeyStorages
+                                 where item.MultiSigAddress.Equals(multiSigAddress)
+                                 select item).Select(itm => 
+                                 new OpenAssetsHelper.OpenAssetsHelperKeyStorage { ExchangePrivateKey = itm.ExchangePrivateKey, MultiSigAddress = itm.MultiSigAddress, MultiSigScript = itm.MultiSigScript, Network = itm.Network, WalletAddress = itm.WalletAddress, WalletPrivateKey = itm.WalletPrivateKey }).SingleOrDefaultAsync();
+                }
             }
 
             if (ret == null)
