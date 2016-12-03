@@ -2071,9 +2071,17 @@ namespace LykkeWalletServices
                     ret.MultiSigScript = multiSig.ToString();
                     ret.Network = Network.ToString();
 
-                    if (PrivateKeyWillBeSubmitted && MultisigDictionary.ContainsKey(multiSigAddress))
+                    if (PrivateKeyWillBeSubmitted)
                     {
-                        ret.WalletPrivateKey = MultisigDictionary[multiSigAddress];
+                        if (MultisigDictionary.ContainsKey(multiSigAddress))
+                        {
+                            ret.WalletPrivateKey = MultisigDictionary[multiSigAddress];
+                        }
+                        else
+                        {
+                            throw new Exception("Private key not submitted for MultiSigAddress: "
+                                + multiSigAddress);
+                        }
                     }
                     else
                     {
