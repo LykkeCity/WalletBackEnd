@@ -73,6 +73,32 @@
           <Property Name="Network" Type="varchar" MaxLength="100" Nullable="false" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
+        <EntityType Name="LkeBlkChnMgrCoin">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="TransactionId" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="OutputNumber" Type="int" Nullable="false" />
+          <Property Name="SatoshiAmount" Type="bigint" Nullable="false" />
+          <Property Name="AssetAmount" Type="bigint" />
+          <Property Name="AssetId" Type="varchar" MaxLength="50" />
+          <Property Name="SpentTransactionId" Type="varchar" MaxLength="64" />
+          <Property Name="SpentTransactionInputNumber" Type="int" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="LkeBlkChnMgrTransactionsToBeSent">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+          </Key>
+          <Property Name="TransactionId" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="TransactionHex" Type="text" Nullable="false" />
+          <Property Name="HasBeenSent" Type="bit" Nullable="false" />
+          <Property Name="CreationDate" Type="datetime" Nullable="false" />
+          <Property Name="ShouldBeSent" Type="bit" Nullable="false" />
+          <Property Name="ReferenceNumber" Type="varchar" MaxLength="20" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
         <EntityType Name="PreGeneratedOutput">
           <Key>
             <PropertyRef Name="TransactionId" />
@@ -180,6 +206,30 @@
           <Property Name="WholeRefundId" Type="bigint" />
           <Property Name="OldRefundedTxId" Type="bigint" />
         </EntityType>
+        <EntityType Name="TxBrdCstRequestDetails">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="RequestType" Type="int" Nullable="false" />
+          <Property Name="RequestSource" Type="int" Nullable="false" />
+          <Property Name="ReguestDetails" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="TxBrdCstRequestSource">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="SourceName" Type="varchar" MaxLength="10" Nullable="false" />
+        </EntityType>
+        <EntityType Name="TxBrdCstRequestType">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="TypeName" Type="varchar" MaxLength="15" Nullable="false" />
+        </EntityType>
         <EntityType Name="UnsignedTransactions">
           <Key>
             <PropertyRef Name="id" />
@@ -252,6 +302,30 @@
             </Principal>
             <Dependent Role="RefundedOutputs">
               <PropertyRef Name="RefundTxId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RequestDetails_RequestSource">
+          <End Role="TxBrdCstRequestSource" Type="Self.TxBrdCstRequestSource" Multiplicity="1" />
+          <End Role="TxBrdCstRequestDetails" Type="Self.TxBrdCstRequestDetails" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TxBrdCstRequestSource">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="TxBrdCstRequestDetails">
+              <PropertyRef Name="RequestSource" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RequestDetails_RequestType">
+          <End Role="TxBrdCstRequestType" Type="Self.TxBrdCstRequestType" Multiplicity="1" />
+          <End Role="TxBrdCstRequestDetails" Type="Self.TxBrdCstRequestDetails" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TxBrdCstRequestType">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="TxBrdCstRequestDetails">
+              <PropertyRef Name="RequestType" />
             </Dependent>
           </ReferentialConstraint>
         </Association>
@@ -334,6 +408,8 @@
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="InputOutputMessageLog" EntityType="Self.InputOutputMessageLog" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="LkeBlkChnMgrCoin" EntityType="Self.LkeBlkChnMgrCoin" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="LkeBlkChnMgrTransactionsToBeSent" EntityType="Self.LkeBlkChnMgrTransactionsToBeSent" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="PreGeneratedOutput" EntityType="Self.PreGeneratedOutput" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="PregeneratedReserve" EntityType="Self.PregeneratedReserve" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="RefundedOutputs" EntityType="Self.RefundedOutputs" Schema="dbo" store:Type="Tables" />
@@ -343,6 +419,9 @@
           <EntitySet Name="SpentOutputs" EntityType="Self.SpentOutputs" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="TransactionsToBeSigned" EntityType="Self.TransactionsToBeSigned" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="TransactionsWaitForConfirmations" EntityType="Self.TransactionsWaitForConfirmations" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TxBrdCstRequestDetails" EntityType="Self.TxBrdCstRequestDetails" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TxBrdCstRequestSource" EntityType="Self.TxBrdCstRequestSource" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TxBrdCstRequestType" EntityType="Self.TxBrdCstRequestType" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="UnsignedTransactions" EntityType="Self.UnsignedTransactions" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="UnsignedTransactionSpentOutputs" EntityType="Self.UnsignedTransactionSpentOutputs" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="WholeRefund" EntityType="Self.WholeRefund" Schema="dbo" store:Type="Tables" />
@@ -354,6 +433,14 @@
           <AssociationSet Name="FK_RefundedOutputs_RefundTransactions" Association="Self.FK_RefundedOutputs_RefundTransactions">
             <End Role="RefundTransactions" EntitySet="RefundTransactions" />
             <End Role="RefundedOutputs" EntitySet="RefundedOutputs" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RequestDetails_RequestSource" Association="Self.FK_RequestDetails_RequestSource">
+            <End Role="TxBrdCstRequestSource" EntitySet="TxBrdCstRequestSource" />
+            <End Role="TxBrdCstRequestDetails" EntitySet="TxBrdCstRequestDetails" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RequestDetails_RequestType" Association="Self.FK_RequestDetails_RequestType">
+            <End Role="TxBrdCstRequestType" EntitySet="TxBrdCstRequestType" />
+            <End Role="TxBrdCstRequestDetails" EntitySet="TxBrdCstRequestDetails" />
           </AssociationSet>
           <AssociationSet Name="FK_SpentOutputs_SentTransactions" Association="Self.FK_SpentOutputs_SentTransactions">
             <End Role="SentTransactions" EntitySet="SentTransactions" />
@@ -436,7 +523,20 @@
           </AssociationSet>
           <EntitySet Name="DBLogs" EntityType="SqlexpressLykkeModel.DBLog" />
           <EntitySet Name="ChannelPreGeneratedOutputs" EntityType="SqlexpressLykkeModel.ChannelPreGeneratedOutput" />
-        </EntityContainer>
+          <EntitySet Name="TxBrdCstRequestDetails" EntityType="SqlexpressLykkeModel.TxBrdCstRequestDetail" />
+          <EntitySet Name="TxBrdCstRequestSources" EntityType="SqlexpressLykkeModel.TxBrdCstRequestSource" />
+          <EntitySet Name="TxBrdCstRequestTypes" EntityType="SqlexpressLykkeModel.TxBrdCstRequestType" />
+          <AssociationSet Name="FK_RequestDetails_RequestSource" Association="SqlexpressLykkeModel.FK_RequestDetails_RequestSource">
+            <End Role="TxBrdCstRequestSource" EntitySet="TxBrdCstRequestSources" />
+            <End Role="TxBrdCstRequestDetail" EntitySet="TxBrdCstRequestDetails" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RequestDetails_RequestType" Association="SqlexpressLykkeModel.FK_RequestDetails_RequestType">
+            <End Role="TxBrdCstRequestType" EntitySet="TxBrdCstRequestTypes" />
+            <End Role="TxBrdCstRequestDetail" EntitySet="TxBrdCstRequestDetails" />
+          </AssociationSet>
+          <EntitySet Name="LkeBlkChnMgrCoins" EntityType="SqlexpressLykkeModel.LkeBlkChnMgrCoin" />
+          <EntitySet Name="LkeBlkChnMgrTransactionsToBeSents" EntityType="SqlexpressLykkeModel.LkeBlkChnMgrTransactionsToBeSent" />
+          </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
             <PropertyRef Name="ExchangeId" />
@@ -707,7 +807,7 @@
           <Property Name="TransactionSendingSuccessful" Type="Boolean" />
           <Property Name="TransactionSendingError" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="TransactionId" Type="String" MaxLength="64" FixedLength="false" Unicode="false" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
           <Property Name="CreationTime" Type="DateTime" Precision="3" />
           <Property Name="HasTimedout" Type="Boolean" />
           <Property Name="id" Type="Guid" Nullable="false" />
@@ -773,9 +873,87 @@
           <Property Name="AssetId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Address" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Network" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+        </EntityType>
+        <EntityType Name="TxBrdCstRequestDetail">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RequestType" Type="Int32" Nullable="false" />
+          <Property Name="RequestSource" Type="Int32" Nullable="false" />
+          <Property Name="ReguestDetails" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
+          <NavigationProperty Name="TxBrdCstRequestSource" Relationship="SqlexpressLykkeModel.FK_RequestDetails_RequestSource" FromRole="TxBrdCstRequestDetail" ToRole="TxBrdCstRequestSource" />
+          <NavigationProperty Name="TxBrdCstRequestType" Relationship="SqlexpressLykkeModel.FK_RequestDetails_RequestType" FromRole="TxBrdCstRequestDetail" ToRole="TxBrdCstRequestType" />
+        </EntityType>
+        <EntityType Name="TxBrdCstRequestSource">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="SourceName" Type="String" Nullable="false" MaxLength="10" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="TxBrdCstRequestDetails" Relationship="SqlexpressLykkeModel.FK_RequestDetails_RequestSource" FromRole="TxBrdCstRequestSource" ToRole="TxBrdCstRequestDetail" />
+        </EntityType>
+        <EntityType Name="TxBrdCstRequestType">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="TypeName" Type="String" Nullable="false" MaxLength="15" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="TxBrdCstRequestDetails" Relationship="SqlexpressLykkeModel.FK_RequestDetails_RequestType" FromRole="TxBrdCstRequestType" ToRole="TxBrdCstRequestDetail" />
+        </EntityType>
+        <Association Name="FK_RequestDetails_RequestSource">
+          <End Type="SqlexpressLykkeModel.TxBrdCstRequestSource" Role="TxBrdCstRequestSource" Multiplicity="1" />
+          <End Type="SqlexpressLykkeModel.TxBrdCstRequestDetail" Role="TxBrdCstRequestDetail" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TxBrdCstRequestSource">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="TxBrdCstRequestDetail">
+              <PropertyRef Name="RequestSource" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RequestDetails_RequestType">
+          <End Type="SqlexpressLykkeModel.TxBrdCstRequestType" Role="TxBrdCstRequestType" Multiplicity="1" />
+          <End Type="SqlexpressLykkeModel.TxBrdCstRequestDetail" Role="TxBrdCstRequestDetail" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TxBrdCstRequestType">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="TxBrdCstRequestDetail">
+              <PropertyRef Name="RequestType" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="LkeBlkChnMgrCoin">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="OutputNumber" Type="Int32" Nullable="false" />
+          <Property Name="SatoshiAmount" Type="Int64" Nullable="false" />
+          <Property Name="AssetAmount" Type="Int64" />
+          <Property Name="AssetId" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="SpentTransactionId" Type="String" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="SpentTransactionInputNumber" Type="Int32" />
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
         </EntityType>
-      </Schema>
+        <EntityType Name="LkeBlkChnMgrTransactionsToBeSent">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+          </Key>
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionHex" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="HasBeenSent" Type="Boolean" Nullable="false" />
+          <Property Name="CreationDate" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="ShouldBeSent" Type="Boolean" Nullable="false" />
+          <Property Name="ReferenceNumber" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
+        </EntityType>
+        </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
     <edmx:Mappings>
@@ -1018,7 +1196,61 @@
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
-        </EntityContainerMapping>
+          <EntitySetMapping Name="TxBrdCstRequestDetails">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.TxBrdCstRequestDetail">
+              <MappingFragment StoreEntitySet="TxBrdCstRequestDetails">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="ReguestDetails" ColumnName="ReguestDetails" />
+                <ScalarProperty Name="RequestSource" ColumnName="RequestSource" />
+                <ScalarProperty Name="RequestType" ColumnName="RequestType" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TxBrdCstRequestSources">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.TxBrdCstRequestSource">
+              <MappingFragment StoreEntitySet="TxBrdCstRequestSource">
+                <ScalarProperty Name="SourceName" ColumnName="SourceName" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TxBrdCstRequestTypes">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.TxBrdCstRequestType">
+              <MappingFragment StoreEntitySet="TxBrdCstRequestType">
+                <ScalarProperty Name="TypeName" ColumnName="TypeName" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="LkeBlkChnMgrCoins">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.LkeBlkChnMgrCoin">
+              <MappingFragment StoreEntitySet="LkeBlkChnMgrCoin">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="SpentTransactionInputNumber" ColumnName="SpentTransactionInputNumber" />
+                <ScalarProperty Name="SpentTransactionId" ColumnName="SpentTransactionId" />
+                <ScalarProperty Name="AssetId" ColumnName="AssetId" />
+                <ScalarProperty Name="AssetAmount" ColumnName="AssetAmount" />
+                <ScalarProperty Name="SatoshiAmount" ColumnName="SatoshiAmount" />
+                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="LkeBlkChnMgrTransactionsToBeSents">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.LkeBlkChnMgrTransactionsToBeSent">
+              <MappingFragment StoreEntitySet="LkeBlkChnMgrTransactionsToBeSent">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="ReferenceNumber" ColumnName="ReferenceNumber" />
+                <ScalarProperty Name="ShouldBeSent" ColumnName="ShouldBeSent" />
+                <ScalarProperty Name="CreationDate" ColumnName="CreationDate" />
+                <ScalarProperty Name="HasBeenSent" ColumnName="HasBeenSent" />
+                <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          </EntityContainerMapping>
       </Mapping>
     </edmx:Mappings>
   </edmx:Runtime>

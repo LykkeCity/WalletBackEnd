@@ -1,6 +1,7 @@
 ﻿using Core;
 using LykkeWalletServices;
 using LykkeWalletServices.Accounts;
+using LykkeWalletServices.BlockchainManager;
 using LykkeWalletServices.Transactions.TaskHandlers;
 using NBitcoin;
 using ServiceLykkeWallet.Models;
@@ -34,7 +35,7 @@ namespace ServiceLykkeWallet.Controllers
                     // The address is a random one taken from blockchain, does not have a special meaning
                     var testAddress = (WebSettings.ConnectionParams.BitcoinNetwork == Network.Main ?
                         "1F1hsoSN9rGPZdwk3SJHin2q7jQsftSteU" : "n4n59uCrRgHTcA2Nunw3vjxbthVBVsUKFN");
-                    var walletOutputs = await OpenAssetsHelper.GetWalletOutputs
+                    var walletOutputs = await LykkeBitcoinBlockchainManager.GetWalletOutputs
                         (testAddress, WebSettings.ConnectionParams.BitcoinNetwork, entities);
 
                     if (walletOutputs.Item2)

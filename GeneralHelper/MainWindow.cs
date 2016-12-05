@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using System.Linq.Expressions;
 using System.Configuration;
 using static LykkeWalletServices.OpenAssetsHelper;
+using LykkeWalletServices.BlockchainManager;
 
 namespace GeneralHelper
 {
@@ -114,7 +115,7 @@ namespace GeneralHelper
 
         private static void ReadAppSettings()
         {
-            QBitNinjaBaseUrl =
+            LykkeBitcoinBlockchainManager.QBitNinjaBaseUrl =
                 ConfigurationManager.AppSettings["QBitNinjaBaseUrl"];
 
             string RPCUsername = ConfigurationManager.AppSettings["RPCUsername"];
@@ -185,7 +186,7 @@ namespace GeneralHelper
                         }
                     }
 
-                    var feeOutputs = await OpenAssetsHelper.GetWalletOutputs(feePayerSecret.GetAddress().ToString(),
+                    var feeOutputs = await LykkeBitcoinBlockchainManager.GetWalletOutputs(feePayerSecret.GetAddress().ToString(),
                         feePayerSecret.Network, null, () => { return 0; });
                     if (feeOutputs.Item2)
                     {

@@ -13,6 +13,7 @@ using Core;
 using System.IO;
 using System.Net.Http;
 using static LykkeWalletServices.OpenAssetsHelper;
+using LykkeWalletServices.BlockchainManager;
 
 namespace Lykkex.WalletBackend.Tests
 {
@@ -60,7 +61,7 @@ namespace Lykkex.WalletBackend.Tests
 
             await InitializeBitcoinNetwork(Settings);
 
-            OpenAssetsHelper.QBitNinjaBaseUrl = Settings.QBitNinjaBaseUrl;
+            LykkeBitcoinBlockchainManager.QBitNinjaBaseUrl = Settings.QBitNinjaBaseUrl;
         }
 
         private async static Task Startup(Settings settings)

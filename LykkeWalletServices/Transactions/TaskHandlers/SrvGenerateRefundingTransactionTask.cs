@@ -1,4 +1,5 @@
 ﻿using Core;
+using LykkeWalletServices.BlockchainManager;
 using NBitcoin;
 using NBitcoin.Policy;
 using System;
@@ -79,7 +80,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 DateTimeOffset lockTimeValue = new DateTimeOffset(DateTime.UtcNow) + new TimeSpan(0, (int)data.timeoutInMinutes, 0);
                                 LockTime lockTime = new LockTime(lockTimeValue);
 
-                                var walletOuputs = await OpenAssetsHelper.GetWalletOutputs(multiSigAddress,
+                                var walletOuputs = await LykkeBitcoinBlockchainManager.GetWalletOutputs(multiSigAddress,
                                     connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);
                                 if (walletOuputs.Item2)
                                 {

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NBitcoin;
+using LykkeWalletServices.BlockchainManager;
 
 namespace NonBitcoinTests
 {
@@ -37,10 +38,10 @@ namespace NonBitcoinTests
         {
             var txId = "84230f5e12060ef7e8947354c3fc9e8d616f3d8d56c77923c5ad2e923ce60f13";
 
-            OpenAssetsHelper.QBitNinjaBaseUrl = SettingsReader.Settings.QBitNinjaBaseUrl;
+            LykkeBitcoinBlockchainManager.QBitNinjaBaseUrl = SettingsReader.Settings.QBitNinjaBaseUrl;
 
             int numOfConfirmations = await 
-                OpenAssetsHelper.GetNumberOfTransactionConfirmations(txId);
+                LykkeBitcoinBlockchainManager.GetNumberOfTransactionConfirmations(txId);
 
             Assert.Greater(numOfConfirmations, 267000, string.Format(
                 "Number of confirmations for transaction {0} should be greater than 267000.", txId));

@@ -49,5 +49,10 @@ namespace LykkeWalletServices
         public virtual DbSet<UnsignedTransactionSpentOutput> UnsignedTransactionSpentOutputs { get; set; }
         public virtual DbSet<DBLog> DBLogs { get; set; }
         public virtual DbSet<ChannelPreGeneratedOutput> ChannelPreGeneratedOutputs { get; set; }
+        public virtual DbSet<TxBrdCstRequestDetail> TxBrdCstRequestDetails { get; set; }
+        public virtual DbSet<TxBrdCstRequestSource> TxBrdCstRequestSources { get; set; }
+        public virtual DbSet<TxBrdCstRequestType> TxBrdCstRequestTypes { get; set; }
+        public virtual DbSet<LkeBlkChnMgrCoin> LkeBlkChnMgrCoins { get; set; }
+        public virtual DbSet<LkeBlkChnMgrTransactionsToBeSent> LkeBlkChnMgrTransactionsToBeSents { get; set; }
     }
 }

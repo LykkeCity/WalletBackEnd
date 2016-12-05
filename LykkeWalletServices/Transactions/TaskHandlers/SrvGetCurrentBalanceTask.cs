@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using static LykkeWalletServices.OpenAssetsHelper;
+using LykkeWalletServices.BlockchainManager;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -31,7 +32,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 Tuple<UniversalUnspentOutput[], bool, string, bool> walletOuputs = null;
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(ConnectionString))
                 {
-                    walletOuputs = await GetWalletOutputs(data.MultisigAddress, connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);
+                    walletOuputs = await LykkeBitcoinBlockchainManager.GetWalletOutputs(data.MultisigAddress, connectionParams.BitcoinNetwork, entities, getMinimumConfirmationNumber);
                 }
                 if (walletOuputs.Item2)
                 {

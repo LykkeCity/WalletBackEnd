@@ -22,6 +22,8 @@ using Newtonsoft.Json.Linq;
 using LykkeWalletServices;
 using System.Runtime.CompilerServices;
 using System.Data.Entity.Infrastructure;
+using LykkeWalletServices.BlockchainManager;
+using static LykkeWalletServices.BlockchainManager.LykkeBitcoinBlockchainManager;
 
 namespace LykkeWalletServices
 {
@@ -69,10 +71,6 @@ namespace LykkeWalletServices
                 }
             }
         }
-        public enum APIProvider
-        {
-            QBitNinja
-        }
 
         public const uint MinimumRequiredSatoshi = 50000; // 100000000 satoshi is one BTC
         public static long TransactionSendFeesInSatoshi
@@ -92,32 +90,9 @@ namespace LykkeWalletServices
         public const ulong BTCToSathoshiMultiplicationFactor = 100000000;
         public const uint ConcurrencyRetryCount = 3;
         public const uint NBitcoinColoredCoinOutputInSatoshi = 2730;
-        public const APIProvider apiProvider = APIProvider.QBitNinja;
         public const int LocktimeMinutesAllowance = 120;
 
         public static ILog GeneralLogger
-        {
-            get;
-            set;
-        }
-
-        public static string QBitNinjaBalanceUrl
-        {
-            get
-            {
-                return QBitNinjaBaseUrl + "balances/";
-            }
-        }
-
-        public static string QBitNinjaTransactionUrl
-        {
-            get
-            {
-                return QBitNinjaBaseUrl + "transactions/";
-            }
-        }
-
-        public static string QBitNinjaBaseUrl
         {
             get;
             set;
@@ -164,23 +139,6 @@ namespace LykkeWalletServices
             get;
             set;
         }
-
-        private static int minimumNumberOfRequiredConfirmations = 1;
-
-        public static int MinimumNumberOfRequiredConfirmations
-        {
-            get
-            {
-                return minimumNumberOfRequiredConfirmations;
-            }
-
-            set
-            {
-                minimumNumberOfRequiredConfirmations = value;
-            }
-        }
-
-        private readonly static Func<int> DefaultGetMinimumConfirmationNumber = (() => { return MinimumNumberOfRequiredConfirmations; });
 
         public static IDictionary<string, string> P2PKHDictionary = new Dictionary<string, string>();
         public static IDictionary<string, string> MultisigDictionary = new Dictionary<string, string>();
@@ -509,65 +467,6 @@ namespace LykkeWalletServices
             return new Tuple<ColoredCoin[], Coin[]>(walletColoredCoins, walletUncoloredCoins);
         }
 
-        public static async Task<Tuple<UniversalUnspentOutput[], bool, string, bool>> GetWalletOutputs(string walletAddress,
-            Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
-        {
-            Tuple<UniversalUnspentOutput[], bool, string, bool> ret = null;
-            switch (apiProvider)
-            {
-                case APIProvider.QBitNinja:
-                    var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, entities, getMinimumConfirmationNumber, ignoreUnconfirmed);
-                    ret = new Tuple<UniversalUnspentOutput[], bool, string, bool>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
-                        qbitResult.Item2, qbitResult.Item3, qbitResult.Item4);
-                    break;
-                default:
-                    throw new Exception("Not supported.");
-            }
-
-            /*
-            IList<UniversalUnspentOutput> retList = new List<UniversalUnspentOutput>();
-            var joined = from output in ret.Item1
-                         join refunded in entities.RefundedOutputs
-                         on new { A = output.GetTransactionHash(), B = output.GetOutputIndex() } equals new { A = refunded.RefundedTxId, B = refunded.RefundedOutputNumber }
-                         into gj
-                         from item in gj.DefaultIfEmpty(new RefundedOutput { LockTime = DateTime.MaxValue })
-                         where item.HasBeenSpent.Equals(false) && item.RefundInvalid.Equals(false)
-                         select new { output, item.LockTime };
-
-            foreach (var item in joined)
-            {
-                if (item.LockTime >= DateTime.UtcNow.AddMinutes(LocktimeMinutesAllowance))
-                {
-                    retList.Add(item.output);
-                }
-            }
-
-            if (considerTimeOut)
-            {
-                return new Tuple<UniversalUnspentOutput[], bool, string>(retList.ToArray(),
-                    ret.Item2, ret.Item3);
-            }
-            else
-            {
-                return ret;
-            }
-            */
-
-            return ret;
-        }
-
-        public static async Task<Tuple<float, bool, string>> GetAccountBalance(string walletAddress,
-            string assetId, Network network, Func<int> getMinimumConfirmationNumber = null)
-        {
-            switch (apiProvider)
-            {
-                case APIProvider.QBitNinja:
-                    return await GetAccountBalanceQBitNinja(walletAddress, assetId, network, getMinimumConfirmationNumber);
-                default:
-                    throw new Exception("Not supported.");
-            }
-        }
-
         public static double GetAssetBalance(UniversalUnspentOutput[] outputs,
             string assetId, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
         {
@@ -621,34 +520,6 @@ namespace LykkeWalletServices
             else
             {
                 return false;
-            }
-        }
-
-        /// <summary>
-        /// Checks whether the amount for assetId of the wallet is enough
-        /// </summary>
-        /// <param name="walletAddress">Address of the wallet</param>
-        /// <param name="assetId">Asset id to check the balance for.</param>
-        /// <param name="amount">The required amount to check for.</param>
-        /// <returns>Whether the asset amount is enough or not.</returns>
-        public static async Task<bool> IsAssetsEnough(string walletAddress, string assetId,
-            int amount, Network network, long multiplyFactor, Func<int> getMinimumConfirmationNumber = null)
-        {
-            Tuple<float, bool, string> result = await GetAccountBalance(walletAddress, assetId, network, getMinimumConfirmationNumber);
-            if (result.Item2 == true)
-            {
-                return false;
-            }
-            else
-            {
-                if (result.Item1 >= amount)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
             }
         }
 
@@ -910,7 +781,7 @@ namespace LykkeWalletServices
         }
 
         // From http://stackoverflow.com/questions/14889988/how-can-i-use-where-with-an-async-predicate
-        static async Task<IEnumerable<T>> Where<T>(
+        public static async Task<IEnumerable<T>> Where<T>(
             this IEnumerable<T> source, Func<T, Task<bool>> predicate)
         {
             var results = new ConcurrentQueue<T>();
@@ -1199,7 +1070,7 @@ namespace LykkeWalletServices
         public static async Task IsTransactionFullyIndexed(Transaction tx, RPCConnectionParams connectionParams,
             SqlexpressLykkeEntities entities, bool confirmationRequired = false)
         {
-            var settings = new TheSettings { QBitNinjaBaseUrl = OpenAssetsHelper.QBitNinjaBaseUrl };
+            var settings = new TheSettings { QBitNinjaBaseUrl = LykkeBitcoinBlockchainManager.QBitNinjaBaseUrl };
 
             try
             {
@@ -1272,7 +1143,7 @@ namespace LykkeWalletServices
                 {
                     using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
                     {
-                        var outputs = await GetWalletOutputs(data.WalletAddress, connectionParams.BitcoinNetwork, entities);
+                        var outputs = await LykkeBitcoinBlockchainManager.GetWalletOutputs(data.WalletAddress, connectionParams.BitcoinNetwork, entities);
                         if (outputs.Item2)
                         {
                             error = new Error();
@@ -2207,179 +2078,6 @@ namespace LykkeWalletServices
         }
         #endregion
 
-        //#region LykkeJobsNotificationStructures
-        //public class LykkeJobsNotificationMessage
-        //{
-        //    public string TransactionId
-        //    {
-        //        get;
-        //        set;
-        //    }
-
-        //    public string BlockchainHash
-        //    {
-        //        get;
-        //        set;
-        //    }
-
-        //    public string Operation
-        //    {
-        //        get;
-        //        set;
-        //    }
-        //}
-
-        //public class LykkeJobsNotificationResponseError
-        //{
-        //    public int Code
-        //    {
-        //        get;
-        //        set;
-        //    }
-
-        //    public string Message
-        //    {
-        //        get;
-        //        set;
-        //    }
-        //}
-        //public class LykkeJobsNotificationResponse
-        //{
-        //    public LykkeJobsNotificationResponseError Error
-        //    {
-        //        get;
-        //        set;
-        //    }
-        //}
-        //#endregion
-
-        #region BitcoinApiReturnStructure
-        public class UniversalUnspentOutput
-        {
-        }
-
-        public class QBitNinjaUnspentOutput : UniversalUnspentOutput
-        {
-            public string transaction_hash { get; set; }
-            public int output_index { get; set; }
-            public long value { get; set; }
-            public int confirmations { get; set; }
-            public string script_hex { get; set; }
-            public string asset_id { get; set; }
-            public long asset_quantity { get; set; }
-        }
-
-        public class QBitNinjaReceivedCoin
-        {
-            public string transactionId { get; set; }
-            public int index { get; set; }
-            public long value { get; set; }
-            public string scriptPubKey { get; set; }
-            public object redeemScript { get; set; }
-            public string assetId { get; set; }
-            public long quantity { get; set; }
-        }
-
-        public class QBitNinjaSpentCoin
-        {
-            public string address { get; set; }
-            public string transactionId { get; set; }
-            public int index { get; set; }
-            public long value { get; set; }
-            public string scriptPubKey { get; set; }
-            public object redeemScript { get; set; }
-            public string assetId { get; set; }
-            public long quantity { get; set; }
-        }
-
-        public class QBitNinjaOperation
-        {
-            public long amount { get; set; }
-            public int confirmations { get; set; }
-            public int height { get; set; }
-            public string blockId { get; set; }
-            public string transactionId { get; set; }
-            public List<QBitNinjaReceivedCoin> receivedCoins { get; set; }
-            public List<QBitNinjaSpentCoin> spentCoins { get; set; }
-        }
-
-
-
-        public class QBitNinjaOutputResponse
-        {
-            public object continuation { get; set; }
-            public List<QBitNinjaOperation> operations { get; set; }
-        }
-
-        public class QBitNinjaBlock
-        {
-            public string blockId { get; set; }
-            public string blockHeader { get; set; }
-            public int height { get; set; }
-            public int confirmations { get; set; }
-            public string medianTimePast { get; set; }
-            public string blockTime { get; set; }
-        }
-
-        public class QBitNinjaTransactionResponse
-        {
-            public string transaction { get; set; }
-            public string transactionId { get; set; }
-            public bool isCoinbase { get; set; }
-            public QBitNinjaBlock block { get; set; }
-            public List<QBitNinjaSpentCoin> spentCoins { get; set; }
-            public List<QBitNinjaReceivedCoin> receivedCoins { get; set; }
-            public string firstSeen { get; set; }
-            public int fees { get; set; }
-        }
-
-        public class BlockCypherInput
-        {
-            public string prev_hash { get; set; }
-            public int output_index { get; set; }
-            public string script { get; set; }
-            public long output_value { get; set; }
-            public object sequence { get; set; }
-            public string[] addresses { get; set; }
-            public string script_type { get; set; }
-        }
-
-        public class BlockCypherOutput
-        {
-            public long value { get; set; }
-            public string script { get; set; }
-            public string spent_by { get; set; }
-            public string[] addresses { get; set; }
-            public string script_type { get; set; }
-        }
-
-        public class BlockCypherGetTransactionResult
-        {
-            public string block_hash { get; set; }
-            public int block_height { get; set; }
-            public int block_index { get; set; }
-            public string hash { get; set; }
-            public string hex { get; set; }
-            public string[] addresses { get; set; }
-            public long total { get; set; }
-            public int fees { get; set; }
-            public int size { get; set; }
-            public string preference { get; set; }
-            public string relayed_by { get; set; }
-            public string confirmed { get; set; }
-            public string received { get; set; }
-            public int ver { get; set; }
-            public int lock_time { get; set; }
-            public bool double_spend { get; set; }
-            public int vin_sz { get; set; }
-            public int vout_sz { get; set; }
-            public int confirmations { get; set; }
-            public int confidence { get; set; }
-            public BlockCypherInput[] inputs { get; set; }
-            public BlockCypherOutput[] outputs { get; set; }
-        }
-        #endregion
-
         #region QBitNinjaFunctions
         public static async Task<bool> IsTransactionPresentInQBitNinja(Transaction tx)
         {
@@ -2474,192 +2172,9 @@ namespace LykkeWalletServices
             return new Tuple<float, bool, string>(balance, errorOccured, errorMessage);
         }
 
-        public static async Task<QBitNinjaOutputResponse> GetAddressBalance(string walletAddress, Action<HttpResponseMessage> onNotSuccessfulReturn,
-            bool colored = true, bool unspentonly = true, bool ignoreUnconfirmed = false)
-        {
-            string continuation = null;
-            List<QBitNinjaOperation> operations = new List<QBitNinjaOperation>();
+        
 
-            do
-            {
-                QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
-                using (WalletBackendHTTPClient client = new WalletBackendHTTPClient())
-                {
-                    string url = null;
-                    url = string.Format("{0}?unspentonly={1}&colored={2}",
-                        QBitNinjaBalanceUrl + walletAddress, unspentonly.ToString().ToLower(), colored.ToString().ToLower());
-                    if (ignoreUnconfirmed)
-                    {
-                        string blockNumberUrl = string.Format("{0}/blocks/tip?headeronly=true",
-                            QBitNinjaBaseUrl);
-                        HttpResponseMessage blockNumberResult = await client.GetAsync(blockNumberUrl);
-                        if (!blockNumberResult.IsSuccessStatusCode)
-                        {
-                            onNotSuccessfulReturn.Invoke(blockNumberResult);
-                            return null;
-                        }
-                        else
-                        {
-                            var webResponse = await blockNumberResult.Content.ReadAsStringAsync();
-                            dynamic blockNumberUnprocessed = JObject.Parse(webResponse);
-                            int blockHeight = blockNumberUnprocessed.additionalInformation.height;
-                            url += string.Format("&from={0}", blockHeight);
-                        }
-                    }
-                    if (!string.IsNullOrEmpty(continuation))
-                    {
-                        url += string.Format("&continuation={0}", continuation);
-                    }
-                    HttpResponseMessage result = await client.GetAsync(url);
-
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        onNotSuccessfulReturn.Invoke(result);
-                        return null;
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                            (webResponse);
-                        operations.AddRange(notProcessedUnspentOutputs.operations);
-                        continuation = notProcessedUnspentOutputs.continuation as string;
-                    }
-                }
-            }
-            while (!string.IsNullOrEmpty(continuation));
-
-            return new QBitNinjaOutputResponse { continuation = null, operations = operations };
-        }
-
-        public static async Task<int> GetNumberOfTransactionConfirmations(string txId)
-        {
-            string url = null;
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    url = QBitNinjaTransactionUrl + txId;
-                    HttpResponseMessage result = await client.GetAsync(url);
-
-                    if (result.StatusCode == System.Net.HttpStatusCode.OK)
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        var response = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaTransactionResponse>
-                                (webResponse);
-                        return response.block.confirmations;
-                    }
-                    else
-                    {
-                        return -1;
-                    }
-                }
-            }
-            catch (Exception exp)
-            {
-                return -1;
-            }
-        }
-
-        public static async Task<bool> HasTransactionPassedItsWaitTime(string txId,
-            SqlexpressLykkeEntities entitiesContext)
-        {
-            if (entitiesContext == null)
-            {
-                return true;
-            }
-
-            var found = (from item in entitiesContext.TransactionsWaitForConfirmations
-                         where item.txToBeWatched == txId
-                         select item).FirstOrDefault();
-
-            if (found != null)
-            {
-                if (await GetNumberOfTransactionConfirmations(txId) > 2)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        private static string GetCaller(
-                        [CallerFilePath] string file = "",
-                        [CallerMemberName] string member = "",
-                        [CallerLineNumber] int line = 0)
-        {
-            return string.Format("{0}_{1}({2})", Path.GetFileName(file), member, line);
-        }
-
-        delegate Task PopulateUnspentOupt(QBitNinjaOperation operation);
-
-        public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string, bool>> GetWalletOutputsQBitNinja(string walletAddress,
-            Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
-        {
-            bool errorOccured = false;
-            string errorMessage = string.Empty;
-            bool isInputInRace = false;
-            // List is not thread safe to be runned in parallel
-            ConcurrentQueue<QBitNinjaUnspentOutput> unspentOutputConcurrent = new ConcurrentQueue<QBitNinjaUnspentOutput>();
-
-            getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
-            var minimumConfirmationNumber = getMinimumConfirmationNumber();
-
-            try
-            {
-                QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
-
-                notProcessedUnspentOutputs = await GetAddressBalance(walletAddress,
-                    (result) => { errorOccured = true; errorMessage = GetCaller() + " " + result.ToString(); }
-                    , true, true, ignoreUnconfirmed);
-
-                if (!errorOccured)
-                {
-                    if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
-                    {
-                        PopulateUnspentOupt t = async (o) =>
-                        {
-                            var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
-                            {
-                                confirmations = o.confirmations,
-                                output_index = c.index,
-                                transaction_hash = c.transactionId,
-                                value = c.value,
-                                script_hex = c.scriptPubKey,
-                                asset_id = c.assetId,
-                                asset_quantity = c.quantity
-                            });
-
-                            (await convertResult.Where(async (u) => { bool temp = false; var retValue = (u.confirmations >= getMinimumConfirmationNumber() && (temp = await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))); isInputInRace |= (!retValue); return retValue; }))
-                            .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));
-                        };
-                        var tasks = notProcessedUnspentOutputs.operations.Select(o => t(o));
-                        await Task.WhenAll(tasks);
-                    }
-                    else
-                    {
-                        errorOccured = true;
-                        errorMessage = "No coins to retrieve.";
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                errorOccured = true;
-                errorMessage = e.ToString();
-            }
-
-            // return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
-            return new Tuple<QBitNinjaUnspentOutput[], bool, string, bool>(unspentOutputConcurrent.ToArray(),
-                errorOccured, errorMessage, isInputInRace);
-        }
+        
 
         #endregion
 

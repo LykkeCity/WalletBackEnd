@@ -14,6 +14,7 @@ using Core.LykkeIntegration.Services;
 using LykkeIntegrationServices;
 using NBitcoin;
 using LykkeWalletServices.Transactions.TaskHandlers;
+using LykkeWalletServices.BlockchainManager;
 
 namespace ServiceLykkeWallet
 {
@@ -36,7 +37,7 @@ namespace ServiceLykkeWallet
             var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, settings.OutdataQueueName));
             var emailQueueWriter = new AzureQueueExt(settings.OutQueueConnectionString, "emailsqueue");
 
-            OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
+            LykkeBitcoinBlockchainManager.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
             OpenAssetsHelper.BroadcastGroup = settings.BroadcastGroup;
             OpenAssetsHelper.FeeMultiplicationFactor = settings.FeeMultiplicationFactor;
             OpenAssetsHelper.FeeType = settings.FeeType;
@@ -50,7 +51,7 @@ namespace ServiceLykkeWallet
             }
             if (settings.DefaultNumberOfRequiredConfirmations >= 0)
             {
-                OpenAssetsHelper.MinimumNumberOfRequiredConfirmations = settings.DefaultNumberOfRequiredConfirmations;
+                LykkeBitcoinBlockchainManager.MinimumNumberOfRequiredConfirmations = settings.DefaultNumberOfRequiredConfirmations;
             }
             if (settings.GenerateRefundingTransactionMinimumConfirmationNumber >= 0)
             {

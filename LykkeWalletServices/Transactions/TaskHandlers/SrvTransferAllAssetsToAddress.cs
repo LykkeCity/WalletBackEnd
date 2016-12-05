@@ -1,5 +1,6 @@
 ﻿using Core;
 using Core.LykkeIntegration.Services;
+using LykkeWalletServices.BlockchainManager;
 using NBitcoin;
 using NBitcoin.OpenAsset;
 using System;
@@ -7,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static LykkeWalletServices.BlockchainManager.LykkeBitcoinBlockchainManager;
 
 namespace LykkeWalletServices.Transactions.TaskHandlers
 {
@@ -55,7 +57,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 SourceMultisigAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.SourceAddress, entities);
                             }
 
-                            var walletOutputs = await OpenAssetsHelper.GetWalletOutputs(data.SourceAddress, connectionParams.BitcoinNetwork, entities);
+                            var walletOutputs = await LykkeBitcoinBlockchainManager.GetWalletOutputs(data.SourceAddress, connectionParams.BitcoinNetwork, entities);
 
                             /*
                             OpenAssetsHelper.GetCoinsForWalletReturnType walletCoins = null;
@@ -81,13 +83,11 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 IList<ColoredCoin> coloredCoinList = new List<ColoredCoin>();
                                 IList<Coin> unColoredCoinList = new List<Coin>();
 
-                                
-
-                                if (OpenAssetsHelper.apiProvider == OpenAssetsHelper.APIProvider.QBitNinja)
+                                if (apiProvider == APIProvider.QBitNinja)
                                 {
                                     foreach (var unspentOutput in walletOutputs.Item1)
                                     {
-                                        var qbitUnspentOutput = (OpenAssetsHelper.QBitNinjaUnspentOutput)unspentOutput;
+                                        var qbitUnspentOutput = (QBitNinjaUnspentOutput)unspentOutput;
                                         if (string.IsNullOrEmpty(qbitUnspentOutput.asset_id))
                                         {
                                             Coin c = null;

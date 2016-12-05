@@ -65,6 +65,10 @@
     <Compile Include="Accounts\LykkeAccountReader.cs" />
     <Compile Include="Accounts\SrvAccountBalanceAccess.cs" />
     <Compile Include="Accounts\SrvAccountGenerator.cs" />
+    <Compile Include="BlockchainManager\BroadcastError.cs" />
+    <Compile Include="BlockchainManager\BroadcastResult.cs" />
+    <Compile Include="BlockchainManager\LykkeBitcoinBlockchainManager.cs" />
+    <Compile Include="BlockchainManager\LykkeBitcoinBlockchainManagerSettings.cs" />
     <Compile Include="ChannelPreGeneratedOutput.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
@@ -82,6 +86,12 @@
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="KeyStorage.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="LkeBlkChnMgrCoin.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="LkeBlkChnMgrTransactionsToBeSent.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
     <Compile Include="LogToDB.cs" />
@@ -148,7 +158,6 @@
     <Compile Include="Transactions\TaskHandlers\SrvGenerateIssuerOutputsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateFeeOutputsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvCashOutSeparateSignaturesTask.cs" />
-    <Compile Include="Transactions\TaskHandlers\SrvGetInputWalletAddresses.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetIssuersOutputStatusTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetFeeOutputsStatusTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvTransfer.cs" />
@@ -159,15 +168,21 @@
     <Compile Include="Transactions\TaskHandlers\SrvCashOutTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvExchangeTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvDepositWithdrawTaskHandler.cs" />
-    <Compile Include="Transactions\TaskHandlers\SrvGenerateExchangeTransferTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvCashInTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGenerateNewWalletTask.cs" />
-    <Compile Include="Transactions\TaskHandlers\SrvGetBalanceTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvNetworkInvolvingExchangeBase.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvNetworkBase.cs" />
-    <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetTransactionToSignTask.cs" />
     <Compile Include="TripleDES.cs" />
+    <Compile Include="TxBrdCstRequestDetail.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="TxBrdCstRequestSource.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
+    <Compile Include="TxBrdCstRequestType.cs">
+      <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
+    </Compile>
     <Compile Include="UnsignedTransaction.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
