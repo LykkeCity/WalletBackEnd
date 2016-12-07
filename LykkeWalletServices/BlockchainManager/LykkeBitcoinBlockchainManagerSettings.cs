@@ -20,5 +20,23 @@ namespace LykkeWalletServices.BlockchainManager
             get;
             set;
         }
+
+        public static string RPCUsername
+        {
+            get;
+            set;
+        }
+
+        public static string RPCPassword
+        {
+            get;
+            set;
+        }
+
+        public static string RPCIPAddress
+        {
+            get;
+            set;
+        }
     }
 }

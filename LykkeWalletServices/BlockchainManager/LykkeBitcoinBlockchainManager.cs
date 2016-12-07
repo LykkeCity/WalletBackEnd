@@ -10,6 +10,8 @@ using System.Net.Http;
 using Newtonsoft.Json.Linq;
 using System.Runtime.CompilerServices;
 using System.IO;
+using System.Collections;
+using NBitcoin.RPC;
 
 namespace LykkeWalletServices.BlockchainManager
 {
@@ -162,6 +164,162 @@ namespace LykkeWalletServices.BlockchainManager
                     return null;
                 }
             }
+        }
+
+        public class TransactionNode
+        {
+            public string TransactionId
+            {
+                get;
+                set;
+            }
+
+            public LkeBlkChnMgrTransactionsToBeSent txInDB
+            {
+                get;
+                set;
+            }
+
+            public List<string> Parents
+            {
+                get;
+                set;
+            }
+
+            public List<string> Children
+            {
+                get;
+                set;
+            }
+        }
+
+        private IList<TransactionNode> GetFlatListFromTransactions(LkeBlkChnMgrTransactionsToBeSent[] transactions)
+        {
+            var validTransactionList = transactions.Select(t => t.TransactionId);
+            IList<TransactionNode> returnNodes = new List<TransactionNode>();
+
+            foreach (var tx in transactions)
+            {
+                Transaction transaction = new Transaction(tx.TransactionHex);
+                var node = new TransactionNode();
+                node.TransactionId = tx.TransactionId;
+                node.txInDB = tx;
+                node.Parents = transaction.Inputs.Select(i => i.PrevOut.Hash.ToString()).Distinct()
+                    .ToList().Join(validTransactionList, x => x, y => y, (x, y) => x).ToList();
+            }
+
+            return returnNodes;
+        }
+
+        public async Task BroadcastAsManyTransactionsAsPossible()
+        {
+            try
+            {
+                using (SqlexpressLykkeEntities entities =
+                    new SqlexpressLykkeEntities(LykkeBitcoinBlockchainManagerSettings.ConnectionString))
+                {
+                    var txToBroadcast = (from tx in entities.LkeBlkChnMgrTransactionsToBeSents
+                                         where tx.ShouldBeSent == true && tx.HasBeenSent == false
+                                         select tx).ToArray();
+
+
+                    var flatList = GetFlatListFromTransactions(txToBroadcast);
+                    var populatedFlatList = BuildTree(flatList);
+
+                    Queue<KeyValuePair<string, TransactionNode>> sendingQueue = new Queue<KeyValuePair<string, TransactionNode>>();
+                    foreach (var item in populatedFlatList)
+                    {
+                        if (item.Value.Parents.Count == 0)
+                        {
+                            sendingQueue.Enqueue(item);
+                        }
+                    }
+
+                    KeyValuePair<string, TransactionNode> node;
+                    while (sendingQueue.Count > 0)
+                    {
+                        node = sendingQueue.Dequeue();
+
+                        while (true)
+                        {
+                            try
+                            {
+                                RPCClient client = new RPCClient(new System.Net.NetworkCredential(LykkeBitcoinBlockchainManagerSettings.RPCUsername, LykkeBitcoinBlockchainManagerSettings.RPCPassword),
+                                    LykkeBitcoinBlockchainManagerSettings.RPCIPAddress, LykkeBitcoinBlockchainManagerSettings.Network);
+
+                                await client.SendRawTransactionAsync(new Transaction(node.Value.txInDB.TransactionHex));
+
+                                break;
+                            }
+                            catch (Exception exp)
+                            {
+                                // In some cases we would retry sendig
+                            }
+                        }
+
+                        node.Value.txInDB.HasBeenSent = true;
+                        await entities.SaveChangesAsync();
+
+                        foreach (var childTxId in node.Value.Children)
+                        {
+                            populatedFlatList[childTxId].Parents.Remove(childTxId);
+                            if (populatedFlatList[childTxId].Parents.Count == 0)
+                            {
+                                sendingQueue.Enqueue
+                                    (new KeyValuePair<string, TransactionNode>(childTxId, populatedFlatList[childTxId]));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Exception should never raise from this function, it may have unexpected result
+            }
+        }
+
+        public class TransactionNodeComparer : IComparer<TransactionNode>
+        {
+            public int Compare(TransactionNode x, TransactionNode y)
+            {
+                var x1 = x.Parents.Count;
+                var y1 = y.Parents.Count;
+
+                if (x1 < y1)
+                {
+                    return -1;
+                }
+                else
+                {
+                    if (x1 == y1)
+                    {
+                        return 0;
+                    }
+                    else
+                    {
+                        return 1;
+                    }
+                }
+            }
+        }
+
+        public static IDictionary<string, TransactionNode> BuildTree(IEnumerable<TransactionNode> source)
+        {
+            IDictionary<string, TransactionNode> ret = new Dictionary<string, TransactionNode>();
+            var arraySource = source.ToArray();
+            for (int i = 0; i < source.Count(); i++)
+            {
+                var item = arraySource[i];
+                var itemParents = source.Where(s => item.Parents.Contains(s.TransactionId));
+                foreach (var p in itemParents)
+                {
+                    p.Children.Add(item.TransactionId);
+                }
+
+                ret.Add(item.txInDB.TransactionId, item);
+            }
+
+            return ret;
         }
 
         public static async Task<Tuple<UniversalUnspentOutput[], bool, string, bool>> GetWalletOutputs(string walletAddress,
