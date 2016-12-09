@@ -135,6 +135,7 @@
       <DependentUpon>SqlserverLykkeEntities.edmx</DependentUpon>
     </Compile>
     <Compile Include="TimerServices\FeeType21co.cs" />
+    <Compile Include="TimerServices\LykkeBitcoinBlockchainManagerBroadcaster.cs" />
     <Compile Include="TimerServices\SrvUnsignedTransactionsUpdater.cs" />
     <Compile Include="TimerServices\SrvFeeReserveCleaner.cs" />
     <Compile Include="TimerServices\SrvFeeUpdater.cs" />

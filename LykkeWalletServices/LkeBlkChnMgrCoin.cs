@@ -22,5 +22,7 @@ namespace LykkeWalletServices
         public string SpentTransactionId { get; set; }
         public Nullable<int> SpentTransactionInputNumber { get; set; }
         public byte[] Version { get; set; }
+        public string BitcoinAddress { get; set; }
+        public string OutputScript { get; set; }
     }
 }

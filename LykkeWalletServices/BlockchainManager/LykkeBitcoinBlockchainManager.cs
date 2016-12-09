@@ -24,7 +24,7 @@ namespace LykkeWalletServices.BlockchainManager
 
         public const APIProvider apiProvider = APIProvider.QBitNinja;
 
-        public async Task<string> GetTransactionHex(string transactionId, SqlexpressLykkeEntities entities = null)
+        public static async Task<string> GetTransactionHex(string transactionId, SqlexpressLykkeEntities entities = null)
         {
             string retValue = null;
             if (entities != null)
@@ -193,7 +193,7 @@ namespace LykkeWalletServices.BlockchainManager
             }
         }
 
-        private IList<TransactionNode> GetFlatListFromTransactions(LkeBlkChnMgrTransactionsToBeSent[] transactions)
+        private static IList<TransactionNode> GetFlatListFromTransactions(LkeBlkChnMgrTransactionsToBeSent[] transactions)
         {
             var validTransactionList = transactions.Select(t => t.TransactionId);
             IList<TransactionNode> returnNodes = new List<TransactionNode>();
@@ -211,7 +211,7 @@ namespace LykkeWalletServices.BlockchainManager
             return returnNodes;
         }
 
-        public async Task BroadcastAsManyTransactionsAsPossible()
+        public static async Task BroadcastAsManyTransactionsAsPossible()
         {
             try
             {
@@ -276,6 +276,27 @@ namespace LykkeWalletServices.BlockchainManager
             {
                 // Exception should never raise from this function, it may have unexpected result
             }
+        }
+
+        public class QBitNinjaUnspentOutputComparer : IEqualityComparer<QBitNinjaUnspentOutput>
+        {
+            public bool Equals(QBitNinjaUnspentOutput x, QBitNinjaUnspentOutput y)
+            {
+                if(x.transaction_hash == y.transaction_hash && x.output_index == y.output_index)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            public int GetHashCode(QBitNinjaUnspentOutput obj)
+            {
+                return (obj.transaction_hash + obj.output_index.ToString()).GetHashCode();
+            }
+
         }
 
         public class TransactionNodeComparer : IComparer<TransactionNode>
@@ -348,16 +369,22 @@ namespace LykkeWalletServices.BlockchainManager
             return string.Format("{0}_{1}({2})", Path.GetFileName(file), member, line);
         }
 
-        delegate Task PopulateUnspentOupt(QBitNinjaOperation operation);
-
         public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string, bool>> GetWalletOutputsQBitNinja(string walletAddress,
             Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
         {
+            if (ignoreUnconfirmed)
+            {
+                throw new NotSupportedException("Since some transactions may not be broadcasted but outputs may be consumed by those, the support for this mode is not yet designed.");
+            }
+
             bool errorOccured = false;
             string errorMessage = string.Empty;
             bool isInputInRace = false;
             // List is not thread safe to be runned in parallel
             ConcurrentQueue<QBitNinjaUnspentOutput> unspentOutputConcurrent = new ConcurrentQueue<QBitNinjaUnspentOutput>();
+            IList<QBitNinjaUnspentOutput> blockchainUnspentOuput =
+                new List<QBitNinjaUnspentOutput>();
+            List<QBitNinjaUnspentOutput> mergedOutputs = new List<QBitNinjaUnspentOutput>();
 
             getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
             var minimumConfirmationNumber = getMinimumConfirmationNumber();
@@ -366,6 +393,7 @@ namespace LykkeWalletServices.BlockchainManager
             {
                 QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
 
+                // Getting blockchain outputs
                 notProcessedUnspentOutputs = await GetAddressBalance(walletAddress,
                     (result) => { errorOccured = true; errorMessage = GetCaller() + " " + result.ToString(); }
                     , true, true, ignoreUnconfirmed);
@@ -374,24 +402,54 @@ namespace LykkeWalletServices.BlockchainManager
                 {
                     if (notProcessedUnspentOutputs.operations != null && notProcessedUnspentOutputs.operations.Count > 0)
                     {
-                        PopulateUnspentOupt t = async (o) =>
+                        var convertResult = notProcessedUnspentOutputs.operations.Select(o => o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
                         {
-                            var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
-                            {
-                                confirmations = o.confirmations,
-                                output_index = c.index,
-                                transaction_hash = c.transactionId,
-                                value = c.value,
-                                script_hex = c.scriptPubKey,
-                                asset_id = c.assetId,
-                                asset_quantity = c.quantity
-                            });
+                            confirmations = o.confirmations,
+                            output_index = c.index,
+                            transaction_hash = c.transactionId,
+                            value = c.value,
+                            script_hex = c.scriptPubKey,
+                            asset_id = c.assetId,
+                            asset_quantity = c.quantity
+                        }));
+                        convertResult.ToList().ForEach(l => l.ToList().ForEach(uo => unspentOutputConcurrent.Enqueue(uo)));
 
-                            (await convertResult.Where(async (u) => { bool temp = false; var retValue = (u.confirmations >= getMinimumConfirmationNumber() && (temp = await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))); isInputInRace |= (!retValue); return retValue; }))
-                            .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));
-                        };
-                        var tasks = notProcessedUnspentOutputs.operations.Select(o => t(o));
-                        await Task.WhenAll(tasks);
+                        // ToDo: Possible performance improbement here possible here
+                        // removing outputs in blockchain which has been spent in database
+                        blockchainUnspentOuput = unspentOutputConcurrent.ToList();
+
+                        IList<int> spentItems = new List<int>();
+                        for (int i = 0; i < blockchainUnspentOuput.Count; i++)
+                        {
+                            var uo = blockchainUnspentOuput[i];
+
+                            var isOutputSpent = (from item in entitiesContext.LkeBlkChnMgrCoins
+                                                 where item.TransactionId == uo.transaction_hash && item.OutputNumber == uo.output_index && (item.SpentTransactionId != null || item.SpentTransactionId != "")
+                                                 select item).Any();
+                            if (isOutputSpent)
+                            {
+                                spentItems.Add(i);
+                            }
+                        }
+                        ((List<int>)spentItems).Sort();
+                        spentItems = spentItems.Reverse().ToList();
+
+                        for (int i = 0; i < spentItems.Count; i++)
+                        {
+                            blockchainUnspentOuput.RemoveAt(spentItems[i]);
+                        }
+
+                        // Getting database unspent outpus
+                        var dbUnspentOutptus = (from item in entitiesContext.LkeBlkChnMgrCoins
+                                               where item.BitcoinAddress == walletAddress && (item.SpentTransactionId == null || item.SpentTransactionId == "")
+                                               select new QBitNinjaUnspentOutput { asset_id = item.AssetId, asset_quantity = item.AssetAmount ?? 0, confirmations = 0,
+                                                transaction_hash = item.TransactionId, output_index = item.OutputNumber, value = item.SatoshiAmount, script_hex = item.OutputScript}).ToArray();
+
+                        mergedOutputs = blockchainUnspentOuput.ToList();
+                        mergedOutputs.AddRange(dbUnspentOutptus);
+
+                        mergedOutputs = mergedOutputs.Where(o => o.confirmations > getMinimumConfirmationNumber()).
+                            Distinct(new QBitNinjaUnspentOutputComparer()).ToList();
                     }
                     else
                     {
@@ -407,7 +465,7 @@ namespace LykkeWalletServices.BlockchainManager
             }
 
             // return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
-            return new Tuple<QBitNinjaUnspentOutput[], bool, string, bool>(unspentOutputConcurrent.ToArray(),
+            return new Tuple<QBitNinjaUnspentOutput[], bool, string, bool>(mergedOutputs.ToArray(),
                 errorOccured, errorMessage, isInputInRace);
         }
 
@@ -469,7 +527,7 @@ namespace LykkeWalletServices.BlockchainManager
             }
         }
 
-        public async Task<BroadcastResult> BroadcastTransaction(string transactionHex, string reference = null)
+        public static async Task<BroadcastResult> BroadcastTransaction(string transactionHex, string reference = null)
         {
             try
             {
