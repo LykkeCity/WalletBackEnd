@@ -33,6 +33,7 @@ namespace Core
         NoCoinsFound,
         InvalidAddress,
         OperationNotSupported,
-        RaceWithRefund
+        RaceWithRefund,
+        ProblemInBroadcastingTransaction
     }
 }

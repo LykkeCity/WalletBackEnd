@@ -168,6 +168,11 @@ namespace LykkeWalletServices.BlockchainManager
 
         public class TransactionNode
         {
+            public TransactionNode()
+            {
+                Parents = new List<string>();
+                Children = new List<string>();
+            }
             public string TransactionId
             {
                 get;
@@ -206,6 +211,7 @@ namespace LykkeWalletServices.BlockchainManager
                 node.txInDB = tx;
                 node.Parents = transaction.Inputs.Select(i => i.PrevOut.Hash.ToString()).Distinct()
                     .ToList().Join(validTransactionList, x => x, y => y, (x, y) => x).ToList();
+                returnNodes.Add(node);
             }
 
             return returnNodes;
@@ -236,10 +242,18 @@ namespace LykkeWalletServices.BlockchainManager
                     }
 
                     KeyValuePair<string, TransactionNode> node;
+                    bool endWhile = false;
                     while (sendingQueue.Count > 0)
                     {
                         node = sendingQueue.Dequeue();
+                        if (node.Value.txInDB.CanNotBeSent ?? false)
+                        {
+                            // We do it here, since the childs are also should not be sent.
+                            // ToDo: This may be improved in future
+                            continue;
+                        }
 
+                        bool transactionSendingSuccessful = true;
                         while (true)
                         {
                             try
@@ -251,28 +265,61 @@ namespace LykkeWalletServices.BlockchainManager
 
                                 break;
                             }
-                            catch (Exception exp)
+                            catch (RPCException exp)
                             {
                                 // In some cases we would retry sendig
+                                switch (exp.RPCCode)
+                                {
+                                    case RPCErrorCode.RPC_CLIENT_IN_INITIAL_DOWNLOAD:
+                                    case RPCErrorCode.RPC_CLIENT_NODE_ALREADY_ADDED:
+                                    case RPCErrorCode.RPC_CLIENT_NODE_NOT_ADDED:
+                                    case RPCErrorCode.RPC_CLIENT_NOT_CONNECTED:
+                                    case RPCErrorCode.RPC_DATABASE_ERROR:
+                                    case RPCErrorCode.RPC_DESERIALIZATION_ERROR:
+                                    case RPCErrorCode.RPC_FORBIDDEN_BY_SAFE_MODE:
+                                    case RPCErrorCode.RPC_INTERNAL_ERROR:
+                                        endWhile = true;
+                                        break;
+                                    case RPCErrorCode.RPC_TRANSACTION_ALREADY_IN_CHAIN:
+                                    case RPCErrorCode.RPC_TRANSACTION_ERROR:
+                                    case RPCErrorCode.RPC_TRANSACTION_REJECTED:
+                                        node.Value.txInDB.CanNotBeSent = true;
+                                        node.Value.txInDB.Comment = exp.ToString();
+                                        await entities.SaveChangesAsync();
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                                transactionSendingSuccessful = false;
+                                break;
                             }
                         }
 
-                        node.Value.txInDB.HasBeenSent = true;
-                        await entities.SaveChangesAsync();
-
-                        foreach (var childTxId in node.Value.Children)
+                        if (endWhile)
                         {
-                            populatedFlatList[childTxId].Parents.Remove(childTxId);
-                            if (populatedFlatList[childTxId].Parents.Count == 0)
+                            break;
+                        }
+
+                        if (transactionSendingSuccessful)
+                        {
+                            node.Value.txInDB.HasBeenSent = true;
+                            await entities.SaveChangesAsync();
+
+                            foreach (var childTxId in node.Value.Children)
                             {
-                                sendingQueue.Enqueue
-                                    (new KeyValuePair<string, TransactionNode>(childTxId, populatedFlatList[childTxId]));
+                                populatedFlatList[childTxId].Parents.Remove(node.Value.TransactionId);
+                                if (populatedFlatList[childTxId].Parents.Count == 0)
+                                {
+                                    sendingQueue.Enqueue
+                                        (new KeyValuePair<string, TransactionNode>(childTxId, populatedFlatList[childTxId]));
+                                }
                             }
                         }
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception exp)
             {
                 // Exception should never raise from this function, it may have unexpected result
             }
@@ -282,7 +329,7 @@ namespace LykkeWalletServices.BlockchainManager
         {
             public bool Equals(QBitNinjaUnspentOutput x, QBitNinjaUnspentOutput y)
             {
-                if(x.transaction_hash == y.transaction_hash && x.output_index == y.output_index)
+                if (x.transaction_hash == y.transaction_hash && x.output_index == y.output_index)
                 {
                     return true;
                 }
@@ -344,6 +391,12 @@ namespace LykkeWalletServices.BlockchainManager
         }
 
         public static async Task<Tuple<UniversalUnspentOutput[], bool, string, bool>> GetWalletOutputs(string walletAddress,
+            Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
+        {
+            return await GetWalletOutputsCore(walletAddress, network, entities, () => { return 0; }, ignoreUnconfirmed);
+        }
+
+        public static async Task<Tuple<UniversalUnspentOutput[], bool, string, bool>> GetWalletOutputsCore(string walletAddress,
             Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
         {
             Tuple<UniversalUnspentOutput[], bool, string, bool> ret = null;
@@ -424,7 +477,7 @@ namespace LykkeWalletServices.BlockchainManager
                             var uo = blockchainUnspentOuput[i];
 
                             var isOutputSpent = (from item in entitiesContext.LkeBlkChnMgrCoins
-                                                 where item.TransactionId == uo.transaction_hash && item.OutputNumber == uo.output_index && (item.SpentTransactionId != null || item.SpentTransactionId != "")
+                                                 where item.TransactionId == uo.transaction_hash && item.OutputNumber == uo.output_index && (item.SpentTransactionId != null && item.SpentTransactionId != "")
                                                  select item).Any();
                             if (isOutputSpent)
                             {
@@ -441,14 +494,22 @@ namespace LykkeWalletServices.BlockchainManager
 
                         // Getting database unspent outpus
                         var dbUnspentOutptus = (from item in entitiesContext.LkeBlkChnMgrCoins
-                                               where item.BitcoinAddress == walletAddress && (item.SpentTransactionId == null || item.SpentTransactionId == "")
-                                               select new QBitNinjaUnspentOutput { asset_id = item.AssetId, asset_quantity = item.AssetAmount ?? 0, confirmations = 0,
-                                                transaction_hash = item.TransactionId, output_index = item.OutputNumber, value = item.SatoshiAmount, script_hex = item.OutputScript}).ToArray();
+                                                where item.BitcoinAddress == walletAddress && (item.SpentTransactionId == null || item.SpentTransactionId == "")
+                                                select new QBitNinjaUnspentOutput
+                                                {
+                                                    asset_id = item.AssetId,
+                                                    asset_quantity = item.AssetAmount ?? 0,
+                                                    confirmations = 0,
+                                                    transaction_hash = item.TransactionId,
+                                                    output_index = item.OutputNumber,
+                                                    value = item.SatoshiAmount,
+                                                    script_hex = item.OutputScript
+                                                }).ToArray();
 
                         mergedOutputs = blockchainUnspentOuput.ToList();
                         mergedOutputs.AddRange(dbUnspentOutptus);
 
-                        mergedOutputs = mergedOutputs.Where(o => o.confirmations > getMinimumConfirmationNumber()).
+                        mergedOutputs = mergedOutputs.Where(o => o.confirmations >= getMinimumConfirmationNumber()).
                             Distinct(new QBitNinjaUnspentOutputComparer()).ToList();
                     }
                     else
@@ -527,134 +588,172 @@ namespace LykkeWalletServices.BlockchainManager
             }
         }
 
-        public static async Task<BroadcastResult> BroadcastTransaction(string transactionHex, string reference = null)
+        public static async Task<BroadcastResult> BroadcastTransaction(string transactionHex, SqlexpressLykkeEntities entites,
+            string reference = null)
         {
+            if (entites == null)
+            {
+                throw new Exception("Entities context should not be null.");
+            }
+
             try
             {
-                using (var entites =
-                    new SqlexpressLykkeEntities(LykkeBitcoinBlockchainManagerSettings.ConnectionString))
+                IList<Coin> inputCoins = new List<Coin>();
+                IList<ColoredCoin> inputColoredCoins = new List<ColoredCoin>();
+
+                Transaction transaction = new Transaction(transactionHex);
+                Coin issuanceCoin = null;
+                for (int i = 0; i < transaction.Inputs.Count; i++)
                 {
-                    IList<Coin> inputCoins = new List<Coin>();
-                    IList<ColoredCoin> inputColoredCoins = new List<ColoredCoin>();
+                    var item = transaction.Inputs[i];
+                    var txIdToFind = item.PrevOut.Hash.ToString();
+                    var blockchainManagerCoin = (from bmc in entites.LkeBlkChnMgrCoins
+                                                 where bmc.TransactionId == txIdToFind && bmc.OutputNumber == item.PrevOut.N
+                                                 select bmc).FirstOrDefault();
 
-                    Transaction transaction = new Transaction(transactionHex);
-                    Coin issuanceCoin = null;
-                    for (int i = 0; i < transaction.Inputs.Count; i++)
+                    Coin bearer = null;
+                    if (blockchainManagerCoin != null)
                     {
-                        var item = transaction.Inputs[i];
-                        var txIdToFind = item.PrevOut.Hash.ToString();
-                        var blockchainManagerCoin = (from bmc in entites.LkeBlkChnMgrCoins
-                                                     where bmc.TransactionId == txIdToFind && bmc.OutputNumber == item.PrevOut.N
-                                                     select bmc).FirstOrDefault();
-
-                        Coin bearer = null;
-                        if (blockchainManagerCoin != null)
+                        var txHex = await GetTransactionHex(blockchainManagerCoin.TransactionId, entites);
+                        bearer = new Coin(new Transaction(txHex), (uint)blockchainManagerCoin.OutputNumber);
+                        if (string.IsNullOrEmpty(blockchainManagerCoin.AssetId))
                         {
-                            var txHex = await GetTransactionHex(blockchainManagerCoin.TransactionId);
-                            bearer = new Coin(new Transaction(txHex), (uint)blockchainManagerCoin.OutputNumber);
-                            if (string.IsNullOrEmpty(blockchainManagerCoin.AssetId))
+                            inputCoins.Add(bearer);
+                        }
+                        else
+                        {
+                            ColoredCoin coin = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(blockchainManagerCoin.AssetId)), blockchainManagerCoin.AssetAmount ?? 0), bearer);
+                            inputColoredCoins.Add(coin);
+                        }
+                    }
+                    else
+                    {
+                        // It should be in the blockchain
+                        var blockchainTransaction = await GetTransactionQBitNinja(item.PrevOut.Hash.ToString(), true);
+                        foreach (var output in blockchainTransaction.receivedCoins)
+                        {
+                            if (output.index == item.PrevOut.N)
                             {
-                                inputCoins.Add(bearer);
+                                bearer = new Coin(new Transaction(blockchainTransaction.transaction), (uint)output.index);
+                                if (output.quantity == 0)
+                                {
+                                    inputCoins.Add(bearer);
+                                }
+                                else
+                                {
+                                    ColoredCoin coin = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(output.assetId)),
+                                        output.quantity), bearer);
+                                    inputColoredCoins.Add(coin);
+                                }
+
+                                break;
+                            }
+                        }
+                    }
+
+                    if (i == 0)
+                    {
+                        issuanceCoin = bearer;
+                    }
+                }
+
+                TransactionBuilder builder = new TransactionBuilder();
+                builder.AddCoins(inputCoins);
+                builder.AddCoins(inputColoredCoins);
+                var verified = builder.Verify(transaction);
+
+                if (!verified)
+                {
+                    return new BroadcastResult { Error = BroadcastError.TransactionVerificationError, BroadcastException = null };
+                }
+
+                entites.LkeBlkChnMgrTransactionsToBeSents.Add(new LkeBlkChnMgrTransactionsToBeSent
+                {
+                    TransactionId = transaction.GetHash().ToString(),
+                    TransactionHex = transaction.ToHex(),
+                    CreationDate = DateTime.UtcNow,
+                    ShouldBeSent = true,
+                    ReferenceNumber = reference
+                });
+
+                var colorMarkerIndex = -1;
+                for (int i = 0; i < transaction.Outputs.Count; i++)
+                {
+                    var item = transaction.Outputs[i];
+                    if (item.ScriptPubKey.ToHex().ToLower().StartsWith("6a"))
+                    {
+                        colorMarkerIndex = i;
+                        break;
+                    }
+                }
+
+                var txId = transaction.GetHash().ToString();
+                var colorMarker = transaction.GetColoredMarker();
+
+                LkeBlkChnMgrCoin[] coinsToAddToDB = new LkeBlkChnMgrCoin[transaction.Outputs.Count];
+                for (int i = 0; i < transaction.Outputs.Count; i++)
+                {
+                    var item = transaction.Outputs[i];
+                    coinsToAddToDB[i] = new LkeBlkChnMgrCoin
+                    {
+                        TransactionId = txId,
+                        OutputNumber = i,
+                        SatoshiAmount = item.Value,
+                        BitcoinAddress = item.ScriptPubKey.GetDestinationAddress(LykkeBitcoinBlockchainManagerSettings.Network)?.ToString(),
+                        OutputScript = item.ScriptPubKey.ToHex(),
+                        AssetId = null,
+                        AssetAmount = 0
+                    };
+                }
+
+                if (colorMarkerIndex > -1)
+                {
+                    ColoredTransaction coloredTx = new ColoredTransaction(transaction, inputColoredCoins.ToArray(),
+                        issuanceCoin.ScriptPubKey);
+
+                    for (int i = 0; i < transaction.Outputs.Count; i++)
+                    {
+                        var item = transaction.Outputs[i];
+                        if (i < colorMarkerIndex)
+                        {
+                            // This is an issuance
+                            if (i < coloredTx.Issuances.Count)
+                            {
+                                var assetId = coloredTx.Issuances[i].Asset.Id.GetWif(LykkeBitcoinBlockchainManagerSettings.Network).ToString();
+                                var assetQuantity = coloredTx.Issuances[i].Asset.Quantity;
+
+                                if (assetQuantity > 0)
+                                {
+                                    coinsToAddToDB[i].AssetId = assetId;
+                                    coinsToAddToDB[i].AssetAmount = assetQuantity;
+                                }
+                                else
+                                {
+                                    // Output is uncolored
+                                    continue;
+                                }
                             }
                             else
                             {
-                                ColoredCoin coin = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(blockchainManagerCoin.AssetId)), blockchainManagerCoin.AssetAmount ?? 0), bearer);
-                                inputColoredCoins.Add(coin);
+                                // Output is not listed
+                                continue;
                             }
                         }
                         else
                         {
-                            // It should be in the blockchain
-                            var blockchainTransaction = await GetTransactionQBitNinja(item.PrevOut.Hash.ToString(), true);
-                            foreach (var output in blockchainTransaction.receivedCoins)
+                            if (i == colorMarkerIndex)
                             {
-                                if (output.index == item.PrevOut.N)
-                                {
-                                    bearer = new Coin(new Transaction(blockchainTransaction.transaction), (uint)output.index);
-                                    if (output.quantity == 0)
-                                    {
-                                        inputCoins.Add(bearer);
-                                    }
-                                    else
-                                    {
-                                        ColoredCoin coin = new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(output.assetId)),
-                                            output.quantity), bearer);
-                                        inputColoredCoins.Add(coin);
-                                    }
-
-                                    break;
-                                }
+                                // This is the marker output
+                                continue;
                             }
-                        }
-
-                        if (i == 0)
-                        {
-                            issuanceCoin = bearer;
-                        }
-                    }
-
-                    TransactionBuilder builder = new TransactionBuilder();
-                    builder.AddCoins(inputCoins);
-                    builder.AddCoins(inputColoredCoins);
-                    var verified = builder.Verify(transaction);
-
-                    if (!verified)
-                    {
-                        return new BroadcastResult { Error = BroadcastError.TransactionVerificationError, BroadcastException = null };
-                    }
-
-                    entites.LkeBlkChnMgrTransactionsToBeSents.Add(new LkeBlkChnMgrTransactionsToBeSent
-                    {
-                        TransactionId = transaction.GetHash().ToString(),
-                        TransactionHex = transaction.ToHex(),
-                        CreationDate = DateTime.UtcNow,
-                        ShouldBeSent = true,
-                        ReferenceNumber = reference
-                    });
-
-                    var colorMarkerIndex = -1;
-                    for (int i = 0; i < transaction.Outputs.Count; i++)
-                    {
-                        var item = transaction.Outputs[i];
-                        if (item.ScriptPubKey.ToHex().ToLower().StartsWith("6a"))
-                        {
-                            colorMarkerIndex = i;
-                            break;
-                        }
-                    }
-
-                    var txId = transaction.GetHash().ToString();
-                    var colorMarker = transaction.GetColoredMarker();
-
-                    LkeBlkChnMgrCoin[] coinsToAddToDB = new LkeBlkChnMgrCoin[transaction.Outputs.Count];
-                    for (int i = 0; i < transaction.Outputs.Count; i++)
-                    {
-                        var item = transaction.Outputs[i];
-                        coinsToAddToDB[i] = new LkeBlkChnMgrCoin
-                        {
-                            TransactionId = txId,
-                            OutputNumber = i,
-                            SatoshiAmount = item.Value,
-                            AssetId = null,
-                            AssetAmount = 0
-                        };
-                    }
-
-                    if (colorMarkerIndex > -1)
-                    {
-                        ColoredTransaction coloredTx = new ColoredTransaction(transaction, inputColoredCoins.ToArray(),
-                            issuanceCoin.ScriptPubKey);
-
-                        for (int i = 0; i < transaction.Outputs.Count; i++)
-                        {
-                            var item = transaction.Outputs[i];
-                            if (i < colorMarkerIndex)
+                            else
                             {
-                                // This is an issuance
-                                if (i < coloredTx.Issuances.Count)
+                                var index = i - (colorMarkerIndex + 1);
+                                // This asset transfer output
+                                if (index < coloredTx.Transfers.Count)
                                 {
-                                    var assetId = coloredTx.Issuances[i].Asset.Id.GetWif(LykkeBitcoinBlockchainManagerSettings.Network).ToString();
-                                    var assetQuantity = coloredTx.Issuances[i].Asset.Quantity;
+                                    var assetId = coloredTx.Transfers[index].Asset.Id.GetWif(LykkeBitcoinBlockchainManagerSettings.Network).ToString();
+                                    var assetQuantity = coloredTx.Transfers[index].Asset.Quantity;
 
                                     if (assetQuantity > 0)
                                     {
@@ -673,65 +772,68 @@ namespace LykkeWalletServices.BlockchainManager
                                     continue;
                                 }
                             }
-                            else
-                            {
-                                if (i == colorMarkerIndex)
-                                {
-                                    // This is the marker output
-                                    continue;
-                                }
-                                else
-                                {
-                                    var index = i - (colorMarkerIndex + 1);
-                                    // This asset transfer output
-                                    if (index < coloredTx.Transfers.Count)
-                                    {
-                                        var assetId = coloredTx.Transfers[index].Asset.Id.GetWif(LykkeBitcoinBlockchainManagerSettings.Network).ToString();
-                                        var assetQuantity = coloredTx.Transfers[index].Asset.Quantity;
-
-                                        if (assetQuantity > 0)
-                                        {
-                                            coinsToAddToDB[i].AssetId = assetId;
-                                            coinsToAddToDB[i].AssetAmount = assetQuantity;
-                                        }
-                                        else
-                                        {
-                                            // Output is uncolored
-                                            continue;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // Output is not listed
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    entites.LkeBlkChnMgrCoins.AddRange(coinsToAddToDB);
-                    await entites.SaveChangesAsync();
-
-                    for (int i = 0; i < transaction.Inputs.Count; i++)
-                    {
-                        var item = transaction.Inputs[i];
-
-                        var matchedTxId = item.PrevOut.Hash.ToString();
-                        var dbCoin = (from c in entites.LkeBlkChnMgrCoins
-                                      where c.TransactionId == matchedTxId && c.OutputNumber == item.PrevOut.N
-                                      select c).FirstOrDefault();
-
-                        if (dbCoin != null)
-                        {
-                            dbCoin.SpentTransactionId = txId;
-                            dbCoin.SpentTransactionInputNumber = i;
-                            await entites.SaveChangesAsync();
                         }
                     }
                 }
 
-                return new BroadcastResult { Error = BroadcastError.GeneralError, BroadcastException = null };
+                entites.LkeBlkChnMgrCoins.AddRange(coinsToAddToDB);
+                await entites.SaveChangesAsync();
+
+                for (int i = 0; i < transaction.Inputs.Count; i++)
+                {
+                    var item = transaction.Inputs[i];
+
+                    var matchedTxId = item.PrevOut.Hash.ToString();
+                    var dbCoin = (from c in entites.LkeBlkChnMgrCoins
+                                  where c.TransactionId == matchedTxId && c.OutputNumber == item.PrevOut.N
+                                  select c).FirstOrDefault();
+
+                    if (dbCoin != null)
+                    {
+                        dbCoin.SpentTransactionId = txId;
+                        dbCoin.SpentTransactionInputNumber = i;
+                        await entites.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        Coin coin = null;
+                        ColoredCoin cCoin = null;
+                        coin = inputCoins.Where(iCoin => iCoin.Outpoint.Hash == item.PrevOut.Hash && iCoin.Outpoint.N == item.PrevOut.N)
+                            .FirstOrDefault();
+
+                        if (coin == null)
+                        {
+                            cCoin = inputColoredCoins.Where(iCoin => iCoin.Outpoint.Hash == item.PrevOut.Hash && iCoin.Outpoint.N == item.PrevOut.N)
+                                    .FirstOrDefault();
+                            if (cCoin != null)
+                            {
+                                coin = cCoin.Bearer;
+                            }
+                        }
+
+                        LkeBlkChnMgrCoin coinToBeAdded = new LkeBlkChnMgrCoin();
+                        if (coin != null)
+                        {
+                            coinToBeAdded.BitcoinAddress = coin.ScriptPubKey.GetDestinationAddress(LykkeBitcoinBlockchainManagerSettings.Network).ToString();
+                            coinToBeAdded.OutputNumber = (int)coin.Outpoint.N;
+                            coinToBeAdded.TransactionId = coin.Outpoint.Hash.ToString();
+                            coinToBeAdded.OutputScript = coin.ScriptPubKey.ToHex();
+                            coinToBeAdded.SatoshiAmount = coin.Amount;
+                            coinToBeAdded.SpentTransactionId = txId;
+                            coinToBeAdded.SpentTransactionInputNumber = i;
+                        }
+
+                        if (cCoin != null)
+                        {
+                            coinToBeAdded.AssetId = cCoin.AssetId.GetWif(LykkeBitcoinBlockchainManagerSettings.Network).ToString();
+                            coinToBeAdded.AssetAmount = cCoin.Amount.Quantity;
+                        }
+
+                        await entites.SaveChangesAsync();
+                    }
+                }
+
+                return new BroadcastResult { Error = BroadcastError.NoError, BroadcastException = null };
             }
             catch (Exception e)
             {

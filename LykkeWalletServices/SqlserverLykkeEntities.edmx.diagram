@@ -37,8 +37,8 @@
         <EntityTypeShape EntityType="SqlexpressLykkeModel.TxBrdCstRequestType" Width="1.5" PointX="12.375" PointY="16.375" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_RequestDetails_RequestSource" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_RequestDetails_RequestType" />
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.LkeBlkChnMgrTransactionsToBeSent" Width="1.5" PointX="14.375" PointY="0.75" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.LkeBlkChnMgrCoin" Width="1.5" PointX="9.375" PointY="13.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.LkeBlkChnMgrTransactionsToBeSent" Width="1.5" PointX="14.375" PointY="0.75" />
         </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

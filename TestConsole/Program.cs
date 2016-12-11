@@ -18,7 +18,11 @@ namespace TestConsole
             LykkeBitcoinBlockchainManagerSettings.ConnectionString = settings.ConnectionString;
             LykkeBitcoinBlockchainManagerSettings.Network = Network.TestNet;
             LykkeBitcoinBlockchainManager.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
-            var result = await LykkeBitcoinBlockchainManager.BroadcastTransaction(transactionHex);
+            using (SqlexpressLykkeEntities entities =
+                new SqlexpressLykkeEntities(LykkeBitcoinBlockchainManagerSettings.ConnectionString))
+            {
+                var result = await LykkeBitcoinBlockchainManager.BroadcastTransaction(transactionHex, entities);
+            }
         }
         private static void TestRPC()
         {

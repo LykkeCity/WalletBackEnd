@@ -20,6 +20,8 @@ namespace LykkeWalletServices
         public System.DateTime CreationDate { get; set; }
         public bool ShouldBeSent { get; set; }
         public string ReferenceNumber { get; set; }
+        public Nullable<bool> CanNotBeSent { get; set; }
+        public string Comment { get; set; }
         public byte[] Version { get; set; }
     }
 }

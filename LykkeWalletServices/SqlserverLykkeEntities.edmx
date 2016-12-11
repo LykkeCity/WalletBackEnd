@@ -99,6 +99,8 @@
           <Property Name="CreationDate" Type="datetime" Nullable="false" />
           <Property Name="ShouldBeSent" Type="bit" Nullable="false" />
           <Property Name="ReferenceNumber" Type="varchar" MaxLength="20" />
+          <Property Name="CanNotBeSent" Type="bit" />
+          <Property Name="Comment" Type="ntext" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
         <EntityType Name="PreGeneratedOutput">
@@ -536,8 +538,8 @@
             <End Role="TxBrdCstRequestType" EntitySet="TxBrdCstRequestTypes" />
             <End Role="TxBrdCstRequestDetail" EntitySet="TxBrdCstRequestDetails" />
           </AssociationSet>
-          <EntitySet Name="LkeBlkChnMgrTransactionsToBeSents" EntityType="SqlexpressLykkeModel.LkeBlkChnMgrTransactionsToBeSent" />
           <EntitySet Name="LkeBlkChnMgrCoins" EntityType="SqlexpressLykkeModel.LkeBlkChnMgrCoin" />
+          <EntitySet Name="LkeBlkChnMgrTransactionsToBeSents" EntityType="SqlexpressLykkeModel.LkeBlkChnMgrTransactionsToBeSent" />
           </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -929,18 +931,6 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
-        <EntityType Name="LkeBlkChnMgrTransactionsToBeSent">
-          <Key>
-            <PropertyRef Name="TransactionId" />
-          </Key>
-          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
-          <Property Name="TransactionHex" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
-          <Property Name="HasBeenSent" Type="Boolean" Nullable="false" />
-          <Property Name="CreationDate" Type="DateTime" Nullable="false" Precision="3" />
-          <Property Name="ShouldBeSent" Type="Boolean" Nullable="false" />
-          <Property Name="ReferenceNumber" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
-        </EntityType>
         <EntityType Name="LkeBlkChnMgrCoin">
           <Key>
             <PropertyRef Name="TransactionId" />
@@ -956,6 +946,20 @@
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
           <Property Name="BitcoinAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="true" />
           <Property Name="OutputScript" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="LkeBlkChnMgrTransactionsToBeSent">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+          </Key>
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="TransactionHex" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="HasBeenSent" Type="Boolean" Nullable="false" />
+          <Property Name="CreationDate" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="ShouldBeSent" Type="Boolean" Nullable="false" />
+          <Property Name="ReferenceNumber" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="CanNotBeSent" Type="Boolean" />
+          <Property Name="Comment" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
         </EntityType>
         </Schema>
     </edmx:ConceptualModels>
@@ -1227,19 +1231,6 @@
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
-          <EntitySetMapping Name="LkeBlkChnMgrTransactionsToBeSents">
-            <EntityTypeMapping TypeName="SqlexpressLykkeModel.LkeBlkChnMgrTransactionsToBeSent">
-              <MappingFragment StoreEntitySet="LkeBlkChnMgrTransactionsToBeSent">
-                <ScalarProperty Name="Version" ColumnName="Version" />
-                <ScalarProperty Name="ReferenceNumber" ColumnName="ReferenceNumber" />
-                <ScalarProperty Name="ShouldBeSent" ColumnName="ShouldBeSent" />
-                <ScalarProperty Name="CreationDate" ColumnName="CreationDate" />
-                <ScalarProperty Name="HasBeenSent" ColumnName="HasBeenSent" />
-                <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
-                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
           <EntitySetMapping Name="LkeBlkChnMgrCoins">
             <EntityTypeMapping TypeName="SqlexpressLykkeModel.LkeBlkChnMgrCoin">
               <MappingFragment StoreEntitySet="LkeBlkChnMgrCoin">
@@ -1252,6 +1243,21 @@
                 <ScalarProperty Name="AssetAmount" ColumnName="AssetAmount" />
                 <ScalarProperty Name="SatoshiAmount" ColumnName="SatoshiAmount" />
                 <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="LkeBlkChnMgrTransactionsToBeSents">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.LkeBlkChnMgrTransactionsToBeSent">
+              <MappingFragment StoreEntitySet="LkeBlkChnMgrTransactionsToBeSent">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="Comment" ColumnName="Comment" />
+                <ScalarProperty Name="CanNotBeSent" ColumnName="CanNotBeSent" />
+                <ScalarProperty Name="ReferenceNumber" ColumnName="ReferenceNumber" />
+                <ScalarProperty Name="ShouldBeSent" ColumnName="ShouldBeSent" />
+                <ScalarProperty Name="CreationDate" ColumnName="CreationDate" />
+                <ScalarProperty Name="HasBeenSent" ColumnName="HasBeenSent" />
+                <ScalarProperty Name="TransactionHex" ColumnName="TransactionHex" />
                 <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
               </MappingFragment>
             </EntityTypeMapping>

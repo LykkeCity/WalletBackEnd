@@ -15,6 +15,7 @@ using LykkeIntegrationServices;
 using NBitcoin;
 using LykkeWalletServices.Transactions.TaskHandlers;
 using LykkeWalletServices.BlockchainManager;
+using LykkeWalletServices.TimerServices;
 
 namespace ServiceLykkeWallet
 {
@@ -85,6 +86,12 @@ namespace ServiceLykkeWallet
             WebSettings.FeeAddress = settings.FeeAddress;
             WebSettings.SwapMinimumConfirmationNumber = settings.SwapMinimumConfirmationNumber;
 
+            LykkeBitcoinBlockchainManagerSettings.ConnectionString = settings.ConnectionString;
+            LykkeBitcoinBlockchainManagerSettings.RPCIPAddress = settings.RPCServerIpAddress;
+            LykkeBitcoinBlockchainManagerSettings.RPCUsername = settings.RPCUsername;
+            LykkeBitcoinBlockchainManagerSettings.RPCPassword = settings.RPCPassword;
+            LykkeBitcoinBlockchainManagerSettings.Network = OpenAssetsHelper.Network;
+
             var logger = new LogToConsole();
             var ioc = new IoC();
             if (!settings.UseMockAsLykkeNotification)
@@ -112,6 +119,8 @@ namespace ServiceLykkeWallet
             var srvUnsignedTransactionsUpdater = new SrvUnsignedTransactionsUpdater(log, settings.UnsignedTransactionTimeoutInMinutes, settings.UnsignedTransactionsUpdaterPeriod, settings.ConnectionString);
             srvUnsignedTransactionsUpdater.Start();
 
+            var srvLykkeBitcoinBlockchainManagerBroadcaster = new SrvLykkeBitcoinBlockchainManagerBroadcaster(log);
+            srvLykkeBitcoinBlockchainManagerBroadcaster.Start();
 
             Console.WriteLine("Queue reader is started");
         }

@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace LykkeWalletServices.TimerServices
 {
-    public class LykkeBitcoinBlockchainManagerBroadcaster : TimerPeriod
+    public class SrvLykkeBitcoinBlockchainManagerBroadcaster : TimerPeriod
     {
-        public LykkeBitcoinBlockchainManagerBroadcaster(ILog log) :
+        public SrvLykkeBitcoinBlockchainManagerBroadcaster(ILog log) :
             base("LykkeBitcoinBlockchainManagerBroadcaster", 2*60*1000, log )
         {
         }

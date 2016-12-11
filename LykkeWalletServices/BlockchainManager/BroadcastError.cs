@@ -9,6 +9,7 @@ namespace LykkeWalletServices.BlockchainManager
     public enum BroadcastError
     {
         GeneralError,
-        TransactionVerificationError
+        TransactionVerificationError,
+        NoError
     }
 }

@@ -999,67 +999,25 @@ namespace LykkeWalletServices
 
                 if (isCompletelySignedTransaction)
                 {
-                    // Notifing the web api of the transaction
-                    // The server should respond to: curl -X Post http://localhost:8088/HandledTx -H "Content-Type: application/json" -d "{\"TransactionId\" : \"transactionId\", \"BlockchainHash\" : \"blockchainHash\",\"Operation\" : \"Transfer\" }"
-                    if (handleTxRequest != null && preBroadcastHandler != null)
+                    var broadcastResult = await BroadcastTransaction(tx.ToHex(), entitiesContext);
+                    if (broadcastResult.Error != BroadcastError.NoError)
                     {
-                        var errResponse = await preBroadcastHandler.HandleTx(handleTxRequest);
-
-                        if (errResponse != null)
-                        {
-                            throw new Exception(string.Format("Error while notifing Lykke Jobs. Error code: {0} and Error Message: {1}",
-                                errResponse.ErrorCode, errResponse.ErrorMessage));
-                        }
+                        error = new Error { Code = ErrorCode.ProblemInBroadcastingTransaction, Message = broadcastResult.BroadcastException.ToString() };
                     }
-
-
-                    // Database is successful, only the commit has remained. Broadcating the transaction
-                    RPCClient client = new RPCClient(new System.Net.NetworkCredential(connectionParams.Username, connectionParams.Password),
-                        connectionParams.IpAddress, connectionParams.BitcoinNetwork);
-
-                    await client.SendRawTransactionAsync(tx);
-
-                    // Waiting until the transaction has appeared in block explorer
-                    // This is because some consequent operaions like generating refund may instantly
-                    // be called and the new transaction has not been propagaed
-                    // If the appearence does not take place after some retries, the
-                    // current function returns successfuly, since the responsibility of
-                    // the current function is to send the transaction and not the rest
-                    /*
-                    bool breakFor = false;
-                    for (int i = 0; i < 10; i++)
+                    else
                     {
-                        switch (apiProvider)
+                        // Notifing the web api of the transaction
+                        // The server should respond to: curl -X Post http://localhost:8088/HandledTx -H "Content-Type: application/json" -d "{\"TransactionId\" : \"transactionId\", \"BlockchainHash\" : \"blockchainHash\",\"Operation\" : \"Transfer\" }"
+                        if (handleTxRequest != null && preBroadcastHandler != null)
                         {
-                            case APIProvider.QBitNinja:
-                                bool isPresent = await IsTransactionPresentInQBitNinja(tx);
-                                if (isPresent)
-                                {
-                                    breakFor = true;
-                                    break;
-                                }
-                                else
-                                {
-                                    System.Threading.Thread.Sleep(500);
-                                }
-                                break;
-                            default:
-                                breakFor = true;
-                                break;
+                            var errResponse = await preBroadcastHandler.HandleTx(handleTxRequest);
+
+                            if (errResponse != null)
+                            {
+                                throw new Exception(string.Format("Error while notifing Lykke Jobs. Error code: {0} and Error Message: {1}",
+                                    errResponse.ErrorCode, errResponse.ErrorMessage));
+                            }
                         }
-                        if (breakFor)
-                        {
-                            break;
-                        }
-                    }
-                    */
-                    try
-                    {
-                        await IsTransactionFullyIndexed(tx, connectionParams, entitiesContext);
-                    }
-                    catch (Exception)
-                    {
-                        // No exception should be thrown after tx has been sent to blockchain
                     }
                 }
             }
@@ -1890,7 +1848,7 @@ namespace LykkeWalletServices
             throw new Exception(string.Format("Could not parse the address {0} successfully.", address));
         }
 
-        
+
 
         public static async Task<PubKey> GetClientPubKeyForMultisig(string multisigAddr, SqlexpressLykkeEntities entities)
         {
@@ -1965,7 +1923,7 @@ namespace LykkeWalletServices
                 {
                     ret = await (from item in entities.KeyStorages
                                  where item.MultiSigAddress.Equals(multiSigAddress)
-                                 select item).Select(itm => 
+                                 select item).Select(itm =>
                                  new OpenAssetsHelper.OpenAssetsHelperKeyStorage { ExchangePrivateKey = itm.ExchangePrivateKey, MultiSigAddress = itm.MultiSigAddress, MultiSigScript = itm.MultiSigScript, Network = itm.Network, WalletAddress = itm.WalletAddress, WalletPrivateKey = itm.WalletPrivateKey }).SingleOrDefaultAsync();
                 }
             }
@@ -2172,9 +2130,9 @@ namespace LykkeWalletServices
             return new Tuple<float, bool, string>(balance, errorOccured, errorMessage);
         }
 
-        
 
-        
+
+
 
         #endregion
 
