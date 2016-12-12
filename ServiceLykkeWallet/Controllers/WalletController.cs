@@ -91,6 +91,9 @@ namespace ServiceLykkeWallet.Controllers
             try
             {
                 var pubkey = new PubKey(ClientPublicKey);
+                var network = OpenAssetsHelper.ConvertStringNetworkToNBitcoinNetwork(WebSettings.ConnectionParams.Network);
+                var clientAddress = pubkey.GetAddress(network).ToString();
+                string multiSigAddress = null;
 
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(WebSettings.ConnectionString))
                 {
@@ -103,10 +106,15 @@ namespace ServiceLykkeWallet.Controllers
                     {
                         Key key = new Key();
                         exchangeSecret = new BitcoinSecret(key, WebSettings.ConnectionParams.BitcoinNetwork);
+
+                        multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] {  pubkey ,
+                            exchangeSecret.PubKey }).GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork).ToString();
                         entities.SegKeys.Add(new SegKey
                         {
                             ClientPubKey = ClientPublicKey,
-                            ExchangePrivateKey = exchangeSecret.ToWif()
+                            ExchangePrivateKey = exchangeSecret.ToWif(),
+                            ClientAddress = clientAddress,
+                            MultiSigAddress = multiSigAddress
                         });
                         await entities.SaveChangesAsync();
                     }
@@ -115,12 +123,9 @@ namespace ServiceLykkeWallet.Controllers
                         exchangeSecret = new BitcoinSecret(exisitingRecord.ExchangePrivateKey);
                     }
 
-                    var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { new PubKey(ClientPublicKey) ,
-                        exchangeSecret.PubKey });
-                    var multiSigAddressStorage = multiSigAddress.GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork).ToString();
-                    var coloredMulsigAddress = BitcoinAddress.Create(multiSigAddressStorage).ToColoredAddress().ToWif();
+                    var coloredMulsigAddress = BitcoinAddress.Create(multiSigAddress).ToColoredAddress().ToWif();
 
-                    return Json(new GetWalletResult { MultiSigAddress = multiSigAddressStorage, ColoredMultiSigAddress = coloredMulsigAddress });
+                    return Json(new GetWalletResult { MultiSigAddress = multiSigAddress, ColoredMultiSigAddress = coloredMulsigAddress });
                 }
             }
             catch (Exception ex)

@@ -145,8 +145,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                     " in wallet: " + transaction.WalletAddress02);
             }
 
-            Tuple<UniversalUnspentOutput[], bool, string> wallet01Outputs = null;
-            Tuple<UniversalUnspentOutput[], bool, string> wallet02Outputs = null;
+            Tuple<UniversalUnspentOutput[], bool, string, bool> wallet01Outputs = null;
+            Tuple<UniversalUnspentOutput[], bool, string, bool> wallet02Outputs = null;
 
             using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
             {

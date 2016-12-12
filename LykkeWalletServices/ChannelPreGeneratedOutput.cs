@@ -12,12 +12,17 @@ namespace LykkeWalletServices
     using System;
     using System.Collections.Generic;
     
-    public partial class SegKey
+    public partial class ChannelPreGeneratedOutput
     {
-        public long id { get; set; }
-        public string ClientPubKey { get; set; }
-        public string ExchangePrivateKey { get; set; }
-        public string ClientAddress { get; set; }
-        public string MultiSigAddress { get; set; }
+        public string TransactionId { get; set; }
+        public int OutputNumber { get; set; }
+        public long Amount { get; set; }
+        public string PrivateKey { get; set; }
+        public int Consumed { get; set; }
+        public string Script { get; set; }
+        public string AssetId { get; set; }
+        public string Address { get; set; }
+        public string Network { get; set; }
+        public byte[] Version { get; set; }
     }
 }

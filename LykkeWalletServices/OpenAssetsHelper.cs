@@ -482,25 +482,43 @@ namespace LykkeWalletServices
         }
 
         public static Tuple<ColoredCoin[], Coin[]> GetColoredUnColoredCoins(UniversalUnspentOutput[] walletOutputs,
-            string assetId)
+            string assetId, AssetDefinition[] assets = null)
         {
-            var walletAssetOutputs = GetWalletOutputsForAsset(walletOutputs, assetId);
+
             var walletUncoloredOutputs = GetWalletOutputsUncolored(walletOutputs);
-            var walletColoredCoins = GenerateWalletColoredCoins(walletAssetOutputs, assetId);
             var walletUncoloredCoins = GenerateWalletUnColoredCoins(walletUncoloredOutputs);
+
+            UniversalUnspentOutput[] walletAssetOutputs = null;
+            ColoredCoin[] walletColoredCoins = null;
+
+            if (assetId != null && assetId.ToLower() == "all")
+            {
+                walletColoredCoins = new ColoredCoin[0];
+                foreach (var item in assets)
+                {
+                    walletAssetOutputs = GetWalletOutputsForAsset(walletOutputs, item.AssetId);
+                    walletColoredCoins = walletColoredCoins.Concat(GenerateWalletColoredCoins(walletAssetOutputs, item.AssetId)).ToArray();
+                }
+            }
+            else
+            {
+                walletAssetOutputs = GetWalletOutputsForAsset(walletOutputs, assetId);
+                walletColoredCoins = GenerateWalletColoredCoins(walletAssetOutputs, assetId);
+            }
+
             return new Tuple<ColoredCoin[], Coin[]>(walletColoredCoins, walletUncoloredCoins);
         }
 
-        public static async Task<Tuple<UniversalUnspentOutput[], bool, string>> GetWalletOutputs(string walletAddress,
+        public static async Task<Tuple<UniversalUnspentOutput[], bool, string, bool>> GetWalletOutputs(string walletAddress,
             Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
         {
-            Tuple<UniversalUnspentOutput[], bool, string> ret = null;
+            Tuple<UniversalUnspentOutput[], bool, string, bool> ret = null;
             switch (apiProvider)
             {
                 case APIProvider.QBitNinja:
                     var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, entities, getMinimumConfirmationNumber, ignoreUnconfirmed);
-                    ret = new Tuple<UniversalUnspentOutput[], bool, string>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
-                        qbitResult.Item2, qbitResult.Item3);
+                    ret = new Tuple<UniversalUnspentOutput[], bool, string, bool>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
+                        qbitResult.Item2, qbitResult.Item3, qbitResult.Item4);
                     break;
                 default:
                     throw new Exception("Not supported.");
@@ -685,7 +703,7 @@ namespace LykkeWalletServices
             {
                 if (isAddressMultiSig)
                 {
-                    ret.MatchingAddress = await GetMatchingMultisigAddress(multiSigAddress, entities);
+                    ret.MatchingAddress = await GetMatchingMultisigAddress(multiSigAddress, entities, true);
                 }
 
                 // Getting wallet outputs
@@ -1465,14 +1483,14 @@ namespace LykkeWalletServices
             }
         }
 
-        public static async Task<string> SignTransactionWorker(TransactionSignRequest signRequest)
+        public static async Task<string> SignTransactionWorker(TransactionSignRequest signRequest, SigHash sigHash = SigHash.All)
         {
             Transaction tx = new Transaction(signRequest.TransactionToSign);
             Transaction outputTx = new Transaction(signRequest.TransactionToSign);
             var secret = new BitcoinSecret(signRequest.PrivateKey);
 
             TransactionBuilder builder = new TransactionBuilder();
-            tx = builder.ContinueToBuild(tx).AddKeys(new BitcoinSecret[] { secret }).SignTransaction(tx);
+            tx = builder.ContinueToBuild(tx).AddKeys(new BitcoinSecret[] { secret }).SignTransaction(tx, sigHash);
 
             for (int i = 0; i < tx.Inputs.Count; i++)
             {
@@ -1499,9 +1517,9 @@ namespace LykkeWalletServices
                             if (secret.PubKey.ToHex() == pubkeys[j].ToHex())
                             {
                                 var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
-                                var hash = Script.SignatureHash(scriptParams.RedeemScript, tx, i, SigHash.All);
-                                var signature = secret.PrivateKey.Sign(hash, SigHash.All);
-                                scriptParams.Pushes[j + 1] = signature.Signature.ToDER().Concat(new byte[] { 0x01 }).ToArray();
+                                var hash = Script.SignatureHash(scriptParams.RedeemScript, tx, i, sigHash);
+                                var signature = secret.PrivateKey.Sign(hash, sigHash);
+                                scriptParams.Pushes[j + 1] = signature.Signature.ToDER().Concat(new byte[] { (byte)sigHash }).ToArray();
                                 outputTx.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
                             }
                         }
@@ -1514,8 +1532,8 @@ namespace LykkeWalletServices
                     var address = PayToPubkeyHashTemplate.Instance.ExtractScriptPubKeyParameters(output.ScriptPubKey).GetAddress(WebSettings.ConnectionParams.BitcoinNetwork).ToWif();
                     if (address == secret.GetAddress().ToWif())
                     {
-                        var hash = Script.SignatureHash(output.ScriptPubKey, tx, i, SigHash.All);
-                        var signature = secret.PrivateKey.Sign(hash, SigHash.All);
+                        var hash = Script.SignatureHash(output.ScriptPubKey, tx, i, sigHash);
+                        var signature = secret.PrivateKey.Sign(hash, sigHash);
 
                         outputTx.Inputs[i].ScriptSig = PayToPubkeyHashTemplate.Instance.GenerateScriptSig(signature, secret.PubKey);
                     }
@@ -2002,16 +2020,34 @@ namespace LykkeWalletServices
             throw new Exception(string.Format("Could not parse the address {0} successfully.", address));
         }
 
+
+
         public static async Task<PubKey> GetClientPubKeyForMultisig(string multisigAddr, SqlexpressLykkeEntities entities)
         {
-            var multisig = await GetMatchingMultisigAddress(multisigAddr, entities);
-            return (new BitcoinSecret(multisig.WalletPrivateKey)).PubKey;
+            var multisig = await GetMatchingMultisigAddress(multisigAddr, entities, true);
+            if (multisig.ClientPubKey != null)
+            {
+                return multisig.ClientPubKey;
+            }
+            else
+            {
+                return (new BitcoinSecret(multisig.WalletPrivateKey)).PubKey;
+            }
         }
 
-
-        public static async Task<KeyStorage> GetMatchingMultisigAddress(string multiSigAddress, SqlexpressLykkeEntities entities)
+        public class OpenAssetsHelperKeyStorage : KeyStorage
         {
-            KeyStorage ret = null;
+            public PubKey ClientPubKey
+            {
+                get;
+                set;
+            }
+        }
+
+        public static async Task<OpenAssetsHelperKeyStorage> GetMatchingMultisigAddress(string multiSigAddress,
+            SqlexpressLykkeEntities entities, bool walletPrivateKeyOptional = false)
+        {
+            OpenAssetsHelperKeyStorage ret = null;
 
             var base58Data = Base58Data.GetFromBase58Data(multiSigAddress);
             if (base58Data is BitcoinColoredAddress)
@@ -2019,24 +2055,50 @@ namespace LykkeWalletServices
                 multiSigAddress = (base58Data as BitcoinColoredAddress).Address.ToWif();
             }
 
-            if (PrivateKeyWillBeSubmitted)
+            if ((WebSettings.UseSegKeysTable && walletPrivateKeyOptional) || PrivateKeyWillBeSubmitted)
             {
-                if (MultisigDictionary.ContainsKey(multiSigAddress))
+                var record = await (from item in entities.SegKeys
+                                    where item.MultiSigAddress == multiSigAddress
+                                    select item).FirstOrDefaultAsync();
+
+                if (record != null)
                 {
-                    ret = new KeyStorage();
-                    ret.ExchangePrivateKey = (new BitcoinSecret(MultisigDictionary[multiSigAddress])).PubKey.GetExchangePrivateKey(entities).ToWif();
+                    var multiSig = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { new PubKey( record.ClientPubKey) ,
+                                (new BitcoinSecret(record.ExchangePrivateKey)).PubKey });
+
+                    ret = new OpenAssetsHelperKeyStorage();
+                    ret.ExchangePrivateKey = record.ExchangePrivateKey;
                     ret.MultiSigAddress = multiSigAddress;
-                    ret.MultiSigScript = MultisigScriptDictionary[multiSigAddress];
+                    ret.MultiSigScript = multiSig.ToString();
                     ret.Network = Network.ToString();
-                    ret.WalletPrivateKey = MultisigDictionary[multiSigAddress];
-                    ret.WalletAddress = (new BitcoinSecret(ret.WalletPrivateKey)).GetAddress().ToWif();
+
+                    if (PrivateKeyWillBeSubmitted)
+                    {
+                        if (MultisigDictionary.ContainsKey(multiSigAddress))
+                        {
+                            ret.WalletPrivateKey = MultisigDictionary[multiSigAddress];
+                        }
+                        else
+                        {
+                            throw new Exception("Private key not submitted for MultiSigAddress: "
+                                + multiSigAddress);
+                        }
+                    }
+                    else
+                    {
+                        ret.WalletPrivateKey = null;
+                    }
+                    ret.WalletAddress = record.ClientAddress;
+                    ret.ClientPubKey = new PubKey(record.ClientPubKey);
                 }
             }
             else
             {
+
                 ret = await (from item in entities.KeyStorages
                              where item.MultiSigAddress.Equals(multiSigAddress)
-                             select item).SingleOrDefaultAsync();
+                             select item).Select(itm =>
+                             new OpenAssetsHelper.OpenAssetsHelperKeyStorage { ExchangePrivateKey = itm.ExchangePrivateKey, MultiSigAddress = itm.MultiSigAddress, MultiSigScript = itm.MultiSigScript, Network = itm.Network, WalletAddress = itm.WalletAddress, WalletPrivateKey = itm.WalletPrivateKey }).SingleOrDefaultAsync();
             }
 
             if (ret == null)
@@ -2504,6 +2566,11 @@ namespace LykkeWalletServices
         public static async Task<bool> HasTransactionPassedItsWaitTime(string txId,
             SqlexpressLykkeEntities entitiesContext)
         {
+            if (entitiesContext == null)
+            {
+                return true;
+            }
+
             var found = (from item in entitiesContext.TransactionsWaitForConfirmations
                          where item.txToBeWatched == txId
                          select item).FirstOrDefault();
@@ -2535,13 +2602,13 @@ namespace LykkeWalletServices
 
         delegate Task PopulateUnspentOupt(QBitNinjaOperation operation);
 
-        public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string>> GetWalletOutputsQBitNinja(string walletAddress,
+        public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string, bool>> GetWalletOutputsQBitNinja(string walletAddress,
             Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
         {
             bool errorOccured = false;
             string errorMessage = string.Empty;
+            bool isInputInRace = false;
             // List is not thread safe to be runned in parallel
-            //IList<QBitNinjaUnspentOutput> unspentOutputsList = new List<QBitNinjaUnspentOutput>();
             ConcurrentQueue<QBitNinjaUnspentOutput> unspentOutputConcurrent = new ConcurrentQueue<QBitNinjaUnspentOutput>();
 
             getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
@@ -2550,25 +2617,7 @@ namespace LykkeWalletServices
             try
             {
                 QBitNinjaOutputResponse notProcessedUnspentOutputs = null;
-                /*
-                using (HttpClient client = new HttpClient())
-                {
-                    string url = null;
-                    url = QBitNinjaBalanceUrl + walletAddress;
-                    HttpResponseMessage result = await client.GetAsync(url + "?unspentonly=true&colored=true");
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        errorOccured = true;
-                        errorMessage = result.ReasonPhrase;
-                    }
-                    else
-                    {
-                        var webResponse = await result.Content.ReadAsStringAsync();
-                        notProcessedUnspentOutputs = Newtonsoft.Json.JsonConvert.DeserializeObject<QBitNinjaOutputResponse>
-                            (webResponse);
-                    }
-                }
-                */
+
                 notProcessedUnspentOutputs = await GetAddressBalance(walletAddress,
                     (result) => { errorOccured = true; errorMessage = GetCaller() + " " + result.ToString(); }
                     , true, true, ignoreUnconfirmed);
@@ -2590,41 +2639,11 @@ namespace LykkeWalletServices
                                 asset_quantity = c.quantity
                             });
 
-                            /*
-                            await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
-                                convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
-                                */
-
-                            (await convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))))
+                            (await convertResult.Where(async (u) => { bool temp = false; var retValue = (u.confirmations >= getMinimumConfirmationNumber() && (temp = await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))); isInputInRace |= (!retValue); return retValue; }))
                             .ToList().ForEach(c => unspentOutputConcurrent.Enqueue(c));
                         };
                         var tasks = notProcessedUnspentOutputs.operations.Select(o => t(o));
                         await Task.WhenAll(tasks);
-                        /*
-                        notProcessedUnspentOutputs.operations.ForEach(async (o) =>
-                        {
-                            var convertResult = o.receivedCoins.Select(c => new QBitNinjaUnspentOutput
-                            {
-                                confirmations = o.confirmations,
-                                output_index = c.index,
-                                transaction_hash = c.transactionId,
-                                value = c.value,
-                                script_hex = c.scriptPubKey,
-                                asset_id = c.assetId,
-                                asset_quantity = c.quantity
-                            });
-
-                            try
-                            {
-                                await ((List<QBitNinjaUnspentOutput>)unspentOutputsList).AddRange(
-                                    convertResult.Where(async (u) => (u.confirmations >= getMinimumConfirmationNumber() && await HasTransactionPassedItsWaitTime(u.transaction_hash, entitiesContext))));
-                            }
-                            catch (Exception)
-                            {
-                                throw;
-                            }
-                        });
-                        */
                     }
                     else
                     {
@@ -2640,8 +2659,8 @@ namespace LykkeWalletServices
             }
 
             // return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
-            return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputConcurrent.ToArray(),
-                errorOccured, errorMessage);
+            return new Tuple<QBitNinjaUnspentOutput[], bool, string, bool>(unspentOutputConcurrent.ToArray(),
+                errorOccured, errorMessage, isInputInRace);
         }
 
         #endregion
@@ -2695,6 +2714,22 @@ namespace LykkeWalletServices
                 }
 
                 return exists;
+            }
+        }
+
+        public static Network ConvertStringNetworkToNBitcoinNetwork(string network)
+        {
+            network = network.ToLower();
+            switch (network)
+            {
+                case "main":
+                    return Network.Main;
+                case "testnet":
+                    return Network.TestNet;
+                case "segnet":
+                    return Network.SegNet;
+                default:
+                    return Network.TestNet;
             }
         }
 

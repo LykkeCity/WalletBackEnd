@@ -38,5 +38,11 @@ namespace LykkeWalletServices
             get;
             set;
         }
+
+        public static bool UseSegKeysTable
+        {
+            get;
+            set;
+        }
     }
 }

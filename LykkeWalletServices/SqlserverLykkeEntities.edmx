@@ -5,6 +5,22 @@
     <!-- SSDL content -->
     <edmx:StorageModels>
     <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="ChannelPreGeneratedOutput">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="TransactionId" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="OutputNumber" Type="int" Nullable="false" />
+          <Property Name="Amount" Type="bigint" Nullable="false" />
+          <Property Name="PrivateKey" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Consumed" Type="int" Nullable="false" />
+          <Property Name="Script" Type="varchar" MaxLength="1000" Nullable="false" />
+          <Property Name="AssetId" Type="varchar" MaxLength="100" />
+          <Property Name="Address" Type="varchar" MaxLength="100" />
+          <Property Name="Network" Type="varchar" MaxLength="10" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
         <EntityType Name="DBLog">
           <Key>
             <PropertyRef Name="id" />
@@ -115,6 +131,8 @@
           <Property Name="id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="ClientPubKey" Type="varchar" MaxLength="130" Nullable="false" />
           <Property Name="ExchangePrivateKey" Type="varchar" MaxLength="52" Nullable="false" />
+          <Property Name="ClientAddress" Type="varchar" MaxLength="35" />
+          <Property Name="MultiSigAddress" Type="varchar" MaxLength="35" />
         </EntityType>
         <EntityType Name="SentTransactions">
           <Key>
@@ -310,6 +328,7 @@
           </ReferentialConstraint>
         </Association>
         <EntityContainer Name="SqlexpressLykkeModelStoreContainer">
+          <EntitySet Name="ChannelPreGeneratedOutput" EntityType="Self.ChannelPreGeneratedOutput" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="DBLog" EntityType="Self.DBLog" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="EmailMessages" EntityType="Self.EmailMessages" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" Schema="dbo" store:Type="Tables" />
@@ -416,6 +435,7 @@
             <End Role="UnsignedTransactionSpentOutput" EntitySet="UnsignedTransactionSpentOutputs" />
           </AssociationSet>
           <EntitySet Name="DBLogs" EntityType="SqlexpressLykkeModel.DBLog" />
+          <EntitySet Name="ChannelPreGeneratedOutputs" EntityType="SqlexpressLykkeModel.ChannelPreGeneratedOutput" />
         </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -671,6 +691,8 @@
           <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
           <Property Name="ClientPubKey" Type="String" Nullable="false" MaxLength="130" FixedLength="false" Unicode="false" />
           <Property Name="ExchangePrivateKey" Type="String" Nullable="false" MaxLength="52" FixedLength="false" Unicode="false" />
+          <Property Name="ClientAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="MultiSigAddress" Type="String" MaxLength="35" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="UnsignedTransaction">
           <Key>
@@ -736,6 +758,22 @@
           <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
           <Property Name="Message" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="CreationDate" Type="DateTime" Nullable="false" Precision="3" />
+        </EntityType>
+        <EntityType Name="ChannelPreGeneratedOutput">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="OutputNumber" Type="Int32" Nullable="false" />
+          <Property Name="Amount" Type="Int64" Nullable="false" />
+          <Property Name="PrivateKey" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Consumed" Type="Int32" Nullable="false" />
+          <Property Name="Script" Type="String" Nullable="false" MaxLength="1000" FixedLength="false" Unicode="false" />
+          <Property Name="AssetId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Address" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Network" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
         </EntityType>
       </Schema>
     </edmx:ConceptualModels>
@@ -918,6 +956,8 @@
           <EntitySetMapping Name="SegKeys">
             <EntityTypeMapping TypeName="SqlexpressLykkeModel.SegKey">
               <MappingFragment StoreEntitySet="SegKeys">
+                <ScalarProperty Name="MultiSigAddress" ColumnName="MultiSigAddress" />
+                <ScalarProperty Name="ClientAddress" ColumnName="ClientAddress" />
                 <ScalarProperty Name="ExchangePrivateKey" ColumnName="ExchangePrivateKey" />
                 <ScalarProperty Name="ClientPubKey" ColumnName="ClientPubKey" />
                 <ScalarProperty Name="id" ColumnName="id" />
@@ -959,6 +999,22 @@
                 <ScalarProperty Name="CreationDate" ColumnName="CreationDate" />
                 <ScalarProperty Name="Message" ColumnName="Message" />
                 <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ChannelPreGeneratedOutputs">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.ChannelPreGeneratedOutput">
+              <MappingFragment StoreEntitySet="ChannelPreGeneratedOutput">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="Network" ColumnName="Network" />
+                <ScalarProperty Name="Address" ColumnName="Address" />
+                <ScalarProperty Name="AssetId" ColumnName="AssetId" />
+                <ScalarProperty Name="Script" ColumnName="Script" />
+                <ScalarProperty Name="Consumed" ColumnName="Consumed" />
+                <ScalarProperty Name="PrivateKey" ColumnName="PrivateKey" />
+                <ScalarProperty Name="Amount" ColumnName="Amount" />
+                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

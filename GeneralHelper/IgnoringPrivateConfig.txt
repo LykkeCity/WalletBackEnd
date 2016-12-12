@@ -1,0 +1,4 @@
+﻿gitignore is for untracked file, untracking private settings will make appveyor build to fail.
+
+According to http://stackoverflow.com/questions/10755655/git-ignore-tracked-files using of follwing command helped:
+git update-index --assume-unchanged GeneralHelper\PrivateSettings.config
