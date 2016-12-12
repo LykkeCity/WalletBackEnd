@@ -56,7 +56,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
             [DefaultValue(1)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public uint FeeMultiplicationFactor
+            public double FeeMultiplicationFactor
             {
                 get;
                 set;

@@ -135,7 +135,7 @@ namespace LykkeWalletServices
             set;
         }
 
-        public static uint FeeMultiplicationFactor
+        public static double FeeMultiplicationFactor
         {
             get;
             set;
@@ -1606,9 +1606,10 @@ namespace LykkeWalletServices
                 }
             }
 
-            TransactionSendFeesInSatoshi = FeeMultiplicationFactor * Math.Min((long)TransactionSendFeesInSatoshi,
-                MaximumTransactionSendFeesInSatoshi);
-            return new FeeRate(new Money(TransactionSendFeesInSatoshi));
+            var transactionSendFeesInSatoshi = (long)(FeeMultiplicationFactor * Math.Min((long)TransactionSendFeesInSatoshi,
+                MaximumTransactionSendFeesInSatoshi));
+            transactionSendFeesInSatoshi = Math.Max(transactionSendFeesInSatoshi, MinimumTransactionSendFeesInSatoshi);
+            return new FeeRate(new Money(transactionSendFeesInSatoshi));
         }
 
         public class TwentyOneFeeReport
