@@ -326,7 +326,7 @@ namespace ServiceLykkeWallet.Controllers
                                     ReservationCreationDate = now,
                                     ReservedForChannel = channel.ChannelId,
                                     ReservedForMultisig = multisig.MultiSigAddress,
-                                    ReservationEndDate = now.AddMinutes(channelTimeoutInMinutes)
+                                    ReservationEndDate = (channelTimeoutInMinutes == 0 ? now.AddMinutes(channelTimeoutInMinutes) : now.AddYears(1000))
                                 };
                                 entities.ChannelCoins.Add(coin);
                             }
