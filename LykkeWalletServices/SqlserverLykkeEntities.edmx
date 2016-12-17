@@ -4,7 +4,7 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-      <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+    <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <EntityType Name="ChannelCoin">
           <Key>
             <PropertyRef Name="Id" />
@@ -132,6 +132,7 @@
           <Property Name="PreGeneratedOutputN" Type="int" Nullable="false" />
           <Property Name="CreationTime" Type="datetime" Nullable="false" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+          <Property Name="ReservationEndDate" Type="datetime" />
         </EntityType>
         <EntityType Name="RefundedOutputs">
           <Key>
@@ -463,8 +464,7 @@
             <End Role="WholeRefundSpentOutputs" EntitySet="WholeRefundSpentOutputs" />
           </AssociationSet>
         </EntityContainer>
-      </Schema>
-    </edmx:StorageModels>
+      </Schema></edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="SqlexpressLykkeModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
@@ -757,6 +757,7 @@
           <Property Name="CreationTime" Type="DateTime" Nullable="false" Precision="3" />
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
           <NavigationProperty Name="PreGeneratedOutput" Relationship="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" FromRole="PregeneratedReserve" ToRole="PreGeneratedOutput" />
+          <Property Name="ReservationEndDate" Type="DateTime" Precision="3" />
         </EntityType>
         <Association Name="FK_PregeneratedReserve_PregeneratedReserve">
           <End Type="SqlexpressLykkeModel.PreGeneratedOutput" Role="PreGeneratedOutput" Multiplicity="1" />
@@ -1106,6 +1107,7 @@
           <EntitySetMapping Name="PregeneratedReserves">
             <EntityTypeMapping TypeName="SqlexpressLykkeModel.PregeneratedReserve">
               <MappingFragment StoreEntitySet="PregeneratedReserve">
+                <ScalarProperty Name="ReservationEndDate" ColumnName="ReservationEndDate" />
                 <ScalarProperty Name="Version" ColumnName="Version" />
                 <ScalarProperty Name="CreationTime" ColumnName="CreationTime" />
                 <ScalarProperty Name="PreGeneratedOutputN" ColumnName="PreGeneratedOutputN" />

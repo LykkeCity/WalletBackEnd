@@ -338,7 +338,7 @@ namespace LykkeWalletServices
 
         public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
             RPCConnectionParams connectionParams, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1,
-            string reservedForAddress = null, string reserveId = null)
+            string reservedForAddress = null, string reserveId = null, DateTime? reservationEndDate = null)
         {
             builder.SetChange(BitcoinAddress.Create(feeAddress), ChangeType.Uncolored);
 
@@ -362,7 +362,7 @@ namespace LykkeWalletServices
                     catch (NotEnoughFundsException ex)
                     {
                         PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, 2 * feeConsumptionItself, null,
-                            reservedForAddress, reserveId);
+                            reservedForAddress, reserveId, 3, reservationEndDate);
                         Coin feePayerCoin = feePayer.GetCoin();
 
                         totalAddedFee += feePayer.Amount;
@@ -385,7 +385,7 @@ namespace LykkeWalletServices
                     break;
                 }
 
-                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, 2 * feeConsumptionItself, null, reservedForAddress, reserveId);
+                PreGeneratedOutput feePayer = await GetOnePreGeneratedOutput(entities, connectionParams, 2 * feeConsumptionItself, null, reservedForAddress, reserveId, 3, reservationEndDate);
                 Coin feePayerCoin = feePayer.GetCoin();
 
                 totalAddedFee += feePayer.Amount;
@@ -1859,7 +1859,8 @@ namespace LykkeWalletServices
             }
         }
 
-        public static async Task CreateNewReserve(SqlexpressLykkeEntities entities, string reserveId, PreGeneratedOutput c, bool save)
+        public static async Task CreateNewReserve(SqlexpressLykkeEntities entities, string reserveId, PreGeneratedOutput c,
+            bool save, DateTime? reservationEndDate = null)
         {
             PregeneratedReserve reserve = new PregeneratedReserve();
 
@@ -1867,6 +1868,7 @@ namespace LykkeWalletServices
             reserve.PreGeneratedOutputN = c.OutputNumber;
             reserve.CreationTime = DateTime.UtcNow;
             reserve.ReserveId = reserveId;
+            reserve.ReservationEndDate = reservationEndDate;
 
             entities.PregeneratedReserves.Add(reserve);
             if (save)
@@ -1877,7 +1879,7 @@ namespace LykkeWalletServices
 
         public static async Task<PreGeneratedOutput> GetOnePreGeneratedOutput(SqlexpressLykkeEntities entities,
             RPCConnectionParams connectionParams, long minimumSatoshiOfTheOutput = 0, string assetId = null, string reservedForAddress = null, string reserveId = null,
-            uint retryCount = OpenAssetsHelper.ConcurrencyRetryCount)
+            uint retryCount = OpenAssetsHelper.ConcurrencyRetryCount, DateTime? reservationEndDate = null)
         {
             await entities.SaveChangesAsync();
             int retries = 0;
@@ -1909,7 +1911,7 @@ namespace LykkeWalletServices
                             }
                             else
                             {
-                                await CreateNewReserve(entities, reserveId, c, true);
+                                await CreateNewReserve(entities, reserveId, c, true, reservationEndDate);
 
                                 return c;
                             }
@@ -1946,7 +1948,7 @@ namespace LykkeWalletServices
                             else
                             {
                                 f.ReservedForAddress = reservedForAddress;
-                                await CreateNewReserve(entities, reserveId, f, false);
+                                await CreateNewReserve(entities, reserveId, f, false, reservationEndDate);
                             }
                             await entities.SaveChangesAsync();
 

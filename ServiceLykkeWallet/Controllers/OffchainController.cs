@@ -256,7 +256,7 @@ namespace ServiceLykkeWallet.Controllers
                         {
                             continue;
                         }
-                        
+
                         if (btcAsset)
                         {
                             if (returnValue > 0)
@@ -276,9 +276,9 @@ namespace ServiceLykkeWallet.Controllers
                     }
 
                     var directSendSum = requiredAssetAmount.Sum();
-                    if(directSendSum > 0)
+                    if (directSendSum > 0)
                     {
-                        if(btcAsset)
+                        if (btcAsset)
                         {
                             builder.Send(multisigAddress, new Money(directSendSum));
                         }
@@ -292,8 +292,11 @@ namespace ServiceLykkeWallet.Controllers
 
                     using (var transaction = entities.Database.BeginTransaction())
                     {
+                        var now = DateTime.UtcNow;
+                        var reservationEndDate = (channelTimeoutInMinutes == 0 ? now.AddYears(1000) : now.AddMinutes(channelTimeoutInMinutes));
+
                         await builder.AddEnoughPaymentFee(entities, WebSettings.ConnectionParams, WebSettings.FeeAddress,
-                            numberOfColoredCoinOutputs, -1, "Offchain" + multisig.MultiSigAddress, Guid.NewGuid().ToString());
+                            numberOfColoredCoinOutputs, -1, "Offchain" + multisig.MultiSigAddress, Guid.NewGuid().ToString(), reservationEndDate);
                         txHex = builder.BuildTransaction(false).ToHex();
                         var txHash = Convert.ToString(SHA256Managed.Create().ComputeHash(OpenAssetsHelper.StringToByteArray(txHex)));
                         var channel = entities.OffchainChannels.Add(new OffchainChannel { unsignedTransactionHash = txHash });
@@ -317,7 +320,7 @@ namespace ServiceLykkeWallet.Controllers
                                     toBeStoredTxOutputNumber = (int)((ColoredCoin)item).Bearer.Outpoint.N;
                                 }
 
-                                var now = DateTime.UtcNow;
+
                                 var coin = new ChannelCoin
                                 {
                                     OffchainChannel = channel,
@@ -326,7 +329,7 @@ namespace ServiceLykkeWallet.Controllers
                                     ReservationCreationDate = now,
                                     ReservedForChannel = channel.ChannelId,
                                     ReservedForMultisig = multisig.MultiSigAddress,
-                                    ReservationEndDate = (channelTimeoutInMinutes == 0 ? now.AddMinutes(channelTimeoutInMinutes) : now.AddYears(1000))
+                                    ReservationEndDate = reservationEndDate
                                 };
                                 entities.ChannelCoins.Add(coin);
                             }

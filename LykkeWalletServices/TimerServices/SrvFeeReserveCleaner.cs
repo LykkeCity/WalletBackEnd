@@ -23,8 +23,8 @@ namespace LykkeWalletServices
             using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
             {
                 var reserveds = from r in entities.PregeneratedReserves
-                                where r.CreationTime < fiveMinutesAgo
-                                select r;
+                                where r.ReservationEndDate == null ? r.CreationTime < fiveMinutesAgo : r.ReservationEndDate < DateTime.UtcNow
+                                select r; 
 
                 entities.PregeneratedReserves.RemoveRange(reserveds);
 

@@ -20,6 +20,7 @@ namespace LykkeWalletServices
         public int PreGeneratedOutputN { get; set; }
         public System.DateTime CreationTime { get; set; }
         public byte[] Version { get; set; }
+        public Nullable<System.DateTime> ReservationEndDate { get; set; }
     
         public virtual PreGeneratedOutput PreGeneratedOutput { get; set; }
     }
