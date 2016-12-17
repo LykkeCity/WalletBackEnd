@@ -245,6 +245,7 @@ namespace ServiceLykkeWallet.Controllers
                     var returnValue = 0L;
 
                     var numberOfColoredCoinOutputs = 0;
+                    var multisigAddress = Base58Data.GetFromBase58Data(multisig.MultiSigAddress) as BitcoinAddress;
 
                     for (int i = 0; i < 3; i++)
                     {
@@ -255,11 +256,9 @@ namespace ServiceLykkeWallet.Controllers
                         {
                             continue;
                         }
-
-                        var multisigAddress = Base58Data.GetFromBase58Data(multisig.MultiSigAddress) as BitcoinAddress;
+                        
                         if (btcAsset)
                         {
-                            builder.Send(multisigAddress, new Money(directSendValue));
                             if (returnValue > 0)
                             {
                                 builder.Send(inputAddress[i], new Money(returnValue));
@@ -267,16 +266,27 @@ namespace ServiceLykkeWallet.Controllers
                         }
                         else
                         {
-                            builder.SendAsset(multisigAddress,
-                                new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), directSendValue));
-                            numberOfColoredCoinOutputs++;
-
                             if (returnValue > 0)
                             {
                                 builder.SendAsset(inputAddress[i], new AssetMoney(new AssetId(new BitcoinAssetId(assetId)),
                                     returnValue));
                                 numberOfColoredCoinOutputs++;
                             }
+                        }
+                    }
+
+                    var directSendSum = requiredAssetAmount.Sum();
+                    if(directSendSum > 0)
+                    {
+                        if(btcAsset)
+                        {
+                            builder.Send(multisigAddress, new Money(directSendSum));
+                        }
+                        else
+                        {
+                            builder.SendAsset(multisigAddress,
+                                new AssetMoney(new AssetId(new BitcoinAssetId(assetId)), directSendSum));
+                            numberOfColoredCoinOutputs++;
                         }
                     }
 
