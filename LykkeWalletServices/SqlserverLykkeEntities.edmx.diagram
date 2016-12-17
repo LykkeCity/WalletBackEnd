@@ -32,6 +32,12 @@
         <AssociationConnector Association="SqlexpressLykkeModel.FK_UnsignedTransactionSpentOutputs_UnsignedTransactions" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.DBLog" Width="1.5" PointX="12.375" PointY="0.75" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.ChannelPreGeneratedOutput" Width="1.5" PointX="12.375" PointY="3.75" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.ChannelCoin" Width="1.5" PointX="14.625" PointY="15.625" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.MultisigChannel" Width="1.5" PointX="14.625" PointY="13.125" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.OffchainChannel" Width="1.5" PointX="12.375" PointY="14.5" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_ChannelCoin_OffchainChannel" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_MultisigChannel_OffchainChannel" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_OffchainChannel_OffchainChannel" />
         </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

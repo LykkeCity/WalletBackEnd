@@ -477,6 +477,17 @@ namespace LykkeWalletServices
                     }
                 }
             }
+            else
+            {
+                // null means BTC
+                foreach (var item in input)
+                {
+                    if (item.GetAssetId() == null)
+                    {
+                        outputs.Add(item);
+                    }
+                }
+            }
 
             return outputs.ToArray();
         }
@@ -510,13 +521,15 @@ namespace LykkeWalletServices
         }
 
         public static async Task<Tuple<UniversalUnspentOutput[], bool, string, bool>> GetWalletOutputs(string walletAddress,
-            Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
+            Network network, SqlexpressLykkeEntities entities, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false,
+            string includeOffchainReserveAddress = null)
         {
             Tuple<UniversalUnspentOutput[], bool, string, bool> ret = null;
             switch (apiProvider)
             {
                 case APIProvider.QBitNinja:
-                    var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, entities, getMinimumConfirmationNumber, ignoreUnconfirmed);
+                    var qbitResult = await GetWalletOutputsQBitNinja(walletAddress, network, entities, getMinimumConfirmationNumber, ignoreUnconfirmed,
+                        includeOffchainReserveAddress);
                     ret = new Tuple<UniversalUnspentOutput[], bool, string, bool>(qbitResult.Item1 != null ? qbitResult.Item1.Select(c => (UniversalUnspentOutput)c).ToArray() : null,
                         qbitResult.Item2, qbitResult.Item3, qbitResult.Item4);
                     break;
@@ -1495,7 +1508,7 @@ namespace LykkeWalletServices
             for (int i = 0; i < tx.Inputs.Count; i++)
             {
                 var input = tx.Inputs[i];
-                var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
+                var txResponse = await GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
                 if (txResponse.Item1)
                 {
                     throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
@@ -2603,13 +2616,15 @@ namespace LykkeWalletServices
         delegate Task PopulateUnspentOupt(QBitNinjaOperation operation);
 
         public static async Task<Tuple<QBitNinjaUnspentOutput[], bool, string, bool>> GetWalletOutputsQBitNinja(string walletAddress,
-            Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false)
+            Network network, SqlexpressLykkeEntities entitiesContext, Func<int> getMinimumConfirmationNumber = null, bool ignoreUnconfirmed = false
+            , string includeOffchainReserveAddress = null)
         {
             bool errorOccured = false;
             string errorMessage = string.Empty;
             bool isInputInRace = false;
             // List is not thread safe to be runned in parallel
             ConcurrentQueue<QBitNinjaUnspentOutput> unspentOutputConcurrent = new ConcurrentQueue<QBitNinjaUnspentOutput>();
+            QBitNinjaUnspentOutput[] unspentOutputToBeReturned = null;
 
             getMinimumConfirmationNumber = getMinimumConfirmationNumber ?? DefaultGetMinimumConfirmationNumber;
             var minimumConfirmationNumber = getMinimumConfirmationNumber();
@@ -2644,6 +2659,9 @@ namespace LykkeWalletServices
                         };
                         var tasks = notProcessedUnspentOutputs.operations.Select(o => t(o));
                         await Task.WhenAll(tasks);
+
+                        unspentOutputToBeReturned = await RemoveOffchainChannelOutput(entitiesContext,
+                            unspentOutputConcurrent.ToArray(), includeOffchainReserveAddress);
                     }
                     else
                     {
@@ -2661,6 +2679,42 @@ namespace LykkeWalletServices
             // return new Tuple<QBitNinjaUnspentOutput[], bool, string>(unspentOutputsList.ToArray(), errorOccured, errorMessage);
             return new Tuple<QBitNinjaUnspentOutput[], bool, string, bool>(unspentOutputConcurrent.ToArray(),
                 errorOccured, errorMessage, isInputInRace);
+        }
+
+        private static async Task<QBitNinjaUnspentOutput[]> RemoveOffchainChannelOutput(SqlexpressLykkeEntities entities,
+            QBitNinjaUnspentOutput[] input, string includeOffchainReserveAddress = null)
+        {
+            IList<QBitNinjaUnspentOutput> output = new List<QBitNinjaUnspentOutput>();
+
+            bool reserved = false;
+            ChannelCoin channelCoin = null;
+            string txIdToFind = null;
+            int outputNumberToFind = 0;
+            for (int i = 0; i < input.Count(); i++)
+            {
+                txIdToFind = input[i].transaction_hash;
+                outputNumberToFind = input[i].output_index;
+                channelCoin = await (from item in entities.ChannelCoins
+                                     where item.TransactionId == txIdToFind && item.OutputNumber ==  outputNumberToFind
+                                     && (!item.ReservationFinalized ?? true) && (!item.ReservationTimedout ?? true)
+                                     select item).FirstOrDefaultAsync();
+
+                if (channelCoin != null)
+                {
+                    reserved = true;
+                    if(channelCoin.ReservedForMultisig == includeOffchainReserveAddress)
+                    {
+                        reserved = false;
+                    }
+                }
+
+                if (!reserved)
+                {
+                    output.Add(input[i]);
+                }
+            }
+
+            return output.ToArray();
         }
 
         #endregion

@@ -108,8 +108,12 @@ namespace ServiceLykkeWallet
             var srvFeeReserveCleaner = new SrvFeeReserveCleaner(log, settings.ConnectionString);
             srvFeeReserveCleaner.Start();
 
+            var srvOffchainReserveCleaner = new SrvOffchainReserveCleaner(log, settings.ConnectionString);
+            srvOffchainReserveCleaner.Start();
+
             var srvUnsignedTransactionsUpdater = new SrvUnsignedTransactionsUpdater(log, settings.UnsignedTransactionTimeoutInMinutes, settings.UnsignedTransactionsUpdaterPeriod, settings.ConnectionString);
             srvUnsignedTransactionsUpdater.Start();
+
 
 
             Console.WriteLine("Queue reader is started");
