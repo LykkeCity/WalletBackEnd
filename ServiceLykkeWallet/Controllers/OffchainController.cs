@@ -74,7 +74,7 @@ namespace ServiceLykkeWallet.Controllers
                         }
 
                         return await GenerateUnsignedChannelSetupTransactionCore(clientPubkey, clientContributedAmount, hubPubkey,
-                            hubContributedAmount, totalAmount, channelAssetName, channelTimeoutInMinutes);
+                            hubContributedAmount, totalAmount / asset.AssetMultiplicationFactor, channelAssetName, channelTimeoutInMinutes);
                     }
                 }
             }
@@ -202,17 +202,17 @@ namespace ServiceLykkeWallet.Controllers
                                     {
                                         if (btcAsset)
                                         {
+                                            var scriptItem =
+                                                new ScriptCoin((Coin)item, new Script(multisig.MultiSigScript));
+                                            coinToBeUsed[i].Add(item);
+                                        }
+                                        else
+                                        {
                                             var bearer = ((ColoredCoin)item).Bearer;
                                             var scriptBearer =
                                                 new ScriptCoin(bearer, new Script(multisig.MultiSigScript));
                                             var coloredScriptCoin = new ColoredCoin(((ColoredCoin)item).Amount, scriptBearer);
                                             coinToBeUsed[i].Add(coloredScriptCoin);
-                                        }
-                                        else
-                                        {
-                                            var scriptItem =
-                                                new ScriptCoin((Coin)item, new Script(multisig.MultiSigScript));
-                                            coinToBeUsed[i].Add(item);
                                         }
                                     }
                                     else
