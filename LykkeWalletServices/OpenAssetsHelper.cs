@@ -406,6 +406,11 @@ namespace LykkeWalletServices
 
         internal static ColoredCoin[] GenerateWalletColoredCoins(UniversalUnspentOutput[] usableOutputs, string assetId)
         {
+            if(assetId == null)
+            {
+                return new ColoredCoin[0];
+            }
+
             ColoredCoin[] coins = new ColoredCoin[usableOutputs.Length];
             for (int i = 0; i < usableOutputs.Length; i++)
             {
