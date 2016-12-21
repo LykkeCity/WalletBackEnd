@@ -406,7 +406,7 @@ namespace LykkeWalletServices
 
         internal static ColoredCoin[] GenerateWalletColoredCoins(UniversalUnspentOutput[] usableOutputs, string assetId)
         {
-            if(assetId == null)
+            if (assetId == null)
             {
                 return new ColoredCoin[0];
             }
@@ -1508,22 +1508,35 @@ namespace LykkeWalletServices
             var secret = new BitcoinSecret(signRequest.PrivateKey);
 
             TransactionBuilder builder = new TransactionBuilder();
-            tx = builder.ContinueToBuild(tx).AddKeys(new BitcoinSecret[] { secret }).SignTransaction(tx, sigHash);
+            builder.ContinueToBuild(tx);
+
+            Transaction[] previousTransactions = new Transaction[tx.Inputs.Count];
+            for (int i = 0; i < previousTransactions.Count(); i++)
+            {
+                var txResponse = await GetTransactionHex(tx.Inputs[i].PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
+
+                if (txResponse.Item1)
+                {
+                    throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
+                        tx.Inputs[i].PrevOut.Hash.ToString(), txResponse.Item2));
+                }
+
+                previousTransactions[i] = new Transaction(txResponse.Item3);
+
+                builder.AddCoins(new Coin(previousTransactions[i], tx.Inputs[i].PrevOut.N));
+            }
+            tx = builder.AddKeys(new BitcoinSecret[] { secret }).SignTransaction(tx, sigHash);
 
             for (int i = 0; i < tx.Inputs.Count; i++)
             {
                 var input = tx.Inputs[i];
-                var txResponse = await GetTransactionHex(input.PrevOut.Hash.ToString(), WebSettings.ConnectionParams);
-                if (txResponse.Item1)
-                {
-                    throw new Exception(string.Format("Error while retrieving transaction {0}, error is: {1}",
-                        input.PrevOut.Hash.ToString(), txResponse.Item2));
-                }
 
-                ///var builder = new TransactionBuilder();
-
-                var prevTransaction = new Transaction(txResponse.Item3);
+                var prevTransaction = previousTransactions[i];
                 var output = prevTransaction.Outputs[input.PrevOut.N];
+
+                Coin c = new Coin(prevTransaction, input.PrevOut.N);
+                builder.AddCoins(c);
+
                 if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
                 {
                     var redeemScript = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig).RedeemScript;
@@ -2702,14 +2715,14 @@ namespace LykkeWalletServices
                 txIdToFind = input[i].transaction_hash;
                 outputNumberToFind = input[i].output_index;
                 channelCoin = await (from item in entities.ChannelCoins
-                                     where item.TransactionId == txIdToFind && item.OutputNumber ==  outputNumberToFind
+                                     where item.TransactionId == txIdToFind && item.OutputNumber == outputNumberToFind
                                      && (!item.ReservationFinalized ?? true) && (!item.ReservationTimedout ?? true)
                                      select item).FirstOrDefaultAsync();
 
                 if (channelCoin != null)
                 {
                     reserved = true;
-                    if(channelCoin.ReservedForMultisig == includeOffchainReserveAddress)
+                    if (channelCoin.ReservedForMultisig == includeOffchainReserveAddress)
                     {
                         reserved = false;
                     }

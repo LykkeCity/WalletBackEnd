@@ -297,7 +297,7 @@ namespace ServiceLykkeWallet.Controllers
 
                         await builder.AddEnoughPaymentFee(entities, WebSettings.ConnectionParams, WebSettings.FeeAddress,
                             numberOfColoredCoinOutputs, -1, "Offchain" + multisig.MultiSigAddress, Guid.NewGuid().ToString(), reservationEndDate);
-                        txHex = builder.BuildTransaction(false).ToHex();
+                        txHex = builder.BuildTransaction(true).ToHex();
                         var txHash = Convert.ToString(SHA256Managed.Create().ComputeHash(OpenAssetsHelper.StringToByteArray(txHex)));
                         var channel = entities.OffchainChannels.Add(new OffchainChannel { unsignedTransactionHash = txHash });
                         await entities.SaveChangesAsync();
@@ -391,16 +391,342 @@ namespace ServiceLykkeWallet.Controllers
             }
         }
 
-        // http://localhost:8989/Offchain/CreateUnsignedClientCommitmentTransaction?UnsignedChannelSetupTransaction=0001&ClientSignedChannelSetup=0001
+        // http://localhost:8989/Offchain/CreateUnsignedClientCommitmentTransaction?UnsignedChannelSetupTransaction=xxx&ClientSignedChannelSetup=xxx&clientCommitedAmount=200&hubCommitedAmount=185&clientPubkey=xxx&hubPrivatekey=xxx&assetName=TestExchangeUSD&selfRevokePubkey=xxx&activationIn10Minutes=144
         [HttpGet]
         public async Task<IHttpActionResult> CreateUnsignedClientCommitmentTransaction(string UnsignedChannelSetupTransaction, string ClientSignedChannelSetup
-            , double clientCommitedAmount, double hubCommitedAmount)
+            , double clientCommitedAmount, double hubCommitedAmount, string clientPubkey, string hubPrivatekey, string assetName, string selfRevokePubkey, int activationIn10Minutes)
         {
-            return Json(new UnsignedClientCommitmentTransactionResponse
+            try
             {
-                FullySignedSetupTransaction = "0002",
-                UnsignedClientCommitment0 = "0002"
-            });
+                Transaction unsignedTx = new Transaction(UnsignedChannelSetupTransaction);
+                Transaction clientSignedTx = new Transaction(ClientSignedChannelSetup);
+
+                var hubSecret = new BitcoinSecret(hubPrivatekey);
+                var hubPubkey = hubSecret.PubKey.ToString();
+
+                var clientSignedVersionOK = await CheckIfClientSignedVersionIsOK(unsignedTx, clientSignedTx,
+                    new PubKey(clientPubkey), new PubKey(hubPubkey));
+                if (!clientSignedVersionOK.Success)
+                {
+                    return InternalServerError(new Exception(clientSignedVersionOK.ErrorMessage));
+                }
+
+                var fullySignedSetup = await OpenAssetsHelper.SignTransactionWorker(new OpenAssetsHelper.TransactionSignRequest
+                {
+                    PrivateKey = hubPrivatekey,
+                    TransactionToSign = clientSignedTx.ToHex()
+                });
+
+                string errorMessage = null;
+                var unsignedCommitmentTx = CreateUnsignnedCommitmentTransaction(fullySignedSetup, clientCommitedAmount, hubCommitedAmount,
+                    clientPubkey, hubPubkey, assetName, true, selfRevokePubkey, activationIn10Minutes, out errorMessage);
+
+                return Json(new UnsignedClientCommitmentTransactionResponse
+                {
+                    FullySignedSetupTransaction = fullySignedSetup,
+                    UnsignedClientCommitment0 = unsignedCommitmentTx
+                });
+            }
+            catch (Exception e)
+            {
+                return InternalServerError(e);
+            }
+        }
+
+        private static Script CreateSpecialCommitmentScript(string counterPartyPubkey, string selfPubkey, string selfRevokePubkey, int activationIn10Minutes)
+        {
+            var multisigScriptOps = PayToMultiSigTemplate.Instance.GenerateScriptPubKey
+                (2, new PubKey[] { new PubKey(counterPartyPubkey), new PubKey(selfRevokePubkey) }).ToOps();
+            List<Op> ops = new List<Op>();
+            ops.Add(OpcodeType.OP_IF);
+            ops.AddRange(multisigScriptOps);
+            ops.Add(OpcodeType.OP_ELSE);
+            ops.Add(Op.GetPushOp(activationIn10Minutes));
+            ops.Add(OpcodeType.OP_CHECKSEQUENCEVERIFY);
+            ops.Add(OpcodeType.OP_DROP);
+            ops.Add(Op.GetPushOp(OpenAssetsHelper.StringToByteArray(selfPubkey)));
+            ops.Add(OpcodeType.OP_CHECKSIG);
+            ops.Add(OpcodeType.OP_ENDIF);
+
+            return new Script(ops.ToArray());
+        }
+
+        public string CreateUnsignnedCommitmentTransaction(string fullySignedSetup, double clientContributedAmount, double hubContributedAmount,
+            string clientPubkey, string hubPubkey, string assetName, bool isClientToHub, string selfRevokePubKey, int activationIn10Minutes, out string errorMessage)
+        {
+            var multisig = GetMultiSigFromTwoPubKeys(clientPubkey, hubPubkey);
+            var asset = OpenAssetsHelper.GetAssetFromName(WebSettings.Assets, assetName, WebSettings.ConnectionParams.BitcoinNetwork);
+            var btcAsset = (assetName.ToLower() == "btc");
+
+            TransactionBuilder builder = new TransactionBuilder();
+
+            long totalInputSatoshi = 0;
+            Transaction fullySignedTx = new Transaction(fullySignedSetup);
+            for (uint i = 0; i < fullySignedTx.Outputs.Count; i++)
+            {
+                if (fullySignedTx.Outputs[i].ScriptPubKey.GetDestinationAddress(WebSettings.ConnectionParams.BitcoinNetwork)?.ToString() ==
+                    multisig.MultiSigAddress)
+                {
+                    totalInputSatoshi += fullySignedTx.Outputs[i].Value.Satoshi;
+                    if (btcAsset)
+                    {
+                        if (fullySignedTx.Outputs[i].Value
+                            != (long)((clientContributedAmount + hubContributedAmount) * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
+                        {
+                            errorMessage = string.Format("The btc values in multisig output does not much sum of the input parameters {0} and {1}."
+                                , clientContributedAmount, hubContributedAmount);
+                            return null;
+                        }
+
+                        builder.AddCoins(new ScriptCoin(new Coin(fullySignedTx, i), new Script(multisig.MultiSigScript)));
+                    }
+                    else
+                    {
+                        // ToDo: Curretnly we trust that clientCommitedAmount + hubCommitedAmount to be equal to colored output
+                        // In future it is better to drop this trust and like LykkeBitcoinBlockchainManager in CSPK
+                        var bearer = new ScriptCoin(new Coin(fullySignedTx, i), new Script(multisig.MultiSigScript));
+                        builder.AddCoins(new ColoredCoin(new AssetMoney(new AssetId(new BitcoinAssetId(asset.AssetId)), (long)((clientContributedAmount + hubContributedAmount) * asset.AssetMultiplicationFactor)), bearer));
+                    }
+                    break;
+                }
+            }
+
+            var dummyCoinToBeRemoved = new Coin(new uint256(0), 0,
+                new Money(1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor),
+                (new PubKey(hubPubkey)).GetAddress(WebSettings.ConnectionParams.BitcoinNetwork).ScriptPubKey);
+            builder.AddCoins(dummyCoinToBeRemoved);
+            totalInputSatoshi += (long)(1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+
+            var clientAddress = (new PubKey(clientPubkey)).GetAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+            var hubAddress = (new PubKey(hubPubkey)).GetAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+
+            long totalOutputSatoshi = 0;
+            long outputSatoshi = 0;
+
+            IDestination clientDestination = null;
+            IDestination hubDestination = null;
+            if (isClientToHub)
+            {
+                clientDestination = CreateSpecialCommitmentScript(clientPubkey, hubPubkey, selfRevokePubKey, activationIn10Minutes)
+                    .GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                hubDestination = hubAddress;
+            }
+            else
+            {
+                clientDestination = clientAddress;
+                hubDestination = CreateSpecialCommitmentScript(hubPubkey, clientPubkey, selfRevokePubKey, activationIn10Minutes)
+                    .GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+            }
+
+            if (btcAsset)
+            {
+                if (clientContributedAmount > 0)
+                {
+                    outputSatoshi = (long)(clientContributedAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+                    builder.Send(clientDestination,
+                        new Money((long)(outputSatoshi)));
+                    totalOutputSatoshi += outputSatoshi;
+                }
+
+                if (hubContributedAmount > 0)
+                {
+                    outputSatoshi = (long)(hubContributedAmount * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+                    builder.Send(hubDestination,
+                        new Money(outputSatoshi));
+                    totalOutputSatoshi += outputSatoshi;
+                }
+            }
+            else
+            {
+                if (clientContributedAmount > 0)
+                {
+                    builder.SendAsset(clientDestination, new AssetMoney(new AssetId(new BitcoinAssetId(asset.AssetId)),
+                        (long)(clientContributedAmount * asset.AssetMultiplicationFactor)));
+                    totalOutputSatoshi += (new TxOut(Money.Zero, clientAddress.ScriptPubKey).GetDustThreshold
+                        (new FeeRate(Money.Satoshis(5000)))).Satoshi;
+                }
+
+                if (hubContributedAmount > 0)
+                {
+                    builder.SendAsset(hubDestination, new AssetMoney(new AssetId(new BitcoinAssetId(asset.AssetId)),
+                        (long)(hubContributedAmount * asset.AssetMultiplicationFactor)));
+                    totalOutputSatoshi += (new TxOut(Money.Zero, hubAddress.ScriptPubKey).GetDustThreshold
+                        (new FeeRate(Money.Satoshis(5000)))).Satoshi;
+                }
+            }
+
+            builder.SendFees(new Money(totalInputSatoshi - totalOutputSatoshi));
+            errorMessage = null;
+            var tx = builder.BuildTransaction(true, SigHash.All | SigHash.AnyoneCanPay);
+
+            TxIn toBeRemovedInput = null;
+            foreach (var item in tx.Inputs)
+            {
+                if (item.PrevOut.Hash == new uint256(0))
+                {
+                    toBeRemovedInput = item;
+                    break;
+                }
+            }
+            if (toBeRemovedInput != null)
+            {
+                tx.Inputs.Remove(toBeRemovedInput);
+            }
+
+            return tx.ToHex();
+        }
+
+        public class GeneralCallResult
+        {
+            public bool Success
+            {
+                get;
+                set;
+            }
+
+            public string ErrorMessage
+            {
+                get;
+                set;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="usignedTx"></param>
+        /// <param name="clientSignedTx"></param>
+        /// <returns>Null return value means the client signature is as expected</returns>
+        private static async Task<GeneralCallResult> CheckIfClientSignedVersionIsOK(Transaction unsignedTx,
+            Transaction clientSignedTx, PubKey clientPubkey, PubKey hubPubkey, SigHash sigHash = SigHash.All)
+        {
+            string errorMessage = null;
+
+            if (unsignedTx.Inputs.Count != clientSignedTx.Inputs.Count)
+            {
+                errorMessage = "The input size for the client signed transaction does not match the expected value.";
+                return new GeneralCallResult { Success = false, ErrorMessage = errorMessage };
+            }
+
+            if (unsignedTx.Outputs.Count != clientSignedTx.Outputs.Count)
+            {
+                errorMessage = "The output size for the client signed transaction does not matched the expected value.";
+                return new GeneralCallResult { Success = false, ErrorMessage = errorMessage };
+            }
+
+            for (int i = 0; i < unsignedTx.Inputs.Count; i++)
+            {
+                if (unsignedTx.Inputs[i].PrevOut.Hash != clientSignedTx.Inputs[i].PrevOut.Hash)
+                {
+                    errorMessage = string.Format("For the input {0} the previous transaction hashes do not match.", i);
+                    return new GeneralCallResult { Success = false, ErrorMessage = errorMessage };
+                }
+
+                if (unsignedTx.Inputs[i].PrevOut.N != clientSignedTx.Inputs[i].PrevOut.N)
+                {
+                    errorMessage = string.Format("For the input {0} the previous transaction output numbers do not match.", i);
+                    return new GeneralCallResult { Success = false, ErrorMessage = errorMessage };
+                }
+            }
+
+            var hasPubkeySignedCorrectly = await HasPubkeySignedTransactionCorrectly(unsignedTx, clientSignedTx,
+                clientPubkey, hubPubkey, sigHash);
+
+            return hasPubkeySignedCorrectly;
+        }
+
+        private static async Task<GeneralCallResult> HasPubkeySignedTransactionCorrectly(Transaction unsignedTransaction, Transaction signedTransaction,
+            PubKey clientPubkey, PubKey hubPubkey, SigHash sigHash = SigHash.All)
+        {
+            var multiSig = GetMultiSigFromTwoPubKeys(clientPubkey.ToString(), hubPubkey.ToString());
+
+            for (int i = 0; i < signedTransaction.Inputs.Count; i++)
+            {
+                var input = signedTransaction.Inputs[i];
+                var txResponse = await OpenAssetsHelper.GetTransactionHex(input.PrevOut.Hash.ToString(),
+                    WebSettings.ConnectionParams);
+                if (txResponse.Item1)
+                {
+                    return new GeneralCallResult
+                    {
+                        Success = false,
+                        ErrorMessage = string.Format("Error while retrieving transaction {0}, error is: {1}",
+                        input.PrevOut.Hash.ToString(), txResponse.Item2)
+                    };
+                }
+
+                var prevTransaction = new Transaction(txResponse.Item3);
+                var output = prevTransaction.Outputs[input.PrevOut.N];
+
+                if (PayToPubkeyHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
+                {
+                    if (clientPubkey.GetAddress(WebSettings.ConnectionParams.BitcoinNetwork) ==
+                        output.ScriptPubKey.GetDestinationAddress(WebSettings.ConnectionParams.BitcoinNetwork))
+                    {
+                        var clientSignedSignature = PayToPubkeyHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig).
+                            TransactionSignature.Signature;
+
+                        var sig = Script.SignatureHash(output.ScriptPubKey, unsignedTransaction, i, sigHash);
+                        var verified = clientPubkey.Verify(sig, clientSignedSignature);
+                        if (!verified)
+                        {
+                            return new GeneralCallResult
+                            {
+                                Success = false,
+                                ErrorMessage =
+                                string.Format("Expected signature was not present for input {0}.", i)
+                            };
+                        }
+                    }
+                }
+                else
+                {
+                    if (PayToScriptHashTemplate.Instance.CheckScriptPubKey(output.ScriptPubKey))
+                    {
+                        var redeemScript = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig).RedeemScript;
+                        if (PayToMultiSigTemplate.Instance.CheckScriptPubKey(redeemScript))
+                        {
+                            var pubkeys = PayToMultiSigTemplate.Instance.ExtractScriptPubKeyParameters(redeemScript).PubKeys;
+                            for (int j = 0; j < pubkeys.Length; j++)
+                            {
+                                if (clientPubkey.ToString() == pubkeys[j].ToHex())
+                                {
+                                    var scriptParams = PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig);
+                                    var hash = Script.SignatureHash(scriptParams.RedeemScript, unsignedTransaction, i, sigHash);
+
+                                    var verified = clientPubkey.Verify(hash, scriptParams.Pushes[j + 1]);
+                                    if (!verified)
+                                    {
+                                        return new GeneralCallResult
+                                        {
+                                            Success = false,
+                                            ErrorMessage =
+                                            string.Format("Expected signature was not present for input {0}.", i)
+                                        };
+                                    }
+
+                                    /*
+                                    var signature = secret.PrivateKey.Sign(hash, sigHash);
+                                    scriptParams.Pushes[j + 1] = signature.Signature.ToDER().Concat(new byte[] { (byte)sigHash }).ToArray();
+                                    outputTx.Inputs[i].ScriptSig = PayToScriptHashTemplate.Instance.GenerateScriptSig(scriptParams);
+                                    */
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // We should normall not reach here
+                        return new GeneralCallResult
+                        {
+                            Success = false,
+                            ErrorMessage = string.Format("Unsupported scriptpubkey for input {0}.", i)
+                        };
+                    }
+                }
+            }
+
+            return new GeneralCallResult { Success = true, ErrorMessage = "Script verified successfully." };
         }
 
         public class FinalizeChannelSetupResponse
