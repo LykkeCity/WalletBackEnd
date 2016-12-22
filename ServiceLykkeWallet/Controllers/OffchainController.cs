@@ -507,14 +507,14 @@ namespace ServiceLykkeWallet.Controllers
             IDestination hubDestination = null;
             if (isClientToHub)
             {
-                clientDestination = CreateSpecialCommitmentScript(clientPubkey, hubPubkey, selfRevokePubKey, activationIn10Minutes)
+                clientDestination = CreateSpecialCommitmentScript(hubPubkey, clientPubkey, selfRevokePubKey, activationIn10Minutes)
                     .GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
                 hubDestination = hubAddress;
             }
             else
             {
                 clientDestination = clientAddress;
-                hubDestination = CreateSpecialCommitmentScript(hubPubkey, clientPubkey, selfRevokePubKey, activationIn10Minutes)
+                hubDestination = CreateSpecialCommitmentScript(clientPubkey, hubPubkey, selfRevokePubKey, activationIn10Minutes)
                     .GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
             }
 
@@ -738,25 +738,138 @@ namespace ServiceLykkeWallet.Controllers
             }
         }
 
+        public class CreateUnsignedCommitmentTransactionsResponse
+        {
+            public string UnsignedCommitment
+            {
+                get;
+                set;
+            }
+        }
+
         // http://localhost:8989/Offchain/FinalizeChannelSetup?FullySignedSetupTransaction=002&SignedClientCommitment0=002
         [HttpGet]
-        public async Task<IHttpActionResult> FinalizeChannelSetup(string FullySignedSetupTransaction, string SignedClientCommitment0)
+        public async Task<IHttpActionResult> FinalizeChannelSetup(string FullySignedSetupTransaction, string SignedClientCommitment0, double clientCommitedAmount,
+            double hubCommitedAmount, string clientPubkey,
+            string hubPrivatekey, string assetName, string clientSelfRevokePubkey, string hubSelfRevokePubkey, int activationIn10Minutes)
         {
-            return Json(new FinalizeChannelSetupResponse { SignedHubCommitment0 = "0003" });
+            try
+            {
+                string errorMessage = null;
+                var hubPubkey = (new BitcoinSecret(hubPrivatekey)).PubKey;
+                var unsignedClientCommitment = CreateUnsignnedCommitmentTransaction(FullySignedSetupTransaction, clientCommitedAmount, hubCommitedAmount,
+                clientPubkey, hubPubkey.ToString(), assetName, true, clientSelfRevokePubkey, activationIn10Minutes, out errorMessage);
+
+                if (errorMessage != null)
+                {
+                    return InternalServerError(new Exception(errorMessage));
+                }
+
+                var checkResult = await CheckIfClientSignedVersionIsOK(new Transaction(unsignedClientCommitment), new Transaction(SignedClientCommitment0), new PubKey(clientPubkey), hubPubkey,
+                    SigHash.AnyoneCanPay);
+                if (!checkResult.Success)
+                {
+                    return InternalServerError(new Exception(checkResult.ErrorMessage));
+                }
+
+                errorMessage = null;
+                var unsignedHubCommitment = CreateUnsignnedCommitmentTransaction(FullySignedSetupTransaction, clientCommitedAmount, hubCommitedAmount,
+                    clientPubkey, hubPubkey.ToString(), assetName, true, hubSelfRevokePubkey, activationIn10Minutes, out errorMessage);
+                if (errorMessage != null)
+                {
+                    return InternalServerError(new Exception(errorMessage));
+                }
+
+                var signedHubCommitment = await OpenAssetsHelper.SignTransactionWorker(new OpenAssetsHelper.TransactionSignRequest
+                {
+                    PrivateKey = hubPrivatekey,
+                    TransactionToSign = unsignedHubCommitment
+                });
+
+                return Json(new FinalizeChannelSetupResponse { SignedHubCommitment0 = signedHubCommitment });
+            }
+            catch (Exception e)
+            {
+                return InternalServerError(e);
+            }
+        }
+
+        public class SignCommitmentResponse
+        {
+            public string SignedCommitment
+            {
+                get;
+                set;
+            }
+        }
+
+        [HttpGet]
+        public async Task<IHttpActionResult> SignCommitment(string unsignedCommitment, string privateKey)
+        {
+            var signedCommitment = await OpenAssetsHelper.SignTransactionWorker(new OpenAssetsHelper.TransactionSignRequest
+            {
+                PrivateKey = privateKey,
+                TransactionToSign = unsignedCommitment
+            });
+
+            return Json(new SignCommitmentResponse { SignedCommitment = signedCommitment });
         }
 
         [HttpGet]
         public async Task<IHttpActionResult> CreateUnsignedCommitmentTransactions(string signedSetupTransaction, string clientPubkey,
-            string hubPubkey, double clientAmount, double hubAmount, string lockingPubkey, int selfActivationInMinutes, bool clientSendsCommitmentToHub)
+            string hubPubkey, double clientAmount, double hubAmount, string assetName, string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
         {
-            return Ok();
+            try
+            {
+                string errorMessage = null;
+                var unsignedCommitment = CreateUnsignnedCommitmentTransaction(signedSetupTransaction, clientAmount, hubAmount,
+                clientPubkey, hubPubkey.ToString(), assetName, clientSendsCommitmentToHub, lockingPubkey, activationIn10Minutes, out errorMessage);
+
+                if (errorMessage != null)
+                {
+                    return InternalServerError(new Exception(errorMessage));
+                }
+                else
+                {
+                    return Json(new CreateUnsignedCommitmentTransactionsResponse { UnsignedCommitment = unsignedCommitment });
+                }
+            }
+            catch (Exception e)
+            {
+                return InternalServerError(e);
+            }
         }
 
         [HttpGet]
         public async Task<IHttpActionResult> CheckHalfSignedCommitmentTransactionToBeCorrect(string halfSignedCommitment, string signedSetupTransaction, string clientPubkey,
-            string hubPubkey, double clientAmount, double hubAmount, string lockingPubkey, int selfActivationInMinutes, bool clientSendsCommitmentToHub)
+            string hubPubkey, double clientAmount, double hubAmount, string assetName, string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
         {
-            return Ok();
+            try
+            {
+                string errorMessage = null;
+                var unsignedClientCommitment = CreateUnsignnedCommitmentTransaction(signedSetupTransaction, clientAmount, hubAmount,
+                clientPubkey, hubPubkey.ToString(), assetName, true, lockingPubkey, activationIn10Minutes, out errorMessage);
+
+                if (errorMessage != null)
+                {
+                    return InternalServerError(new Exception(errorMessage));
+                }
+
+                var checkResult = await CheckIfClientSignedVersionIsOK(new Transaction(unsignedClientCommitment),
+                    new Transaction(halfSignedCommitment), new PubKey(clientPubkey), new PubKey(hubPubkey), SigHash.AnyoneCanPay);
+                if (!checkResult.Success)
+                {
+                    return InternalServerError(new Exception(checkResult.ErrorMessage));
+                }
+                else
+                {
+                    return Ok();
+                }
+            }
+            catch (Exception e)
+            {
+                return InternalServerError(e);
+            }
         }
 
         [HttpGet]
