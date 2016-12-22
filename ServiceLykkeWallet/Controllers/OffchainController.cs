@@ -766,7 +766,7 @@ namespace ServiceLykkeWallet.Controllers
                 }
 
                 var checkResult = await CheckIfClientSignedVersionIsOK(new Transaction(unsignedClientCommitment), new Transaction(SignedClientCommitment0), new PubKey(clientPubkey), hubPubkey,
-                    SigHash.AnyoneCanPay);
+                    SigHash.All | SigHash.AnyoneCanPay);
                 if (!checkResult.Success)
                 {
                     return InternalServerError(new Exception(checkResult.ErrorMessage));
@@ -784,7 +784,7 @@ namespace ServiceLykkeWallet.Controllers
                 {
                     PrivateKey = hubPrivatekey,
                     TransactionToSign = unsignedHubCommitment
-                }, SigHash.AnyoneCanPay);
+                }, SigHash.All | SigHash.AnyoneCanPay);
 
                 return Json(new FinalizeChannelSetupResponse { SignedHubCommitment0 = signedHubCommitment });
             }
@@ -810,7 +810,7 @@ namespace ServiceLykkeWallet.Controllers
             {
                 PrivateKey = privateKey,
                 TransactionToSign = unsignedCommitment
-            }, SigHash.AnyoneCanPay);
+            }, SigHash.All | SigHash.AnyoneCanPay);
 
             return Json(new SignCommitmentResponse { SignedCommitment = signedCommitment });
         }
@@ -856,7 +856,7 @@ namespace ServiceLykkeWallet.Controllers
                 }
 
                 var checkResult = await CheckIfClientSignedVersionIsOK(new Transaction(unsignedClientCommitment),
-                    new Transaction(halfSignedCommitment), new PubKey(clientPubkey), new PubKey(hubPubkey), SigHash.AnyoneCanPay);
+                    new Transaction(halfSignedCommitment), new PubKey(clientPubkey), new PubKey(hubPubkey), SigHash.All | SigHash.AnyoneCanPay);
                 if (!checkResult.Success)
                 {
                     return InternalServerError(new Exception(checkResult.ErrorMessage));
