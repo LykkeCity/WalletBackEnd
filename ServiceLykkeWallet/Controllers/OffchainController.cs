@@ -784,7 +784,7 @@ namespace ServiceLykkeWallet.Controllers
                 {
                     PrivateKey = hubPrivatekey,
                     TransactionToSign = unsignedHubCommitment
-                });
+                }, SigHash.AnyoneCanPay);
 
                 return Json(new FinalizeChannelSetupResponse { SignedHubCommitment0 = signedHubCommitment });
             }
@@ -810,7 +810,7 @@ namespace ServiceLykkeWallet.Controllers
             {
                 PrivateKey = privateKey,
                 TransactionToSign = unsignedCommitment
-            });
+            }, SigHash.AnyoneCanPay);
 
             return Json(new SignCommitmentResponse { SignedCommitment = signedCommitment });
         }
