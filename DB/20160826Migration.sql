@@ -57,3 +57,4 @@ GO
 
 ALTER TABLE [dbo].[UnsignedTransactionSpentOutputs] CHECK CONSTRAINT [FK_UnsignedTransactionSpentOutputs_UnsignedTransactions]
 GO
+

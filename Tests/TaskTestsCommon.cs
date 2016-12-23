@@ -228,7 +228,7 @@ namespace Lykkex.WalletBackend.Tests
 
             GenerateFeeOutputsModel generateFees = new GenerateFeeOutputsModel
             {
-                FeeAmount = 0.00015f,
+                FeeAmount = 0.00025f,
                 Count = 50,
                 PrivateKey = MassBitcoinHolderPrivateKey,
                 TransactionId = "10",

@@ -25,42 +25,49 @@ namespace Lykkex.WalletBackend.Tests
         [OneTimeSetUp]
         public async Task TestFixtureSetup()
         {
-            Settings = ReadAppSettings();
+            try
+            {
+                Settings = ReadAppSettings();
 
-            ClearDB(Settings);
+                ClearDB(Settings);
 
-            await Startup(Settings);
+                await Startup(Settings);
 
-            QueueReader = new AzureQueueExt(Settings.InQueueConnectionString, "outdata");
-            QueueWriter = new AzureQueueExt(Settings.OutQueueConnectionString, "indata");
+                QueueReader = new AzureQueueExt(Settings.InQueueConnectionString, "outdata");
+                QueueWriter = new AzureQueueExt(Settings.OutQueueConnectionString, "indata");
 
-            QueueReader.RegisterTypes(
-                QueueType.Create("GenerateNewWallet", typeof(GenerateNewWalletResponse)),
-                QueueType.Create("CashIn", typeof(CashInResponse)),
-                QueueType.Create("OrdinaryCashIn", typeof(TaskToDoOrdinaryCashIn)),
-                QueueType.Create("CashOut", typeof(TaskToDoCashOut)),
-                QueueType.Create("CashOutSeparateSignatures", typeof(TaskToDoCashOutSeparateSignatures)),
-                QueueType.Create("OrdinaryCashOut", typeof(TaskToDoOrdinaryCashOut)),
-                QueueType.Create("GetCurrentBalance", typeof(GetCurrentBalanceResponse)),
-                QueueType.Create("Swap", typeof(TaskToDoSwap)),
-                QueueType.Create("GetBalance", typeof(TaskToDoGetBalance)),
-                QueueType.Create("DepositWithdraw", typeof(TaskToDoDepositWithdraw)),
-                QueueType.Create("Exchange", typeof(TaskToDoSendAsset)),
-                QueueType.Create("GenerateFeeOutputs", typeof(GenerateFeeOutputsResponse)),
-                QueueType.Create("GenerateIssuerOutputs", typeof(GenerateIssuerOutputsResponse)),
-                QueueType.Create("Transfer", typeof(TaskToDoTransfer)),
-                QueueType.Create("TransferAllAssetsToAddress", typeof(TaskToDoTransferAllAssetsToAddress)),
-                QueueType.Create("GetIssuersOutputStatus", typeof(TaskToDoGetIssuersOutputStatus)),
-                QueueType.Create("GetFeeOutputsStatus", typeof(TaskToDoGetFeeOutputsStatus)),
-                QueueType.Create("GenerateRefundingTransaction", typeof(TaskToDoGenerateRefundingTransaction)),
-                QueueType.Create("GetInputWalletAddresses", typeof(TaskToDoGetInputWalletAddresses)),
-                QueueType.Create("UpdateAssets", typeof(TaskToDoUpdateAssets)),
-                QueueType.Create("GetExpiredUnclaimedRefundingTransactions", typeof(TaskToDoGetExpiredUnclaimedRefundingTransactions))
-                );
+                QueueReader.RegisterTypes(
+                    QueueType.Create("GenerateNewWallet", typeof(GenerateNewWalletResponse)),
+                    QueueType.Create("CashIn", typeof(CashInResponse)),
+                    QueueType.Create("OrdinaryCashIn", typeof(TaskToDoOrdinaryCashIn)),
+                    QueueType.Create("CashOut", typeof(TaskToDoCashOut)),
+                    QueueType.Create("CashOutSeparateSignatures", typeof(TaskToDoCashOutSeparateSignatures)),
+                    QueueType.Create("OrdinaryCashOut", typeof(TaskToDoOrdinaryCashOut)),
+                    QueueType.Create("GetCurrentBalance", typeof(GetCurrentBalanceResponse)),
+                    QueueType.Create("Swap", typeof(TaskToDoSwap)),
+                    QueueType.Create("GetBalance", typeof(TaskToDoGetBalance)),
+                    QueueType.Create("DepositWithdraw", typeof(TaskToDoDepositWithdraw)),
+                    QueueType.Create("Exchange", typeof(TaskToDoSendAsset)),
+                    QueueType.Create("GenerateFeeOutputs", typeof(GenerateFeeOutputsResponse)),
+                    QueueType.Create("GenerateIssuerOutputs", typeof(GenerateIssuerOutputsResponse)),
+                    QueueType.Create("Transfer", typeof(TaskToDoTransfer)),
+                    QueueType.Create("TransferAllAssetsToAddress", typeof(TaskToDoTransferAllAssetsToAddress)),
+                    QueueType.Create("GetIssuersOutputStatus", typeof(TaskToDoGetIssuersOutputStatus)),
+                    QueueType.Create("GetFeeOutputsStatus", typeof(TaskToDoGetFeeOutputsStatus)),
+                    QueueType.Create("GenerateRefundingTransaction", typeof(TaskToDoGenerateRefundingTransaction)),
+                    QueueType.Create("GetInputWalletAddresses", typeof(TaskToDoGetInputWalletAddresses)),
+                    QueueType.Create("UpdateAssets", typeof(TaskToDoUpdateAssets)),
+                    QueueType.Create("GetExpiredUnclaimedRefundingTransactions", typeof(TaskToDoGetExpiredUnclaimedRefundingTransactions))
+                    );
 
-            await InitializeBitcoinNetwork(Settings);
+                await InitializeBitcoinNetwork(Settings);
 
-            OpenAssetsHelper.QBitNinjaBaseUrl = Settings.QBitNinjaBaseUrl;
+                OpenAssetsHelper.QBitNinjaBaseUrl = Settings.QBitNinjaBaseUrl;
+            }
+            catch(Exception exp)
+            {
+                throw exp;
+            }
         }
 
         private async static Task Startup(Settings settings)
@@ -144,7 +151,7 @@ namespace Lykkex.WalletBackend.Tests
 
         public static bool EmptyBitcoinDirectiry(Settings settings)
         {
-            var dirPath = settings.BitcoinWorkingPath + "\\data";
+            var dirPath = settings.BitcoinWorkingPath + "\\regtest";
             try
             {
                 if (Directory.Exists(dirPath))
