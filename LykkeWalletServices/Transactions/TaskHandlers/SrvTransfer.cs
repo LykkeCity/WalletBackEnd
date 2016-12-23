@@ -60,12 +60,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         }
                         else
                         {
+                            /*
                             KeyStorage SourceMultisigAddress = null;
                             if (sourceAddress is BitcoinScriptAddress)
                             {
                                 SourceMultisigAddress = await OpenAssetsHelper.GetMatchingMultisigAddress(data.SourceAddress, entities);
                             }
-
+                            */
                             OpenAssetsHelper.GetCoinsForWalletReturnType walletCoins = null;
                             Func<int> MinimumConfirmationNumberFunc = null;
                             if (sourceAddress is BitcoinPubKeyAddress)
