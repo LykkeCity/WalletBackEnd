@@ -51,7 +51,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 var exchangePrivateKey = (new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey(entities);
                                 builder
                                     .SetChange(dest, ChangeType.Colored);
-                                    //.AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), exchangePrivateKey);
+                                //.AddKeys(new BitcoinSecret(walletCoins.MatchingAddress.WalletPrivateKey), exchangePrivateKey);
 
                                 builder.AddCoins(walletCoins.AssetScriptCoins).
                                     SendAsset(dest, new AssetMoney(new AssetId(new BitcoinAssetId(walletCoins.Asset.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((data.Amount * walletCoins.Asset.AssetMultiplicationFactor))));
@@ -66,7 +66,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 bool found = false;
                                 for (int i = 0; i < quantities.Length; i++)
                                 {
-                                    if (quantities[i] == data.Amount * walletCoins.Asset.AssetMultiplicationFactor)
+                                    if (quantities[i] == Convert.ToUInt64(data.Amount * walletCoins.Asset.AssetMultiplicationFactor))
                                     {
                                         quantities[i] = 0;
                                         found = true;
@@ -76,7 +76,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                                 if (!found)
                                 {
-                                    throw new Exception("Could not build the proper transaction to color.");
+                                    throw new Exception("Could not build the proper transaction to uncolor.");
                                 }
 
                                 colorMarker.Quantities = quantities;
@@ -98,9 +98,10 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 {
                                     inputHash = input.PrevOut.Hash.ToString();
                                     var feeInput = (from dbInput in entities.PreGeneratedOutputs
-                                                    where dbInput.TransactionId == inputHash && dbInput.OutputNumber == input.PrevOut.N                                                    select dbInput.PrivateKey).FirstOrDefault();
+                                                    where dbInput.TransactionId == inputHash && dbInput.OutputNumber == input.PrevOut.N
+                                                    select dbInput.PrivateKey).FirstOrDefault();
 
-                                    if(feeInput != null)
+                                    if (feeInput != null)
                                     {
                                         feePrivateKeyList.Add(feeInput);
                                     }
