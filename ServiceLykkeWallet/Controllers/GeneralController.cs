@@ -74,8 +74,19 @@ namespace ServiceLykkeWallet.Controllers
 
                     for (int i = 0; i < allSegKeys.Count(); i++)
                     {
-                        var clientPubKey = new PubKey(allSegKeys[i].ClientPubKey);
                         var network = OpenAssetsHelper.ConvertStringNetworkToNBitcoinNetwork(WebSettings.ConnectionParams.Network);
+                        if (network == Network.Main)
+                        {
+                            if (allSegKeys[i].ExchangePrivateKey.StartsWith("X") ||
+                                allSegKeys[i].ExchangePrivateKey.StartsWith("Y"))
+                            {
+                                // Temporary fix for bad clients
+                                continue;
+                            }
+                        }
+
+                        var clientPubKey = new PubKey(allSegKeys[i].ClientPubKey);
+                        
                         allSegKeys[i].ClientAddress = clientPubKey.GetAddress(network).ToString();
 
                         var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] {  clientPubKey ,
