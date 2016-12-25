@@ -2816,8 +2816,6 @@ namespace LykkeWalletServices
                     return Network.Main;
                 case "testnet":
                     return Network.TestNet;
-                case "segnet":
-                    return Network.SegNet;
                 default:
                     return Network.TestNet;
             }
