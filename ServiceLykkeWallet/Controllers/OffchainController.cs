@@ -467,8 +467,9 @@ namespace ServiceLykkeWallet.Controllers
 
             IDestination clientDestination = null;
             IDestination hubDestination = null;
-            if (isClientToHub)
+            if (!isClientToHub)
             {
+                // If it is the transaction hub is sending to the client, in case of broadcast hub should get the funds immediatly
                 clientDestination = CreateSpecialCommitmentScript(hubPubkey, clientPubkey, selfRevokePubKey, activationIn10Minutes)
                     .GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
                 hubDestination = hubAddress;
@@ -810,7 +811,7 @@ namespace ServiceLykkeWallet.Controllers
             {
                 string errorMessage = null;
                 var unsignedClientCommitment = CreateUnsignnedCommitmentTransaction(signedSetupTransaction, clientAmount, hubAmount,
-                clientPubkey, hubPubkey.ToString(), assetName, true, lockingPubkey, activationIn10Minutes, out errorMessage);
+                clientPubkey, hubPubkey.ToString(), assetName, clientSendsCommitmentToHub, lockingPubkey, activationIn10Minutes, out errorMessage);
 
                 if (errorMessage != null)
                 {
