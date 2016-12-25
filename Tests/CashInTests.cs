@@ -36,7 +36,7 @@ namespace Lykkex.WalletBackend.Tests
             set;
         }
 
-        public float Amount
+        public double Amount
         {
             get;
             set;

@@ -328,6 +328,22 @@ namespace LykkeWalletServices
             return builder;
         }
 
+        public static KeyStorage GetMultiSigFromTwoPubKeys(string clientPubkey, string hubPubkey)
+        {
+            var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { new PubKey(clientPubkey) ,
+                (new PubKey(hubPubkey)) });
+            var multiSigAddressFormat = multiSigAddress.GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork).ToString();
+
+            var retValue = new KeyStorage();
+            retValue.ExchangePrivateKey = null;
+            retValue.WalletPrivateKey = null;
+            retValue.MultiSigAddress = multiSigAddressFormat;
+            retValue.MultiSigScript = multiSigAddress.ToString();
+            retValue.WalletAddress = (new PubKey(clientPubkey)).GetAddress(WebSettings.ConnectionParams.BitcoinNetwork)
+                .ToString();
+            return retValue;
+        }
+
         // From transaction 0cb81047ab5945a59d578ca015804bc539d3af78523d90287335de57fdfe7fd8
         // Following is what a signed input will add to a transaction (143 bytes)
         // a172379843146d35b29fc4524a6ef9f9cba2e6dbe8956e3e76c1619cdda35e0b
@@ -338,7 +354,7 @@ namespace LykkeWalletServices
 
         public static async Task<TransactionBuilder> AddEnoughPaymentFee(this TransactionBuilder builder, SqlexpressLykkeEntities entities,
             RPCConnectionParams connectionParams, string feeAddress, long requiredNumberOfColoredCoinFee = 1, long estimatedFee = -1,
-            string reservedForAddress = null, string reserveId = null, DateTime? reservationEndDate = null)
+            string reservedForAddress = null, string reserveId = null, DateTime? reservationEndDate = null, SigHash sigHash = SigHash.All)
         {
             builder.SetChange(BitcoinAddress.Create(feeAddress), ChangeType.Uncolored);
 
@@ -356,7 +372,7 @@ namespace LykkeWalletServices
                 {
                     try
                     {
-                        tx = builder.BuildTransaction(false);
+                        tx = builder.BuildTransaction(false, sigHash);
                         continueLoop = false;
                     }
                     catch (NotEnoughFundsException ex)

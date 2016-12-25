@@ -36,6 +36,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             public string FeeAddressPrivateKey { get; set; }
 
             public string QBitNinjaBaseUrl { get; set; }
+
+            public string WalletBackendUrl { get; set; }
             public int PreGeneratedOutputMinimumCount { get; set; }
 
             [DefaultValue("outdata")]

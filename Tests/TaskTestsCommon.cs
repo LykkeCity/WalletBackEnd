@@ -19,7 +19,7 @@ using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
 
 namespace Lykkex.WalletBackend.Tests
 {
-    
+
     public class Settings : TheSettings
     {
         public string AzureStorageEmulatorPath
@@ -196,7 +196,7 @@ namespace Lykkex.WalletBackend.Tests
             }
         }
 
-        
+
 
         public async Task InitializeBitcoinNetwork(Settings settings)
         {
@@ -262,6 +262,15 @@ namespace Lykkex.WalletBackend.Tests
             settings.ExchangePrivateKey = config.AppSettings.Settings["ExchangePrivateKey"]?.Value;
             settings.Network = config.AppSettings.Settings["Network"].Value.ToLower().Equals("main") ? NBitcoin.Network.Main : NBitcoin.Network.TestNet;
             settings.QBitNinjaBaseUrl = config.AppSettings.Settings["QBitNinjaBaseUrl"]?.Value;
+            settings.WalletBackendUrl = config.AppSettings.Settings["WalletBackendUrl"]?.Value;
+
+            WebSettings.ConnectionParams = new RPCConnectionParams
+            {
+                IpAddress = settings.RegtestRPCIP,
+                Network = settings.Network.ToString(),
+                Username = settings.RegtestRPCUsername,
+                Password = settings.RegtestRPCPassword
+            };
             return settings;
         }
 
@@ -399,7 +408,7 @@ namespace Lykkex.WalletBackend.Tests
             }
         }
 
-        public async Task<IEnumerable<string>> GenerateBlocks(Settings settings, int count)
+        public static async Task<IEnumerable<string>> GenerateBlocks(Settings settings, int count)
         {
             var rpcClient = GetRPCClient(settings);
             var response = await rpcClient.GenerateBlocksAsync(count);

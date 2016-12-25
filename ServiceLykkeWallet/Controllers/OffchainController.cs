@@ -1,4 +1,5 @@
 ﻿using LykkeWalletServices;
+using LykkeWalletServices.Transactions.Responses;
 using NBitcoin;
 using NBitcoin.OpenAsset;
 using System;
@@ -8,6 +9,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
+using static LykkeWalletServices.OpenAssetsHelper;
 
 namespace ServiceLykkeWallet.Controllers
 {
@@ -17,15 +19,6 @@ namespace ServiceLykkeWallet.Controllers
         public async Task<IHttpActionResult> AddClientProvidedChannelInput(string multiSig, string transactionId)
         {
             return Ok();
-        }
-
-        public class UnsignedChannelSetupTransaction
-        {
-            public string UnsigndTransaction
-            {
-                get;
-                set;
-            }
         }
 
         [HttpGet]
@@ -347,22 +340,6 @@ namespace ServiceLykkeWallet.Controllers
             }
         }
 
-        private static KeyStorage GetMultiSigFromTwoPubKeys(string clientPubkey, string hubPubkey)
-        {
-            var multiSigAddress = PayToMultiSigTemplate.Instance.GenerateScriptPubKey(2, new PubKey[] { new PubKey(clientPubkey) ,
-                (new PubKey(hubPubkey)) });
-            var multiSigAddressFormat = multiSigAddress.GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork).ToString();
-
-            var retValue = new KeyStorage();
-            retValue.ExchangePrivateKey = null;
-            retValue.WalletPrivateKey = null;
-            retValue.MultiSigAddress = multiSigAddressFormat;
-            retValue.MultiSigScript = multiSigAddress.ToString();
-            retValue.WalletAddress = (new PubKey(clientPubkey)).GetAddress(WebSettings.ConnectionParams.BitcoinNetwork)
-                .ToString();
-            return retValue;
-        }
-
         private static bool DoesPubKeyMatchesAddress(PubKey pubKey, string address)
         {
             var oneSideAddress = pubKey.GetAddress(WebSettings.ConnectionParams.BitcoinNetwork).ToString();
@@ -373,21 +350,6 @@ namespace ServiceLykkeWallet.Controllers
             else
             {
                 return true;
-            }
-        }
-
-        public class UnsignedClientCommitmentTransactionResponse
-        {
-            public string FullySignedSetupTransaction
-            {
-                get;
-                set;
-            }
-
-            public string UnsignedClientCommitment0
-            {
-                get;
-                set;
             }
         }
 
@@ -873,9 +835,61 @@ namespace ServiceLykkeWallet.Controllers
         }
 
         [HttpGet]
-        public async Task<IHttpActionResult> AddEnoughFeesToCommitentAndBroadcast(string commitmentTransaction)
+        public async Task<IHttpActionResult> AddEnoughFeesToCommitentAndBroadcast
+            (string commitmentTransaction)
         {
-            return Ok();
+            Transaction txToBeSent = null;
+            try
+            {
+                var txToSend = new Transaction(commitmentTransaction);
+                var fees = await GetFeeCoinsToAddToTransaction(txToSend);
+
+                txToBeSent = txToSend;
+                foreach (var item in fees)
+                {
+                    var txHex = await OpenAssetsHelper.GetTransactionHex
+                        (item.TransactionId, WebSettings.ConnectionParams);
+                    if (txHex.Item1)
+                    {
+                        return InternalServerError(new Exception(txHex.Item2));
+                    }
+
+                    txToBeSent.AddInput(new Transaction(txHex.Item3),
+                        item.OutputNumber);
+
+                    TransactionSignRequest feePrivateKeySignRequest = new TransactionSignRequest { PrivateKey = item.PrivateKey.ToString(), TransactionToSign = txToBeSent.ToHex() };
+                    var feeSignedTransaction = await OpenAssetsHelper.SignTransactionWorker(feePrivateKeySignRequest,
+                        SigHash.All | SigHash.AnyoneCanPay);
+
+                    txToBeSent = new Transaction(feeSignedTransaction);
+                }
+
+                var rpcClient = new LykkeExtenddedRPCClient(new System.Net.NetworkCredential
+                        (WebSettings.ConnectionParams.Username, WebSettings.ConnectionParams.Password),
+                                WebSettings.ConnectionParams.IpAddress, WebSettings.ConnectionParams.BitcoinNetwork);
+                await rpcClient.SendRawTransactionAsync(txToBeSent);
+
+                return Json(new AddEnoughFeesToCommitentAndBroadcastResponse
+                { TransactionId = txToBeSent.GetHash().ToString() });
+            }
+            catch (Exception exp)
+            {
+                return InternalServerError(exp);
+            }
+        }
+
+        // ToDo: This should be adjusted to fee rate and transaction size
+        public async Task<PreGeneratedOutput[]> GetFeeCoinsToAddToTransaction(Transaction tx)
+        {
+            PreGeneratedOutput feeCoin = null;
+            using (SqlexpressLykkeEntities entities =
+                new SqlexpressLykkeEntities(WebSettings.ConnectionString))
+            {
+                feeCoin = await GetOnePreGeneratedOutput
+                    (entities, WebSettings.ConnectionParams);
+            }
+
+            return new PreGeneratedOutput[] { feeCoin };
         }
     }
 }

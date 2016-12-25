@@ -34,7 +34,7 @@ namespace ServiceLykkeWallet.Controllers
                     new SqlexpressLykkeEntities(WebSettings.ConnectionString))
                 {
                     // Checking if DB is 
-                    long count = entities.InputOutputMessageLogs.Count();
+                    long count = entities.SegKeys.Count();
 
                     // Checking if Blockchain explorer is accessable
                     // The address is a random one taken from blockchain, does not have a special meaning

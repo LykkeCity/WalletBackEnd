@@ -145,11 +145,14 @@
     <Compile Include="TransactionsWaitForConfirmation.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="Transactions\Responses\UnsignedChannelSetupTransaction.cs" />
     <Compile Include="Transactions\Responses\TaskResultBase.cs" />
     <Compile Include="Transactions\Responses\TaskResultReturnSignedTransaction.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetTransactionToSign.cs" />
     <Compile Include="Transactions\Responses\TaskResultGenerateExchangeTransfer.cs" />
     <Compile Include="Transactions\Responses\TaskResultGetBalance.cs" />
+    <Compile Include="Transactions\Responses\AddEnoughFeesToCommitentAndBroadcastResponse.cs" />
+    <Compile Include="Transactions\Responses\UnsignedClientCommitmentTransactionResponse.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetExpiredUnclaimedRefundingTransactionsTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvUncolorTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvTransferAllAssetsToAddress.cs" />
