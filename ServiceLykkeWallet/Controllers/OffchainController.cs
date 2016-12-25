@@ -692,24 +692,6 @@ namespace ServiceLykkeWallet.Controllers
             return new GeneralCallResult { Success = true, ErrorMessage = "Script verified successfully." };
         }
 
-        public class FinalizeChannelSetupResponse
-        {
-            public string SignedHubCommitment0
-            {
-                get;
-                set;
-            }
-        }
-
-        public class CreateUnsignedCommitmentTransactionsResponse
-        {
-            public string UnsignedCommitment
-            {
-                get;
-                set;
-            }
-        }
-
         // http://localhost:8989/Offchain/FinalizeChannelSetup?FullySignedSetupTransaction=002&SignedClientCommitment0=002
         [HttpGet]
         public async Task<IHttpActionResult> FinalizeChannelSetup(string FullySignedSetupTransaction, string SignedClientCommitment0, double clientCommitedAmount,
@@ -754,15 +736,6 @@ namespace ServiceLykkeWallet.Controllers
             catch (Exception e)
             {
                 return InternalServerError(e);
-            }
-        }
-
-        public class SignCommitmentResponse
-        {
-            public string SignedCommitment
-            {
-                get;
-                set;
             }
         }
 
