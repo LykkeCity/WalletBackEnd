@@ -1,19 +1,14 @@
 ﻿using AzureStorage;
-using Common;
 using Core;
 using LykkeWalletServices;
 using Lykkex.WalletBackend.Tests.GenerateFeeOutputs;
 using NBitcoin;
-using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
-using Tests;
 using static LykkeWalletServices.OpenAssetsHelper;
 using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
 
@@ -213,7 +208,7 @@ namespace Lykkex.WalletBackend.Tests
             {
                 AssetName = "TestExchangeUSD",
                 FeeAmount = 0.0000273f,
-                Count = 50,
+                Count = 300,
                 PrivateKey = MassBitcoinHolderPrivateKey,
                 TransactionId = "10",
                 WalletAddress = MassBitcoinHolder.ToWif()
@@ -229,7 +224,7 @@ namespace Lykkex.WalletBackend.Tests
             GenerateFeeOutputsModel generateFees = new GenerateFeeOutputsModel
             {
                 FeeAmount = 0.00025f,
-                Count = 50,
+                Count = 300,
                 PrivateKey = MassBitcoinHolderPrivateKey,
                 TransactionId = "10",
                 WalletAddress = MassBitcoinHolder.ToWif()

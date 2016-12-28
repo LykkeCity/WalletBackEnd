@@ -855,9 +855,44 @@ namespace ServiceLykkeWallet.Controllers
         }
 
         [HttpGet]
-        public async Task<IHttpActionResult> CreateCommitmentSpendingTransactionForTimeActivatePart(string commitmentTransactionHex,
+        public async Task<IHttpActionResult> CreateCommitmentSpendingTransactionForMultisigPart(string commitmentTransactionHex, string clientPubkey,
+            string hubPubkey, string assetName, string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub,
+            string selfPrivateKey, string counterPartyRevokePrivateKey)
+        {
+            return await CreateCommitmentSpendingTransactionCore(commitmentTransactionHex, null, clientPubkey, hubPubkey, assetName,
+                lockingPubkey, activationIn10Minutes, clientSendsCommitmentToHub,
+                GenerateCustomeScriptMultisigScriptOutputSpender, selfPrivateKey, counterPartyRevokePrivateKey);
+        }
+
+        public TxIn GenerateCustomScriptTimeActivateOutputSpender(TxIn input, Transaction tx, int activationIn10Minutes, Coin bearer,
+            Script redeemScript, SigHash sigHash, string spendingPrivateKey, string selfPrivateKey, string counterPartyRevokePrivateKey)
+        {
+            input.Sequence = new Sequence(activationIn10Minutes);
+
+            var secret = new BitcoinSecret(spendingPrivateKey);
+            var signature = tx.SignInput(secret, new Coin(input.PrevOut.Hash, input.PrevOut.N, new Money(bearer.Amount), redeemScript), sigHash);
+            var p2shScript = PayToScriptHashTemplate.Instance.GenerateScriptSig(new PayToScriptHashSigParameters
+            {
+                RedeemScript = redeemScript,
+                Pushes = new byte[][] { signature.ToBytes(), new byte[] { ((byte)0) } }
+            });
+            input.ScriptSig = p2shScript;
+
+            return input;
+        }
+
+        public TxIn GenerateCustomeScriptMultisigScriptOutputSpender(TxIn input, Transaction tx, int activationIn10Minutes, Coin bearer,
+            Script redeemScript, SigHash sigHash, string spendingPrivateKey, string selfPrivateKey, string counterPartyRevokePrivateKey)
+        {
+            return input;
+        }
+
+
+        public async Task<IHttpActionResult> CreateCommitmentSpendingTransactionCore(string commitmentTransactionHex,
             string spendingPrivateKey, string clientPubkey, string hubPubkey, string assetName,
-            string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
+            string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub,
+            Func<TxIn, Transaction, int, Coin, Script, SigHash, string, string, string, TxIn> generateProperOutputSpender,
+            string selfPrivateKey, string counterPartyRevokePrivateKey)
         {
             try
             {
@@ -974,16 +1009,8 @@ namespace ServiceLykkeWallet.Controllers
 
                                     if (input.PrevOut.Hash == bearer.Outpoint.Hash && input.PrevOut.N == bearer.Outpoint.N)
                                     {
-                                        input.Sequence = new Sequence(activationIn10Minutes);
-
-                                        var secret = new BitcoinSecret(spendingPrivateKey);
-                                        var signature = tx.SignInput(secret, new Coin(input.PrevOut.Hash, input.PrevOut.N, new Money(bearer.Amount), redeemScript), sigHash);
-                                        var p2shScript = PayToScriptHashTemplate.Instance.GenerateScriptSig(new PayToScriptHashSigParameters
-                                        {
-                                            RedeemScript = redeemScript,
-                                            Pushes = new byte[][] { signature.ToBytes(), new byte[] { ((byte)0) } }
-                                        });
-                                        input.ScriptSig = p2shScript;
+                                        input = generateProperOutputSpender(input, tx, activationIn10Minutes, bearer, redeemScript, sigHash,
+                                            spendingPrivateKey, selfPrivateKey, counterPartyRevokePrivateKey);
                                         break;
                                     }
                                 }
@@ -1024,6 +1051,16 @@ namespace ServiceLykkeWallet.Controllers
             {
                 return InternalServerError(exp);
             }
+        }
+
+        [HttpGet]
+        public async Task<IHttpActionResult> CreateCommitmentSpendingTransactionForTimeActivatePart(string commitmentTransactionHex,
+            string spendingPrivateKey, string clientPubkey, string hubPubkey, string assetName,
+            string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
+        {
+            return await CreateCommitmentSpendingTransactionCore(commitmentTransactionHex, spendingPrivateKey, clientPubkey, hubPubkey, assetName,
+                lockingPubkey, activationIn10Minutes, clientSendsCommitmentToHub,
+                GenerateCustomScriptTimeActivateOutputSpender, null, null);
         }
 
         [HttpGet]
