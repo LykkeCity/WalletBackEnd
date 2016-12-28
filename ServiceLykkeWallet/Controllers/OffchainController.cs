@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 using static LykkeWalletServices.OpenAssetsHelper;
@@ -40,8 +39,8 @@ namespace ServiceLykkeWallet.Controllers
                     entities);
                 if (walletOutputs.Item2 && !(walletOutputs?.Item3 ?? string.Empty).ToLower().StartsWith("no coins "))
                 {
-                    return InternalServerError(new Exception(string.Format("Error in getting outputs for wallet: {0}, the error is {1}",
-                        multisig.MultiSigAddress, walletOutputs.Item3)));
+                    return InternalServerError(new Exception(string.Format
+                        ("Error in getting outputs for wallet: {0}, the error is {1}", multisig.MultiSigAddress, walletOutputs.Item3)));
                 }
                 else
                 {
@@ -75,9 +74,9 @@ namespace ServiceLykkeWallet.Controllers
 
         // http://localhost:8989/Offchain/GenerateUnsignedChannelSetupTransaction?ClientAddress=x&ClientContributedAmount=10&HubAddress=z&HubContributedAmount=10&ClientMultisigAddress=ab&ClientMultisigContributedAmount=10&ChannelAssetName=ac&channelTimeoutInMinutes=5
         [HttpGet]
-        public async Task<IHttpActionResult> GenerateUnsignedChannelSetupTransactionCore(string clientPubkey, double clientContributedAmount,
-            string hubPubkey, double hubContributedAmount, double multisigNewlyAddedAmount, string channelAssetName,
-            int channelTimeoutInMinutes)
+        public async Task<IHttpActionResult> GenerateUnsignedChannelSetupTransactionCore(string clientPubkey,
+            double clientContributedAmount, string hubPubkey, double hubContributedAmount, double multisigNewlyAddedAmount,
+            string channelAssetName, int channelTimeoutInMinutes)
         {
             try
             {
@@ -286,12 +285,14 @@ namespace ServiceLykkeWallet.Controllers
                     using (var transaction = entities.Database.BeginTransaction())
                     {
                         var now = DateTime.UtcNow;
-                        var reservationEndDate = (channelTimeoutInMinutes == 0 ? now.AddYears(1000) : now.AddMinutes(channelTimeoutInMinutes));
+                        var reservationEndDate =
+                            (channelTimeoutInMinutes == 0 ? now.AddYears(1000) : now.AddMinutes(channelTimeoutInMinutes));
 
                         await builder.AddEnoughPaymentFee(entities, WebSettings.ConnectionParams, WebSettings.FeeAddress,
-                            numberOfColoredCoinOutputs, -1, "Offchain" + multisig.MultiSigAddress, Guid.NewGuid().ToString(), reservationEndDate);
+                            numberOfColoredCoinOutputs, -1, "Offchain" + multisig.MultiSigAddress, Guid.NewGuid().ToString(),
+                            reservationEndDate);
                         txHex = builder.BuildTransaction(true).ToHex();
-                        var txHash = Convert.ToString(SHA256Managed.Create().ComputeHash(OpenAssetsHelper.StringToByteArray(txHex)));
+                        var txHash = Convert.ToString(SHA256Managed.Create().ComputeHash(StringToByteArray(txHex)));
                         var channel = entities.OffchainChannels.Add(new OffchainChannel { unsignedTransactionHash = txHash });
                         await entities.SaveChangesAsync();
 
@@ -353,10 +354,10 @@ namespace ServiceLykkeWallet.Controllers
             }
         }
 
-        // http://localhost:8989/Offchain/CreateUnsignedClientCommitmentTransaction?UnsignedChannelSetupTransaction=xxx&ClientSignedChannelSetup=xxx&clientCommitedAmount=200&hubCommitedAmount=185&clientPubkey=xxx&hubPrivatekey=xxx&assetName=TestExchangeUSD&selfRevokePubkey=xxx&activationIn10Minutes=144
         [HttpGet]
-        public async Task<IHttpActionResult> CreateUnsignedClientCommitmentTransaction(string UnsignedChannelSetupTransaction, string ClientSignedChannelSetup
-            , double clientCommitedAmount, double hubCommitedAmount, string clientPubkey, string hubPrivatekey, string assetName, string selfRevokePubkey, int activationIn10Minutes)
+        public async Task<IHttpActionResult> CreateUnsignedClientCommitmentTransaction(string UnsignedChannelSetupTransaction,
+            string ClientSignedChannelSetup, double clientCommitedAmount, double hubCommitedAmount, string clientPubkey,
+            string hubPrivatekey, string assetName, string counterPartyRevokePubkey, int activationIn10Minutes)
         {
             try
             {
@@ -373,15 +374,16 @@ namespace ServiceLykkeWallet.Controllers
                     return InternalServerError(new Exception(clientSignedVersionOK.ErrorMessage));
                 }
 
-                var fullySignedSetup = await OpenAssetsHelper.SignTransactionWorker(new OpenAssetsHelper.TransactionSignRequest
+                var fullySignedSetup = await SignTransactionWorker(new TransactionSignRequest
                 {
                     PrivateKey = hubPrivatekey,
                     TransactionToSign = clientSignedTx.ToHex()
                 });
 
                 string errorMessage = null;
-                var unsignedCommitmentTx = CreateUnsignnedCommitmentTransaction(fullySignedSetup, clientCommitedAmount, hubCommitedAmount,
-                    clientPubkey, hubPubkey, assetName, true, selfRevokePubkey, activationIn10Minutes, out errorMessage);
+                var unsignedCommitmentTx = CreateUnsignnedCommitmentTransaction(fullySignedSetup, clientCommitedAmount,
+                    hubCommitedAmount, clientPubkey, hubPubkey, assetName, true, counterPartyRevokePubkey, activationIn10Minutes,
+                    out errorMessage);
 
                 return Json(new UnsignedClientCommitmentTransactionResponse
                 {
@@ -395,29 +397,66 @@ namespace ServiceLykkeWallet.Controllers
             }
         }
 
-        private static Script CreateSpecialCommitmentScript(string counterPartyPubkey, string selfPubkey, string selfRevokePubkey, int activationIn10Minutes)
+        private static Script CreateSpecialCommitmentScript(string counterPartyPubkey, string selfPubkey,
+            string counterPartyRevokePubkey, int activationIn10Minutes)
         {
             var multisigScriptOps = PayToMultiSigTemplate.Instance.GenerateScriptPubKey
-                (2, new PubKey[] { new PubKey(counterPartyPubkey), new PubKey(selfRevokePubkey) }).ToOps();
+                (2, new PubKey[] { new PubKey(selfPubkey), new PubKey(counterPartyRevokePubkey) }).ToOps();
             List<Op> ops = new List<Op>();
             ops.Add(OpcodeType.OP_IF);
             ops.AddRange(multisigScriptOps);
             ops.Add(OpcodeType.OP_ELSE);
-            ops.Add(Op.GetPushOp(activationIn10Minutes));
+            ops.Add(Op.GetPushOp(serialize(activationIn10Minutes)));
             ops.Add(OpcodeType.OP_CHECKSEQUENCEVERIFY);
             ops.Add(OpcodeType.OP_DROP);
-            ops.Add(Op.GetPushOp(OpenAssetsHelper.StringToByteArray(selfPubkey)));
+            ops.Add(Op.GetPushOp(OpenAssetsHelper.StringToByteArray(counterPartyPubkey)));
             ops.Add(OpcodeType.OP_CHECKSIG);
             ops.Add(OpcodeType.OP_ENDIF);
 
             return new Script(ops.ToArray());
         }
 
-        public string CreateUnsignnedCommitmentTransaction(string fullySignedSetup, double clientContributedAmount, double hubContributedAmount,
-            string clientPubkey, string hubPubkey, string assetName, bool isClientToHub, string selfRevokePubKey, int activationIn10Minutes, out string errorMessage)
+        // Copied from NBitcoin source code
+        // If not used probably the error: "non-minimally encoded script number" will be arised while verifing the transaction
+        public static byte[] serialize(long value)
+        {
+            if (value == 0)
+                return new byte[0];
+
+            var result = new List<byte>();
+            bool neg = value < 0;
+            long absvalue = neg ? -value : value;
+
+            while (absvalue != 0)
+            {
+                result.Add((byte)(absvalue & 0xff));
+                absvalue >>= 8;
+            }
+
+            //    - If the most significant byte is >= 0x80 and the value is positive, push a
+            //    new zero-byte to make the significant byte < 0x80 again.
+
+            //    - If the most significant byte is >= 0x80 and the value is negative, push a
+            //    new 0x80 byte that will be popped off when converting to an integral.
+
+            //    - If the most significant byte is < 0x80 and the value is negative, add
+            //    0x80 to it, since it will be subtracted and interpreted as a negative when
+            //    converting to an integral.
+
+            if ((result[result.Count - 1] & 0x80) != 0)
+                result.Add((byte)(neg ? 0x80 : 0));
+            else if (neg)
+                result[result.Count - 1] |= 0x80;
+
+            return result.ToArray();
+        }
+
+        public string CreateUnsignnedCommitmentTransaction(string fullySignedSetup, double clientContributedAmount,
+            double hubContributedAmount, string clientPubkey, string hubPubkey, string assetName, bool isClientToHub,
+            string counterPartyRevokePubKey, int activationIn10Minutes, out string errorMessage)
         {
             var multisig = GetMultiSigFromTwoPubKeys(clientPubkey, hubPubkey);
-            var asset = OpenAssetsHelper.GetAssetFromName(WebSettings.Assets, assetName, WebSettings.ConnectionParams.BitcoinNetwork);
+            var asset = GetAssetFromName(WebSettings.Assets, assetName, WebSettings.ConnectionParams.BitcoinNetwork);
             var btcAsset = (assetName.ToLower() == "btc");
 
             TransactionBuilder builder = new TransactionBuilder();
@@ -426,16 +465,17 @@ namespace ServiceLykkeWallet.Controllers
             Transaction fullySignedTx = new Transaction(fullySignedSetup);
             for (uint i = 0; i < fullySignedTx.Outputs.Count; i++)
             {
-                if (fullySignedTx.Outputs[i].ScriptPubKey.GetDestinationAddress(WebSettings.ConnectionParams.BitcoinNetwork)?.ToString() ==
-                    multisig.MultiSigAddress)
+                if (fullySignedTx.Outputs[i].ScriptPubKey
+                    .GetDestinationAddress(WebSettings.ConnectionParams.BitcoinNetwork)?.ToString() == multisig.MultiSigAddress)
                 {
                     totalInputSatoshi += fullySignedTx.Outputs[i].Value.Satoshi;
                     if (btcAsset)
                     {
                         if (fullySignedTx.Outputs[i].Value
-                            != (long)((clientContributedAmount + hubContributedAmount) * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor))
+                            != (long)((clientContributedAmount + hubContributedAmount) * BTCToSathoshiMultiplicationFactor))
                         {
-                            errorMessage = string.Format("The btc values in multisig output does not much sum of the input parameters {0} and {1}."
+                            errorMessage =
+                                string.Format("The btc values in multisig output does not much sum of the input parameters {0} and {1}."
                                 , clientContributedAmount, hubContributedAmount);
                             return null;
                         }
@@ -470,15 +510,15 @@ namespace ServiceLykkeWallet.Controllers
             if (!isClientToHub)
             {
                 // If it is the transaction hub is sending to the client, in case of broadcast hub should get the funds immediatly
-                clientDestination = CreateSpecialCommitmentScript(hubPubkey, clientPubkey, selfRevokePubKey, activationIn10Minutes)
-                    .GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                clientDestination = CreateSpecialCommitmentScript(clientPubkey, hubPubkey, counterPartyRevokePubKey,
+                    activationIn10Minutes).GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
                 hubDestination = hubAddress;
             }
             else
             {
                 clientDestination = clientAddress;
-                hubDestination = CreateSpecialCommitmentScript(clientPubkey, hubPubkey, selfRevokePubKey, activationIn10Minutes)
-                    .GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                hubDestination = CreateSpecialCommitmentScript(hubPubkey, clientPubkey, counterPartyRevokePubKey,
+                    activationIn10Minutes).GetScriptAddress(WebSettings.ConnectionParams.BitcoinNetwork);
             }
 
             if (btcAsset)
@@ -598,8 +638,8 @@ namespace ServiceLykkeWallet.Controllers
             return hasPubkeySignedCorrectly;
         }
 
-        private static async Task<GeneralCallResult> HasPubkeySignedTransactionCorrectly(Transaction unsignedTransaction, Transaction signedTransaction,
-            PubKey clientPubkey, PubKey hubPubkey, SigHash sigHash = SigHash.All)
+        private static async Task<GeneralCallResult> HasPubkeySignedTransactionCorrectly(Transaction unsignedTransaction,
+            Transaction signedTransaction, PubKey clientPubkey, PubKey hubPubkey, SigHash sigHash = SigHash.All)
         {
             var multiSig = GetMultiSigFromTwoPubKeys(clientPubkey.ToString(), hubPubkey.ToString());
 
@@ -694,16 +734,16 @@ namespace ServiceLykkeWallet.Controllers
 
         // http://localhost:8989/Offchain/FinalizeChannelSetup?FullySignedSetupTransaction=002&SignedClientCommitment0=002
         [HttpGet]
-        public async Task<IHttpActionResult> FinalizeChannelSetup(string FullySignedSetupTransaction, string SignedClientCommitment0, double clientCommitedAmount,
-            double hubCommitedAmount, string clientPubkey,
-            string hubPrivatekey, string assetName, string clientSelfRevokePubkey, string hubSelfRevokePubkey, int activationIn10Minutes)
+        public async Task<IHttpActionResult> FinalizeChannelSetup(string FullySignedSetupTransaction, string SignedClientCommitment0,
+            double clientCommitedAmount, double hubCommitedAmount, string clientPubkey, string hubPrivatekey, string assetName,
+            string clientSelfRevokePubkey, string hubSelfRevokePubkey, int activationIn10Minutes)
         {
             try
             {
                 string errorMessage = null;
                 var hubPubkey = (new BitcoinSecret(hubPrivatekey)).PubKey;
                 var unsignedClientCommitment = CreateUnsignnedCommitmentTransaction(FullySignedSetupTransaction, clientCommitedAmount, hubCommitedAmount,
-                clientPubkey, hubPubkey.ToString(), assetName, true, clientSelfRevokePubkey, activationIn10Minutes, out errorMessage);
+                clientPubkey, hubPubkey.ToString(), assetName, true, hubSelfRevokePubkey, activationIn10Minutes, out errorMessage);
 
                 if (errorMessage != null)
                 {
@@ -718,14 +758,15 @@ namespace ServiceLykkeWallet.Controllers
                 }
 
                 errorMessage = null;
-                var unsignedHubCommitment = CreateUnsignnedCommitmentTransaction(FullySignedSetupTransaction, clientCommitedAmount, hubCommitedAmount,
-                    clientPubkey, hubPubkey.ToString(), assetName, true, hubSelfRevokePubkey, activationIn10Minutes, out errorMessage);
+                var unsignedHubCommitment = CreateUnsignnedCommitmentTransaction(FullySignedSetupTransaction, clientCommitedAmount,
+                    hubCommitedAmount, clientPubkey, hubPubkey.ToString(), assetName, false, clientSelfRevokePubkey,
+                    activationIn10Minutes, out errorMessage);
                 if (errorMessage != null)
                 {
                     return InternalServerError(new Exception(errorMessage));
                 }
 
-                var signedHubCommitment = await OpenAssetsHelper.SignTransactionWorker(new OpenAssetsHelper.TransactionSignRequest
+                var signedHubCommitment = await SignTransactionWorker(new TransactionSignRequest
                 {
                     PrivateKey = hubPrivatekey,
                     TransactionToSign = unsignedHubCommitment
@@ -752,14 +793,16 @@ namespace ServiceLykkeWallet.Controllers
         }
 
         [HttpGet]
-        public async Task<IHttpActionResult> CreateUnsignedCommitmentTransactions(string signedSetupTransaction, string clientPubkey,
-            string hubPubkey, double clientAmount, double hubAmount, string assetName, string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
+        public async Task<IHttpActionResult> CreateUnsignedCommitmentTransactions(string signedSetupTransaction,
+            string clientPubkey, string hubPubkey, double clientAmount, double hubAmount, string assetName,
+            string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
         {
             try
             {
                 string errorMessage = null;
                 var unsignedCommitment = CreateUnsignnedCommitmentTransaction(signedSetupTransaction, clientAmount, hubAmount,
-                clientPubkey, hubPubkey.ToString(), assetName, clientSendsCommitmentToHub, lockingPubkey, activationIn10Minutes, out errorMessage);
+                clientPubkey, hubPubkey.ToString(), assetName, clientSendsCommitmentToHub, lockingPubkey, activationIn10Minutes,
+                out errorMessage);
 
                 if (errorMessage != null)
                 {
@@ -777,14 +820,16 @@ namespace ServiceLykkeWallet.Controllers
         }
 
         [HttpGet]
-        public async Task<IHttpActionResult> CheckHalfSignedCommitmentTransactionToBeCorrect(string halfSignedCommitment, string signedSetupTransaction, string clientPubkey,
-            string hubPubkey, double clientAmount, double hubAmount, string assetName, string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
+        public async Task<IHttpActionResult> CheckHalfSignedCommitmentTransactionToBeCorrect(string halfSignedCommitment,
+            string signedSetupTransaction, string clientPubkey, string hubPubkey, double clientAmount, double hubAmount,
+            string assetName, string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
         {
             try
             {
                 string errorMessage = null;
-                var unsignedClientCommitment = CreateUnsignnedCommitmentTransaction(signedSetupTransaction, clientAmount, hubAmount,
-                clientPubkey, hubPubkey.ToString(), assetName, clientSendsCommitmentToHub, lockingPubkey, activationIn10Minutes, out errorMessage);
+                var unsignedClientCommitment = CreateUnsignnedCommitmentTransaction(signedSetupTransaction, clientAmount,
+                    hubAmount, clientPubkey, hubPubkey.ToString(), assetName, clientSendsCommitmentToHub,
+                    lockingPubkey, activationIn10Minutes, out errorMessage);
 
                 if (errorMessage != null)
                 {
@@ -792,7 +837,8 @@ namespace ServiceLykkeWallet.Controllers
                 }
 
                 var checkResult = await CheckIfClientSignedVersionIsOK(new Transaction(unsignedClientCommitment),
-                    new Transaction(halfSignedCommitment), new PubKey(clientPubkey), new PubKey(hubPubkey), SigHash.All | SigHash.AnyoneCanPay);
+                    new Transaction(halfSignedCommitment), new PubKey(clientPubkey), new PubKey(hubPubkey),
+                    SigHash.All | SigHash.AnyoneCanPay);
                 if (!checkResult.Success)
                 {
                     return InternalServerError(new Exception(checkResult.ErrorMessage));
@@ -805,6 +851,178 @@ namespace ServiceLykkeWallet.Controllers
             catch (Exception e)
             {
                 return InternalServerError(e);
+            }
+        }
+
+        [HttpGet]
+        public async Task<IHttpActionResult> CreateCommitmentSpendingTransactionForTimeActivatePart(string commitmentTransactionHex,
+            string spendingPrivateKey, string clientPubkey, string hubPubkey, string assetName,
+            string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
+        {
+            try
+            {
+                var commtimentTransaction = new Transaction(commitmentTransactionHex);
+
+                string counterPartyPubkey = null;
+                string selfPubkey = null;
+                if (clientSendsCommitmentToHub)
+                {
+                    counterPartyPubkey = hubPubkey;
+                    selfPubkey = clientPubkey;
+                }
+                else
+                {
+                    counterPartyPubkey = clientPubkey;
+                    selfPubkey = hubPubkey;
+                }
+
+                var scriptToSearch = CreateSpecialCommitmentScript(counterPartyPubkey, selfPubkey,
+                    lockingPubkey, activationIn10Minutes);
+
+                TxOut outputToUse = null;
+                int outputNumber = 0;
+                string multisigAddress = null;
+                for (int i = 0; i < commtimentTransaction.Outputs.Count; i++)
+                {
+                    var output = commtimentTransaction.Outputs[i];
+                    if (output.ScriptPubKey.ToString() == scriptToSearch.PaymentScript.ToString())
+                    {
+                        outputToUse = output;
+                        outputNumber = i;
+                        multisigAddress = output.ScriptPubKey.GetDestinationAddress(WebSettings.ConnectionParams.BitcoinNetwork).ToString();
+                        break;
+                    }
+                }
+
+                if (outputToUse == null)
+                {
+                    return InternalServerError(new Exception("Proper output to spend was not found."));
+                }
+
+                var dummyMultisig = GetMultiSigFromTwoPubKeys(clientPubkey, hubPubkey);
+                using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(WebSettings.ConnectionString))
+                {
+                    using (var transaction = entities.Database.BeginTransaction())
+                    {
+                        var walletOutputs = await GetWalletOutputs(multisigAddress,
+                        WebSettings.ConnectionParams.BitcoinNetwork, entities);
+                        if (walletOutputs.Item2)
+                        {
+                            return InternalServerError(new Exception(walletOutputs.Item3));
+                        }
+                        else
+                        {
+                            var commitmentHash = commtimentTransaction.GetHash().ToString();
+                            ColoredCoin inputColoredCoin = null;
+                            Coin inputCoin = null;
+
+                            var redeemScript = CreateSpecialCommitmentScript(counterPartyPubkey, selfPubkey, lockingPubkey, activationIn10Minutes);
+                            Coin bearer = null;
+                            foreach (var item in walletOutputs.Item1)
+                            {
+                                if (item.GetTransactionHash() == commitmentHash
+                                    && item.GetOutputIndex() == outputNumber)
+                                {
+                                    bearer = new Coin(commtimentTransaction, (uint)outputNumber);
+                                    ScriptCoin scriptCoin = new ScriptCoin(bearer, redeemScript);
+
+                                    if (IsRealAsset(assetName))
+                                    {
+                                        inputColoredCoin = new ColoredCoin(
+                                            new AssetMoney(new AssetId(new BitcoinAssetId(item.GetAssetId())), item.GetAssetAmount()),
+                                            scriptCoin);
+                                    }
+                                    else
+                                    {
+                                        inputCoin = scriptCoin;
+                                    }
+                                }
+                            }
+
+                            if (inputColoredCoin == null && inputCoin == null)
+                            {
+                                return InternalServerError(new Exception("Some errors occured while creating input coin to be consumed"));
+                            }
+                            else
+                            {
+                                var destAddress = (new PubKey(counterPartyPubkey)).
+                                    GetAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+
+                                TransactionBuilder builder = new TransactionBuilder();
+                                if (IsRealAsset(assetName))
+                                {
+                                    var coloredCoinToBeAdded = inputColoredCoin;
+                                    builder.AddCoins(coloredCoinToBeAdded);
+                                    builder.SendAsset(destAddress, coloredCoinToBeAdded.Amount);
+                                }
+                                else
+                                {
+                                    var coinToBeAdded = inputCoin;
+                                    builder.AddCoins(coinToBeAdded);
+                                    builder.Send(destAddress, coinToBeAdded.Amount);
+                                }
+
+                                await builder.AddEnoughPaymentFee
+                                    (entities, WebSettings.ConnectionParams, WebSettings.FeeAddress);
+                                var tx = builder.BuildTransaction(false);
+                                tx.Version = 2;
+
+                                var sigHash = SigHash.All;
+                                for (int i = 0; i < tx.Inputs.Count; i++)
+                                {
+                                    var input = tx.Inputs[i];
+
+                                    if (input.PrevOut.Hash == bearer.Outpoint.Hash && input.PrevOut.N == bearer.Outpoint.N)
+                                    {
+                                        input.Sequence = new Sequence(activationIn10Minutes);
+
+                                        var secret = new BitcoinSecret(spendingPrivateKey);
+                                        var signature = tx.SignInput(secret, new Coin(input.PrevOut.Hash, input.PrevOut.N, new Money(bearer.Amount), redeemScript), sigHash);
+                                        var p2shScript = PayToScriptHashTemplate.Instance.GenerateScriptSig(new PayToScriptHashSigParameters
+                                        {
+                                            RedeemScript = redeemScript,
+                                            Pushes = new byte[][] { signature.ToBytes(), new byte[] { ((byte)0) } }
+                                        });
+                                        input.ScriptSig = p2shScript;
+                                        break;
+                                    }
+                                }
+
+                                for (int i = 0; i < tx.Inputs.Count; i++)
+                                {
+                                    var input = tx.Inputs[i];
+
+                                    var inputTxId = input.PrevOut.Hash.ToString();
+
+                                    var pregeneratedOutput = (from item in entities.PreGeneratedOutputs
+                                                              where item.TransactionId == inputTxId && item.OutputNumber == input.PrevOut.N
+                                                              select item).FirstOrDefault();
+
+                                    if (pregeneratedOutput?.PrivateKey != null)
+                                    {
+                                        var secret = new BitcoinSecret(pregeneratedOutput.PrivateKey);
+                                        var script = PayToPubkeyHashTemplate.Instance.GenerateScriptPubKey(Base58Data.GetFromBase58Data(pregeneratedOutput.Address) as BitcoinPubKeyAddress);
+                                        var hash = Script.SignatureHash(new Coin(input.PrevOut.Hash, input.PrevOut.N, pregeneratedOutput.Amount, script), tx, sigHash);
+                                        var signature = secret.PrivateKey.Sign(hash, sigHash);
+                                        input.ScriptSig = PayToPubkeyHashTemplate.Instance.GenerateScriptSig(signature, secret.PubKey);
+                                    }
+                                }
+
+                                // var verfied = builder.Verify(tx);
+
+                                CreateCommitmentSpendingTransactionForTimeActivatePartResponse response
+                                    = new CreateCommitmentSpendingTransactionForTimeActivatePartResponse { TransactionHex = tx.ToHex() };
+
+                                transaction.Commit();
+                                return Json(response);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception exp)
+            {
+                return InternalServerError(exp);
             }
         }
 
@@ -831,8 +1049,12 @@ namespace ServiceLykkeWallet.Controllers
                     txToBeSent.AddInput(new Transaction(txHex.Item3),
                         item.OutputNumber);
 
-                    TransactionSignRequest feePrivateKeySignRequest = new TransactionSignRequest { PrivateKey = item.PrivateKey.ToString(), TransactionToSign = txToBeSent.ToHex() };
-                    var feeSignedTransaction = await OpenAssetsHelper.SignTransactionWorker(feePrivateKeySignRequest,
+                    TransactionSignRequest feePrivateKeySignRequest = new TransactionSignRequest
+                    {
+                        PrivateKey = item.PrivateKey.ToString(),
+                        TransactionToSign = txToBeSent.ToHex()
+                    };
+                    var feeSignedTransaction = await SignTransactionWorker(feePrivateKeySignRequest,
                         SigHash.All | SigHash.AnyoneCanPay);
 
                     txToBeSent = new Transaction(feeSignedTransaction);
@@ -844,7 +1066,7 @@ namespace ServiceLykkeWallet.Controllers
                 await rpcClient.SendRawTransactionAsync(txToBeSent);
 
                 return Json(new AddEnoughFeesToCommitentAndBroadcastResponse
-                { TransactionId = txToBeSent.GetHash().ToString() });
+                { TransactionId = txToBeSent.GetHash().ToString(), TransactionHex = txToBeSent.ToHex() });
             }
             catch (Exception exp)
             {

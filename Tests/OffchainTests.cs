@@ -1,14 +1,11 @@
 ﻿using LykkeWalletServices;
 using LykkeWalletServices.Transactions.Responses;
-using Lykkex.WalletBackend.Tests;
 using NBitcoin;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using static LykkeWalletServices.OpenAssetsHelper;
 
@@ -20,8 +17,8 @@ namespace Lykkex.WalletBackend.Tests
         private static string[] reservedPrivateKey = new string[] {
             "cQMqC1Vqyi6o62wE1Z1ZeWDbMCkRDZW5dMPJz8QT9uMKQaMZa8JY",
             "cQyt2zxAS2uV7HJWR9hf16pFDTye8YsGL6hzd9pQzMoo9m24RGoV",
-            "cSFbgd8zKDSCDHgGocccngyVSfGZsyZFiTXtimTonHyL44gTKTNU",
-            "cPBtsvLrD3DnbdGgDZ2EMbZnQurzBVmgmejiMv55jH9JehPDn5Aq"
+            "cSFbgd8zKDSCDHgGocccngyVSfGZsyZFiTXtimTonHyL44gTKTNU",  // 03eb5b1a93a77d6743bd4657614d87f4d2d40566558d4c8faab188d957c32c1976
+            "cPBtsvLrD3DnbdGgDZ2EMbZnQurzBVmgmejiMv55jH9JehPDn5Aq"   // 035441d55de4f28fcb967472a1f9790ecfea9a9a2a92e301646d52cb3290b9e355
         };
 
         private static async Task<UnsignedClientCommitmentTransactionResponse> GetOffchainSignedSetup
@@ -54,8 +51,9 @@ namespace Lykkex.WalletBackend.Tests
                     PrivateKey = clientPrivateKey.ToString()
                 });
 
-                url = string.Format("{0}/Offchain/CreateUnsignedClientCommitmentTransaction?UnsignedChannelSetupTransaction={1}&ClientSignedChannelSetup={2}&clientCommitedAmount={3}&hubCommitedAmount={4}&clientPubkey={5}&hubPrivatekey={6}&assetName={7}&selfRevokePubkey={8}&activationIn10Minutes={9}",
-                    Settings.WalletBackendUrl, resp.UnsigndTransaction, clientSignedTx, 30, 75, clientPrivateKey.PubKey, hubPrivateKey.ToString(), "TestExchangeUSD", clientSelfRevokeKey.PubKey, 144);
+                url = string.Format("{0}/Offchain/CreateUnsignedClientCommitmentTransaction?UnsignedChannelSetupTransaction={1}&ClientSignedChannelSetup={2}&clientCommitedAmount={3}&hubCommitedAmount={4}&clientPubkey={5}&hubPrivatekey={6}&assetName={7}&counterPartyRevokePubkey={8}&activationIn10Minutes={9}",
+                    Settings.WalletBackendUrl, resp.UnsigndTransaction, clientSignedTx, 30, 75, clientPrivateKey.PubKey,
+                     hubPrivateKey.ToString(), "TestExchangeUSD", hubSelfRevokKey.PubKey, 144);
                 response = await client.GetStringAsync(url);
                 var signedResp = JsonConvert.DeserializeObject<UnsignedClientCommitmentTransactionResponse>(response);
 
@@ -63,7 +61,7 @@ namespace Lykkex.WalletBackend.Tests
                 var rpcClient = GetRPCClient(Settings);
                 await rpcClient.SendRawTransactionAsync(signedSetup);
                 await GenerateBlocks(Settings, 1);
-                await OpenAssetsHelper.WaitUntillQBitNinjaHasIndexed(Settings, HasTransactionIndexed,
+                await WaitUntillQBitNinjaHasIndexed(Settings, HasTransactionIndexed,
                     new string[] { signedSetup.GetHash().ToString() }, null);
 
                 return signedResp;
@@ -97,6 +95,111 @@ namespace Lykkex.WalletBackend.Tests
                 }, SigHash.All | SigHash.AnyoneCanPay);
 
                 await AddEnoughPaymentFeeAndBroadcast(Settings.WalletBackendUrl, hubSignedCommitment);
+
+
+            }
+            catch (Exception exp)
+            {
+                throw exp;
+            }
+        }
+
+        [Test]
+        public async Task CommitmentComplexOutputSpendingBeforeBecomingFinal()
+        {
+            try
+            {
+                var privateKeys = CreatePrivateKeys();
+
+                var spendingToBroadcast = new Transaction(await GetCommitmentComplexOutputSpendingForBIP68Output(privateKeys));
+
+                // Generating not enough blocks
+                var blocks = await GenerateBlocks(Settings, 10);
+                await WaitUntillQBitNinjaHasIndexed(Settings, HasBlockIndexed, blocks);
+
+                var rpcClient = new LykkeExtenddedRPCClient(new System.Net.NetworkCredential
+                            (WebSettings.ConnectionParams.Username, WebSettings.ConnectionParams.Password),
+                                    WebSettings.ConnectionParams.IpAddress, WebSettings.ConnectionParams.BitcoinNetwork);
+                await rpcClient.SendRawTransactionAsync(spendingToBroadcast);
+                await GenerateBlocks(Settings, 142);
+                await WaitUntillQBitNinjaHasIndexed(Settings, HasTransactionIndexed,
+                    new string[] { spendingToBroadcast.GetHash().ToString() }, null);
+            }
+            catch (Exception exp)
+            {
+                Assert.IsTrue(exp.ToString().Contains("non-BIP68-final"));
+            }
+        }
+
+        [Test]
+        public async Task CommitmentComplexOutputSpendingAfterBecomingFinal()
+        {
+            try
+            {
+                var privateKeys = CreatePrivateKeys();
+                var clientPrivateKey = new BitcoinSecret(privateKeys[0]);
+                var hubPrivateKey = new BitcoinSecret(privateKeys[1]);
+                var clientSelfRevokeKey = new BitcoinSecret(privateKeys[2]);
+                var hubSelfRevokKey = new BitcoinSecret(privateKeys[3]);
+
+                var spendingToBroadcast = await GetCommitmentComplexOutputSpendingForBIP68Output(privateKeys);
+                
+                // Generating enough blocks
+                var blocks = await GenerateBlocks(Settings, 144);
+                await WaitUntillQBitNinjaHasIndexed(Settings, HasBlockIndexed, blocks);
+
+                // Sending the spending tx
+                var rpcClient = new LykkeExtenddedRPCClient(new System.Net.NetworkCredential
+                            (WebSettings.ConnectionParams.Username, WebSettings.ConnectionParams.Password),
+                                    WebSettings.ConnectionParams.IpAddress, WebSettings.ConnectionParams.BitcoinNetwork);
+                await rpcClient.SendRawTransactionAsync(new Transaction(spendingToBroadcast));
+
+
+                // Hub should have the correct value
+                var currentBalance = await GetAssetBalanceOfAddress(hubPrivateKey.GetAddress().ToString(), "TestExchangeUSD");
+                Assert.AreEqual(90 + 75, currentBalance);
+            }
+            catch (Exception exp)
+            {
+                throw exp;
+            }
+        }
+
+        private async Task<string> GetCommitmentComplexOutputSpendingForBIP68Output(string[] privateKeys)
+        {
+            try
+            {
+                var clientPrivateKey = new BitcoinSecret(privateKeys[0]);
+                var hubPrivateKey = new BitcoinSecret(privateKeys[1]);
+                var clientSelfRevokeKey = new BitcoinSecret(privateKeys[2]);
+                var hubSelfRevokKey = new BitcoinSecret(privateKeys[3]);
+
+                var signedResp = await GetOffchainSignedSetup(privateKeys);
+
+                var clientSignedCommitment = await SignTransactionWorker(new TransactionSignRequest
+                {
+                    TransactionToSign = signedResp.UnsignedClientCommitment0,
+                    PrivateKey = clientPrivateKey.ToString()
+                }, SigHash.All | SigHash.AnyoneCanPay);
+
+                var hubSignedCommitment = await SignTransactionWorker(new TransactionSignRequest
+                {
+                    TransactionToSign = clientSignedCommitment,
+                    PrivateKey = hubPrivateKey.ToString()
+                }, SigHash.All | SigHash.AnyoneCanPay);
+
+                var txSendingResult = await AddEnoughPaymentFeeAndBroadcast(Settings.WalletBackendUrl, hubSignedCommitment);
+
+                using (HttpClient client = new HttpClient())
+                {
+                    var url = string.Format("{0}/Offchain/CreateCommitmentSpendingTransactionForTimeActivatePart?commitmentTransactionHex={1}&spendingPrivateKey={2}&clientPubkey={3}&hubPubkey={4}&assetName={5}&lockingPubkey={6}&activationIn10Minutes={7}&clientSendsCommitmentToHub={8}",
+                        Settings.WalletBackendUrl, txSendingResult, hubPrivateKey, clientPrivateKey.PubKey, hubPrivateKey.PubKey, "TestExchangeUSD", hubSelfRevokKey.PubKey, 144, true);
+                    var response = await client.GetStringAsync(url);
+                    var commitmentSpendingResp = JsonConvert.DeserializeObject<CreateCommitmentSpendingTransactionForTimeActivatePartResponse>
+                        (response);
+
+                    return commitmentSpendingResp.TransactionHex;
+                }
             }
             catch (Exception exp)
             {
@@ -107,12 +210,13 @@ namespace Lykkex.WalletBackend.Tests
         private string GetUrlForCommitmentCreation(string baseUrl, string signedSetupTransaction, string clientPubkey,
             string hubPubkey, double clientAmount, double hubAmount, string assetName, string lockingPubkey, int activationIn10Minutes, bool clientSendsCommitmentToHub)
         {
+
             return string.Format("{0}/Offchain/CreateUnsignedCommitmentTransactions?signedSetupTransaction={1}&clientPubkey={2}&hubPubkey={3}&clientAmount={4}&hubAmount={5}&assetName={6}&lockingPubkey={7}&activationIn10Minutes={8}&clientSendsCommitmentToHub={9}",
                 baseUrl, signedSetupTransaction, clientPubkey, hubPubkey, clientAmount, hubAmount, assetName,
                 lockingPubkey, activationIn10Minutes, clientSendsCommitmentToHub);
         }
 
-        private async static Task AddEnoughPaymentFeeAndBroadcast(string baseUrl, string txTosend)
+        private async static Task<string> AddEnoughPaymentFeeAndBroadcast(string baseUrl, string txTosend)
         {
             using (HttpClient client = new HttpClient())
             {
@@ -121,9 +225,12 @@ namespace Lykkex.WalletBackend.Tests
                 var response = await client.GetStringAsync(url);
                 AddEnoughFeesToCommitentAndBroadcastResponse commitmentBroadcastResponse =
                     JsonConvert.DeserializeObject<AddEnoughFeesToCommitentAndBroadcastResponse>(response);
-                await GenerateBlocks(Settings, 1);
+                var blocks = await GenerateBlocks(Settings, 1);
                 await OpenAssetsHelper.WaitUntillQBitNinjaHasIndexed(Settings, HasTransactionIndexed,
                     new string[] { commitmentBroadcastResponse.TransactionId }, null);
+                await WaitUntillQBitNinjaHasIndexed(Settings, HasBlockIndexed, blocks);
+
+                return commitmentBroadcastResponse.TransactionHex;
             }
         }
 

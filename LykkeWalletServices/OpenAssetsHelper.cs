@@ -237,7 +237,7 @@ namespace LykkeWalletServices
             }
         }
 
-        private static string GetAssetId(this UniversalUnspentOutput item)
+        public static string GetAssetId(this UniversalUnspentOutput item)
         {
             switch (apiProvider)
             {
@@ -259,7 +259,7 @@ namespace LykkeWalletServices
             }
         }
 
-        private static long GetAssetAmount(this UniversalUnspentOutput item)
+        public static long GetAssetAmount(this UniversalUnspentOutput item)
         {
             switch (apiProvider)
             {
