@@ -405,10 +405,17 @@ namespace Lykkex.WalletBackend.Tests
 
         public static async Task<IEnumerable<string>> GenerateBlocks(Settings settings, int count)
         {
-            var rpcClient = GetRPCClient(settings);
-            var response = await rpcClient.GenerateBlocksAsync(count);
-            await WaitUntillQBitNinjaHasIndexed(settings, HasBlockIndexed, response);
-            return response;
+            List<string> blockIds = new List<string>();
+
+            for (int i = 0; i < count; i++)
+            {
+                var rpcClient = GetRPCClient(settings);
+                var response = await rpcClient.GenerateBlocksAsync(1);
+                blockIds.AddRange(response);
+                await WaitUntillQBitNinjaHasIndexed(settings, HasBlockIndexed, response);
+            }
+
+            return blockIds;
         }
 
         public async Task<string> SendBTC(Settings settings, BitcoinAddress destination, float amount)

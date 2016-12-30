@@ -145,7 +145,7 @@
     <Compile Include="TransactionsWaitForConfirmation.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
-    <Compile Include="Transactions\Responses\CreateCommitmentSpendingTransactionForTimeActivatePartResponse.cs" />
+    <Compile Include="Transactions\Responses\CommitmentCustomOutputSpendingTransaction.cs" />
     <Compile Include="Transactions\Responses\CreateUnsignedCommitmentTransactionsResponse.cs" />
     <Compile Include="Transactions\Responses\FinalizeChannelSetupResponse.cs" />
     <Compile Include="Transactions\Responses\SignCommitmentResponse.cs" />

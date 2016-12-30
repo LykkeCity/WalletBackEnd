@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace LykkeWalletServices.Transactions.Responses
 {
-    public class CreateCommitmentSpendingTransactionForTimeActivatePartResponse
+    public class CommitmentCustomOutputSpendingTransaction
     {
         public string TransactionHex
         {

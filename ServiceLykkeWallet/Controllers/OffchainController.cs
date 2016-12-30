@@ -884,6 +884,23 @@ namespace ServiceLykkeWallet.Controllers
         public TxIn GenerateCustomeScriptMultisigScriptOutputSpender(TxIn input, Transaction tx, int activationIn10Minutes, Coin bearer,
             Script redeemScript, SigHash sigHash, string spendingPrivateKey, string selfPrivateKey, string counterPartyRevokePrivateKey)
         {
+            var selfSecret = new BitcoinSecret(selfPrivateKey);
+            var counterPartyRevokeSecret = new BitcoinSecret(counterPartyRevokePrivateKey);
+
+            var selfSignature = tx.SignInput(selfSecret, new Coin(input.PrevOut.Hash, input.PrevOut.N, new Money(bearer.Amount), redeemScript), sigHash);
+            var counterPartyRevokeSignature = tx.SignInput(counterPartyRevokeSecret, new Coin(input.PrevOut.Hash, input.PrevOut.N, new Money(bearer.Amount), redeemScript), sigHash);
+
+            var p2shScript = PayToScriptHashTemplate.Instance.GenerateScriptSig(new PayToScriptHashSigParameters
+            {
+                RedeemScript = redeemScript,
+                Pushes = new byte[][] {
+                    new byte[] { },
+                    selfSignature.ToBytes(),
+                    counterPartyRevokeSignature.ToBytes(),
+                    new byte[] { ((byte)1) } }
+            });
+            input.ScriptSig = p2shScript;
+
             return input;
         }
 
@@ -980,8 +997,25 @@ namespace ServiceLykkeWallet.Controllers
                             }
                             else
                             {
-                                var destAddress = (new PubKey(counterPartyPubkey)).
-                                    GetAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                                BitcoinPubKeyAddress destAddress = null;
+                                if (spendingPrivateKey != null)
+                                {
+                                    destAddress = (new PubKey(counterPartyPubkey)).
+                                      GetAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                                }
+                                else
+                                {
+                                    if (clientSendsCommitmentToHub)
+                                    {
+                                        destAddress = (new PubKey(selfPubkey)).
+                                          GetAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                                    }
+                                    else
+                                    {
+                                        destAddress = (new PubKey(hubPubkey)).
+                                            GetAddress(WebSettings.ConnectionParams.BitcoinNetwork);
+                                    }
+                                }
 
                                 TransactionBuilder builder = new TransactionBuilder();
                                 if (IsRealAsset(assetName))
@@ -1035,10 +1069,10 @@ namespace ServiceLykkeWallet.Controllers
                                     }
                                 }
 
-                                // var verfied = builder.Verify(tx);
+                                var verfied = builder.Verify(tx);
 
-                                CreateCommitmentSpendingTransactionForTimeActivatePartResponse response
-                                    = new CreateCommitmentSpendingTransactionForTimeActivatePartResponse { TransactionHex = tx.ToHex() };
+                                CommitmentCustomOutputSpendingTransaction response
+                                    = new CommitmentCustomOutputSpendingTransaction { TransactionHex = tx.ToHex() };
 
                                 transaction.Commit();
                                 return Json(response);
