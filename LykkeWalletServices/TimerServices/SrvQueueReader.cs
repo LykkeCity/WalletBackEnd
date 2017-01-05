@@ -32,8 +32,9 @@ namespace LykkeWalletServices
 
         public SrvQueueReader(IQueueReader queueReader, IQueueWriter queueWriter, ILog log,
             Network network, AssetDefinition[] assets, string rpcUsername,
-            string rpcPassword, string rpcServer, string connectionString, string feeAddress, string feeAddressPrivateKey, IPreBroadcastHandler preBroadcastHandler)
-            : base("SrvQueueReader", 5000, log)
+            string rpcPassword, string rpcServer, string connectionString, string feeAddress, string feeAddressPrivateKey,
+            IPreBroadcastHandler preBroadcastHandler, int queueReaderIntervalInMiliseconds)
+            : base("SrvQueueReader", queueReaderIntervalInMiliseconds, log)
         {
             _queueReader = queueReader;
             _queueWriter = queueWriter;

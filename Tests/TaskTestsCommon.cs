@@ -1,6 +1,7 @@
 ﻿using AzureStorage;
 using Core;
 using LykkeWalletServices;
+using LykkeWalletServices.Transactions.Responses;
 using Lykkex.WalletBackend.Tests.GenerateFeeOutputs;
 using NBitcoin;
 using System;
@@ -8,6 +9,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using static LykkeWalletServices.OpenAssetsHelper;
 using static LykkeWalletServices.Transactions.TaskHandlers.SettingsReader;
@@ -164,6 +166,15 @@ namespace Lykkex.WalletBackend.Tests
             }
         }
 
+        public class SwapResponse : TransactionResponseBase
+        {
+            public SwapTaskResult Result
+            {
+                get;
+                set;
+            }
+        }
+
         public class CashInResponse : TransactionResponseBase
         {
             public CashInTaskResult Result
@@ -191,26 +202,15 @@ namespace Lykkex.WalletBackend.Tests
             }
         }
 
-
-
-        public async Task InitializeBitcoinNetwork(Settings settings)
+        public static async Task GenerateIssuersOutput(string assetName, int count, Settings settings)
         {
-            await GenerateBlocks(settings, 101);
-
-            var txId = await SendBTC(settings,
-                    MassBitcoinHolder,
-                    0.5f);
-            var blocks = await GenerateBlocks(settings, 1);
-            await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexed, new string[] { txId }, MassBitcoinHolder.ToWif());
-
-
             GenerateIssuerOutputsModel generateIssuers = new GenerateIssuerOutputsModel
             {
-                AssetName = "TestExchangeUSD",
+                AssetName = assetName,
                 FeeAmount = 0.0000273f,
-                Count = 300,
+                Count = count,
                 PrivateKey = MassBitcoinHolderPrivateKey,
-                TransactionId = "10",
+                TransactionId = Guid.NewGuid().ToString(),
                 WalletAddress = MassBitcoinHolder.ToWif()
             };
             var generateIssuersOutputResponse = await CreateLykkeWalletRequestAndProcessResult<GenerateIssuerOutputsResponse>
@@ -220,13 +220,27 @@ namespace Lykkex.WalletBackend.Tests
                 new string[] { generateIssuersOutputResponse.Result.TransactionHash }, null);
             await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexed,
                 new string[] { generateIssuersOutputResponse.Result.TransactionHash }, MassBitcoinHolder.ToWif());
+        }
+
+        public async Task InitializeBitcoinNetwork(Settings settings)
+        {
+            await GenerateBlocks(settings, 101);
+
+            var txId = await SendBTC(settings,
+                    MassBitcoinHolder,
+                    1f);
+            var blocks = await GenerateBlocks(settings, 1);
+            await WaitUntillQBitNinjaHasIndexed(settings, HasBalanceIndexed, new string[] { txId }, MassBitcoinHolder.ToWif());
+
+            await GenerateIssuersOutput("TestExchangeUSD", 300, settings);
+            await GenerateIssuersOutput("TestExchangeEUR", 300, settings);
 
             GenerateFeeOutputsModel generateFees = new GenerateFeeOutputsModel
             {
-                FeeAmount = 0.00025f,
-                Count = 300,
+                FeeAmount = 0.00050f,
+                Count = 1000,
                 PrivateKey = MassBitcoinHolderPrivateKey,
-                TransactionId = "10",
+                TransactionId = Guid.NewGuid().ToString(),
                 WalletAddress = MassBitcoinHolder.ToWif()
             };
             var generateFeeOutputResponse = await CreateLykkeWalletRequestAndProcessResult<GenerateFeeOutputsResponse>
@@ -258,6 +272,9 @@ namespace Lykkex.WalletBackend.Tests
             settings.Network = config.AppSettings.Settings["Network"].Value.ToLower().Equals("main") ? NBitcoin.Network.Main : NBitcoin.Network.TestNet;
             settings.QBitNinjaBaseUrl = config.AppSettings.Settings["QBitNinjaBaseUrl"]?.Value;
             settings.WalletBackendUrl = config.AppSettings.Settings["WalletBackendUrl"]?.Value;
+
+            WebSettings.ConnectionString = settings.DBConnectionString;
+            WebSettings.FeeAddress = config.AppSettings.Settings["FeeAddress"]?.Value;
 
             WebSettings.ConnectionParams = new RPCConnectionParams
             {
@@ -434,27 +451,106 @@ namespace Lykkex.WalletBackend.Tests
             return response.ToString();
         }
 
-        public async static Task<T> CreateLykkeWalletRequestAndProcessResult<T>(string opName, object param, AzureQueueExt QueueReader, AzureQueueExt QueueWriter) where T : TransactionResponseBase
+        static Timer queueReaderTimer = null;
+        static TaskTestsCommon()
         {
-            var requestString = string.Format("{0}:{1}", opName, Newtonsoft.Json.JsonConvert.SerializeObject(param));
-            await QueueWriter.PutMessageAsync(requestString);
-            var reply = await GetReturnReply<T>(QueueReader);
-            if (reply == null)
-            {
-                throw new Exception(string.Format("{0} reply is null.", opName));
-            }
-            if (reply.Error != null)
-            {
-                throw new Exception(string.Format("{0}: {1}", opName, reply.Error.Code.ToString() + ": " + reply.Error.Message));
-            }
-
-            return reply;
+            WalletCallbackMapping = new Dictionary<string, Action<string, TransactionResponseBase>>();
+            queueReaderTimer = new Timer(TimerCallback, null, 0, 250);
         }
 
+        public static void TimerCallback(object state)
+        {
+            try
+            {
+                Task.Run(async () =>
+                {
+                    var reply = (TransactionResponseBase)(await QueueReader.GetMessageAsync());
+                    if (reply?.TransactionId != null)
+                    {
+                        if (WalletCallbackMapping.Keys.Contains(reply?.TransactionId))
+                        {
+                            WalletCallbackMapping[reply.TransactionId](reply.TransactionId, reply);
+                        }
+                    }
+                });
+            }
+            catch (Exception exp)
+            {
+
+            }
+        }
+
+        public static IDictionary<string, Action<string, TransactionResponseBase>> WalletCallbackMapping
+        {
+            get;
+            set;
+        }
+
+        public static TransactionResponseBase LykkeWalletCallbackResult
+        {
+            get;
+            set;
+        }
+
+        public static bool LykkeWalletCallbackResultArrived
+        {
+            get;
+            set;
+        }
+
+
+        public static void GeneralLykkeWalletCallback(string transactionId, TransactionResponseBase result)
+        {
+            LykkeWalletCallbackResult = result;
+            LykkeWalletCallbackResultArrived = true;
+        }
+
+        public async static Task<T> CreateLykkeWalletRequestAndProcessResult<T>(string opName, BaseRequestModel param,
+            AzureQueueExt QueueReader, AzureQueueExt QueueWriter, Action<string, TransactionResponseBase> returnCallback = null) where T : TransactionResponseBase
+        {
+            LykkeWalletCallbackResult = null;
+            LykkeWalletCallbackResultArrived = false;
+            if (returnCallback == null)
+            {
+                returnCallback = GeneralLykkeWalletCallback;
+            }
+
+            WalletCallbackMapping.Add(param.TransactionId, returnCallback);
+
+            var requestString = string.Format("{0}:{1}", opName, Newtonsoft.Json.JsonConvert.SerializeObject(param));
+            await QueueWriter.PutMessageAsync(requestString);
+
+            if (returnCallback == GeneralLykkeWalletCallback)
+            {
+                while (!LykkeWalletCallbackResultArrived)
+                {
+                    Thread.Sleep(300);
+                }
+
+                if (LykkeWalletCallbackResult == null)
+                {
+                    throw new Exception(string.Format("{0} reply is null.", opName));
+                }
+                if (LykkeWalletCallbackResult.Error != null)
+                {
+                    throw new Exception(string.Format("{0}: {1}", opName,
+                         LykkeWalletCallbackResult.Error.Code.ToString() + ": " + LykkeWalletCallbackResult.Error.Message));
+                }
+
+                return LykkeWalletCallbackResult as T;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        /*
         public async static Task<T> GetReturnReply<T>(AzureQueueExt QueueReader)
         {
             object message = null;
             int count = 0;
+            var delayTimeInMilisecond = 100;
             while (true)
             {
                 message = await QueueReader.GetMessageAsync();
@@ -463,12 +559,67 @@ namespace Lykkex.WalletBackend.Tests
                     return (T)message;
                 }
                 count++;
-                await Task.Delay(1000);
-                if (count > 60)
+                await Task.Delay(delayTimeInMilisecond);
+                if (count > (60 * 1000 / delayTimeInMilisecond))
                 {
                     return default(T);
                 }
             }
+        }
+        */
+
+        public static async Task SwapAssets(string guid, string address01, string asset01, double amount01,
+            string address02, string asset02, double amount02,
+            Action<string, TransactionResponseBase> callback = null)
+        {
+            SwapRequestModel swap = new SwapRequestModel
+            {
+                TransactionId = guid,
+                MultisigCustomer1 = address01,
+                MultisigCustomer2 = address02,
+                Asset1 = asset01,
+                Asset2 = asset02,
+                Amount1 = amount01,
+                Amount2 = amount02
+            };
+
+            await CreateLykkeWalletRequestAndProcessResult<SwapResponse>
+                ("Swap", swap, QueueReader, QueueWriter, callback);
+        }
+
+        public static async Task<string> CashinToAddress(string destAddress, string asset, double amount)
+        {
+            CashInRequestModel cashin = new CashInRequestModel
+            {
+                TransactionId = Guid.NewGuid().ToString(),
+                MultisigAddress = destAddress,
+                Amount = amount,
+                Currency = asset
+            };
+            var reply = await CreateLykkeWalletRequestAndProcessResult<CashInResponse>
+                ("CashIn", cashin, QueueReader, QueueWriter);
+            await GenerateBlocks(Settings, 1);
+            await OpenAssetsHelper.WaitUntillQBitNinjaHasIndexed(Settings, HasTransactionIndexed,
+                new string[] { reply.Result.TransactionHash }, null);
+            await OpenAssetsHelper.WaitUntillQBitNinjaHasIndexed(Settings, HasBalanceIndexed,
+                new string[] { reply.Result.TransactionHash }, destAddress);
+
+            return reply.TransactionId;
+        }
+
+        public async static Task<GenerateNewWalletTaskResult> GenerateNewWallet
+            (AzureQueueExt QueueReader, AzureQueueExt QueueWriter, Action<string, TransactionResponseBase> callback = null, Guid txId = default(Guid))
+        {
+            if (txId == default(Guid))
+            {
+                txId = Guid.NewGuid();
+            }
+            GenerateNewWalletModel generateNewWallet = new GenerateNewWalletModel { TransactionId = txId.ToString() };
+
+            var reply = await CreateLykkeWalletRequestAndProcessResult<GenerateNewWalletResponse>("GenerateNewWallet", generateNewWallet,
+                QueueReader, QueueWriter, callback);
+
+            return reply?.Result;
         }
     }
 }

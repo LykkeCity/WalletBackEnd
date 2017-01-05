@@ -2174,6 +2174,11 @@ namespace LykkeWalletServices
         public static Asset GetAssetFromName(AssetDefinition[] assets, string assetName, Network network)
         {
             Asset ret = null;
+            if(assets == null)
+            {
+                assets = WebSettings.Assets;
+            }
+
             foreach (var item in assets)
             {
                 if (item.Name == assetName)

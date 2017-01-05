@@ -44,7 +44,7 @@ namespace Lykkex.WalletBackend.Tests
                     QueueType.Create("CashOutSeparateSignatures", typeof(TaskToDoCashOutSeparateSignatures)),
                     QueueType.Create("OrdinaryCashOut", typeof(TaskToDoOrdinaryCashOut)),
                     QueueType.Create("GetCurrentBalance", typeof(GetCurrentBalanceResponse)),
-                    QueueType.Create("Swap", typeof(TaskToDoSwap)),
+                    QueueType.Create("Swap", typeof(SwapResponse)),
                     QueueType.Create("GetBalance", typeof(TaskToDoGetBalance)),
                     QueueType.Create("DepositWithdraw", typeof(TaskToDoDepositWithdraw)),
                     QueueType.Create("Exchange", typeof(TaskToDoSendAsset)),

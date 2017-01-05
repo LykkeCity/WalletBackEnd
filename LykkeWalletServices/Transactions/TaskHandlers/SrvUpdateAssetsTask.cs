@@ -160,6 +160,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 set;
             }
 
+            [DefaultValue(5000)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int QueueReaderIntervalInMiliseconds
+            {
+                get;
+                set;
+            }
+
             [DefaultValue(true)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public bool UseSegKeysTable

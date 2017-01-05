@@ -76,6 +76,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
     <Compile Include="SetupFixture.cs" />
+    <Compile Include="SwapTests.cs" />
     <Compile Include="TaskTestsCommon.cs" />
   </ItemGroup>
   <ItemGroup>

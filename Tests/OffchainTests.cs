@@ -147,7 +147,6 @@ namespace Lykkex.WalletBackend.Tests
                                     WebSettings.ConnectionParams.IpAddress, WebSettings.ConnectionParams.BitcoinNetwork);
                     await rpcClient.SendRawTransactionAsync(txToSend);
                     var blocks = await GenerateBlocks(Settings, 1);
-                    await WaitUntillQBitNinjaHasIndexed(Settings, HasBlockIndexed, blocks);
                     await WaitUntillQBitNinjaHasIndexed(Settings, HasTransactionIndexed,
                         new string[] { txToSend.GetHash().ToString() }, null);
 
@@ -425,7 +424,7 @@ namespace Lykkex.WalletBackend.Tests
         {
             GetCurrentBalanceModel getCurrentBalanceModel = new GetCurrentBalanceModel
             {
-                TransactionId = "10",
+                TransactionId = Guid.NewGuid().ToString(),
                 MinimumConfirmation = 0,
                 MultisigAddress = address
 
@@ -451,22 +450,6 @@ namespace Lykkex.WalletBackend.Tests
                 address, assetName));
         }
 
-        private static async Task CashinToAddress(string destAddress, string asset, double amount)
-        {
-            CashInRequestModel cashin = new CashInRequestModel
-            {
-                TransactionId = "10",
-                MultisigAddress = destAddress,
-                Amount = amount,
-                Currency = asset
-            };
-            var reply = await CreateLykkeWalletRequestAndProcessResult<CashInResponse>
-                ("CashIn", cashin, QueueReader, QueueWriter);
-            await GenerateBlocks(Settings, 1);
-            await OpenAssetsHelper.WaitUntillQBitNinjaHasIndexed(Settings, HasTransactionIndexed,
-                new string[] { reply.Result.TransactionHash }, null);
-            await OpenAssetsHelper.WaitUntillQBitNinjaHasIndexed(Settings, HasBalanceIndexed,
-                new string[] { reply.Result.TransactionHash }, destAddress);
-        }
+        
     }
 }

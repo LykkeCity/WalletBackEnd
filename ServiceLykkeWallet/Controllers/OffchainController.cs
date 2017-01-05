@@ -71,8 +71,7 @@ namespace ServiceLykkeWallet.Controllers
                 }
             }
         }
-
-        // http://localhost:8989/Offchain/GenerateUnsignedChannelSetupTransaction?ClientAddress=x&ClientContributedAmount=10&HubAddress=z&HubContributedAmount=10&ClientMultisigAddress=ab&ClientMultisigContributedAmount=10&ChannelAssetName=ac&channelTimeoutInMinutes=5
+        
         [HttpGet]
         public async Task<IHttpActionResult> GenerateUnsignedChannelSetupTransactionCore(string clientPubkey,
             double clientContributedAmount, string hubPubkey, double hubContributedAmount, double multisigNewlyAddedAmount,
@@ -731,8 +730,7 @@ namespace ServiceLykkeWallet.Controllers
 
             return new GeneralCallResult { Success = true, ErrorMessage = "Script verified successfully." };
         }
-
-        // http://localhost:8989/Offchain/FinalizeChannelSetup?FullySignedSetupTransaction=002&SignedClientCommitment0=002
+                
         [HttpGet]
         public async Task<IHttpActionResult> FinalizeChannelSetup(string FullySignedSetupTransaction, string SignedClientCommitment0,
             double clientCommitedAmount, double hubCommitedAmount, string clientPubkey, string hubPrivatekey, string assetName,
