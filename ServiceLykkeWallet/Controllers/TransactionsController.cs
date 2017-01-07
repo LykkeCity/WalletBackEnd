@@ -636,7 +636,7 @@ namespace ServiceLykkeWallet.Controllers
                     }
                     else
                     {
-                        var destAddress = OpenAssetsHelper.GetBitcoinAddressFormBase58Date(data.DestinationAddress);
+                        var destAddress = GetBitcoinAddressFormBase58Date(data.DestinationAddress);
                         if (destAddress == null)
                         {
                             error = new Error();

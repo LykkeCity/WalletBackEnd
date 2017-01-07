@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using static LykkeWalletServices.OpenAssetsHelper;
+using System.Collections.Concurrent;
 
 namespace Lykkex.WalletBackend.Tests
 {
@@ -19,8 +20,8 @@ namespace Lykkex.WalletBackend.Tests
     {
         public IList<GenerateNewWalletTaskResult> usdWallets = new List<GenerateNewWalletTaskResult>();
         public IList<GenerateNewWalletTaskResult> eurWallets = new List<GenerateNewWalletTaskResult>();
-        public IList<string> swapResult = new List<string>();
-        public IList<string> swapError = new List<string>();
+        public ConcurrentBag<string> swapResult = new ConcurrentBag<string>();
+        public ConcurrentBag<string> swapError = new ConcurrentBag<string>();
         public string[] usdWalletGuids = new string[100];
         public string[] eurWalletGuids = new string[100];
         public string[] swapGuids = new string[100];
@@ -36,6 +37,17 @@ namespace Lykkex.WalletBackend.Tests
             {
                 eurWallets.Add(((GenerateNewWalletResponse)result).Result);
             }
+        }
+
+        private void ClearState()
+        {
+            usdWallets = new List<GenerateNewWalletTaskResult>();
+            eurWallets = new List<GenerateNewWalletTaskResult>();
+            swapResult = new ConcurrentBag<string>();
+            swapError = new ConcurrentBag<string>();
+            usdWalletGuids = new string[100];
+            eurWalletGuids = new string[100];
+            swapGuids = new string[100];
         }
 
         public void SwapCallback(string transactionId, TransactionResponseBase result)
@@ -55,9 +67,10 @@ namespace Lykkex.WalletBackend.Tests
             }
         }
 
-        [Test]
-        public async Task SwapFeeStressTest()
+        private async Task Perform100SwapsFromClearState()
         {
+            ClearState();
+
             GenerateNewWalletTaskResult masterUsdWallet = await GenerateNewWallet(QueueReader, QueueWriter);
             GenerateNewWalletTaskResult masterEurWallet = await GenerateNewWallet(QueueReader, QueueWriter);
 
@@ -104,6 +117,49 @@ namespace Lykkex.WalletBackend.Tests
             {
                 Thread.Sleep(300);
             }
+
+            await GenerateBlocks(Settings, 1);
+        }
+
+        [Test]
+        public async Task SwapFeesShouldBeConsistent()
+        {
+            await Perform100SwapsFromClearState();
+
+            using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(WebSettings.ConnectionString))
+            {
+                while(true)
+                {
+                    if(entities.PregeneratedReserves.Count() > 0)
+                    {
+                        await Task.Delay(10000);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                bool actualSpentStatus;
+                foreach(var fee in entities.PreGeneratedOutputs)
+                {
+                    actualSpentStatus = await PregeneratedHasBeenSpentInBlockchain
+                        (fee, WebSettings.ConnectionParams);
+                    if(actualSpentStatus != (fee.Consumed == 1 ? true : false))
+                    {
+                        Assert.Fail(string.Format("Please check fee for TxId: and output number: ",
+                            fee.TransactionId, fee.OutputNumber));
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public async Task SwapFeeStressTestFailuresLess3Percent()
+        {
+            await Perform100SwapsFromClearState();
+
+            Assert.LessOrEqual(swapError.Count(), 3);
         }
 
         private async Task<Asset> GetAssetFromName(string assetname)

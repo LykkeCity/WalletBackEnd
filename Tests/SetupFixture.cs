@@ -172,6 +172,7 @@ namespace Lykkex.WalletBackend.Tests
             using (SqlexpressLykkeEntities entities
                 = new SqlexpressLykkeEntities(settings.DBConnectionString))
             {
+                entities.InputOutputMessageLogs.RemoveRange(entities.InputOutputMessageLogs.Select(c => c));
                 entities.PregeneratedReserves.RemoveRange(entities.PregeneratedReserves.Select(c => c));
                 entities.PreGeneratedOutputs.RemoveRange(entities.PreGeneratedOutputs.Select(c => c));
                 entities.EmailMessages.RemoveRange(entities.EmailMessages.Select(c => c));

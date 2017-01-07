@@ -1900,6 +1900,7 @@ namespace LykkeWalletServices
 
             reserve.PreGeneratedOutputTxId = c.TransactionId;
             reserve.PreGeneratedOutputN = c.OutputNumber;
+            reserve.ReservedForAddress = c.ReservedForAddress;
             reserve.CreationTime = DateTime.UtcNow;
             reserve.ReserveId = reserveId;
             reserve.ReservationEndDate = reservationEndDate;

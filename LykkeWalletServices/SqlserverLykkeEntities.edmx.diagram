@@ -7,7 +7,6 @@
       <Diagram DiagramId="d523726b297847c08799f73063d84813" Name="Diagram1">
         <EntityTypeShape EntityType="SqlexpressLykkeModel.ExchangeRequest" Width="1.5" PointX="0.75" PointY="4.125" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.KeyStorage" Width="1.5" PointX="2.75" PointY="3.75" />
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.PreGeneratedOutput" Width="1.5" PointX="4.75" PointY="3.75" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.SpentOutput" Width="1.5" PointX="3" PointY="0.875" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.RefundedOutput" Width="1.5" PointX="9.625" PointY="1" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.RefundTransaction" Width="1.5" PointX="7.375" PointY="1.5" />
@@ -22,8 +21,6 @@
         <EntityTypeShape EntityType="SqlexpressLykkeModel.InputOutputMessageLog" Width="1.5" PointX="8.375" PointY="7.75" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.SentTransaction" Width="1.5" PointX="0.75" PointY="10" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_SpentOutputs_SentTransactions" />
-        <EntityTypeShape EntityType="SqlexpressLykkeModel.PregeneratedReserve" Width="1.5" PointX="7" PointY="11.25" />
-        <AssociationConnector Association="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" Width="1.5" PointX="10.375" PointY="4.75" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.SegKey" Width="1.5" PointX="3.375" PointY="11.75" />
         <EntityTypeShape EntityType="SqlexpressLykkeModel.UnsignedTransaction" Width="1.5" PointX="10.375" PointY="8" />
@@ -38,6 +35,9 @@
         <AssociationConnector Association="SqlexpressLykkeModel.FK_ChannelCoin_OffchainChannel" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_MultisigChannel_OffchainChannel" />
         <AssociationConnector Association="SqlexpressLykkeModel.FK_OffchainChannel_OffchainChannel" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.PreGeneratedOutput" Width="1.5" PointX="5.375" PointY="14" />
+        <EntityTypeShape EntityType="SqlexpressLykkeModel.PregeneratedReserve" Width="1.5" PointX="7.625" PointY="14.25" />
+        <AssociationConnector Association="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" />
         </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>
