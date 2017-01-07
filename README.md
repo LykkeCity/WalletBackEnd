@@ -8,14 +8,14 @@ The main project to run is ServiceLykkeWallet of the solution file.
 
 All service are queue based
 
-Currently, due to implementation decisions, in the following methods whenever private key for the local wallet is documented in the call contract, it could be totally omitted; they are present to cover the future scenarios.
-
 When a call ends with an error, the error (in the following responses) will be a json string (instead of null) similar to "Error":{"Code":0,"Message":"..."} . The error code number could be get from ErrorCode enum.
  
 *   Generate New Wallet
 
         Sample request: GenerateNewWallet:{"TransactionId":"10"}
         Sample response: GenerateNewWallet:{"TransactionId":"10","Result":{"WalletAddress":"mtNawPk9v3QaMaF3bfTBXzc4wVdJ6YrfS9","WalletPrivateKey":"xxx","MultiSigAddress":"2N23DbiKurkz9n9nd9kLgZpnUjHiGszq4BT","ColoredWalletAddress":"bX4LUBZZVPXJGDpQQeHZNBrWeH6oU6yvT3d","ColoredMultiSigAddress":"c7C16qt9FLEsqePwzCNSsDgh44ttSqGVyBE"},"Error":null}
+
+This has become obsolete now.
    
 *   Cash In
 
@@ -24,17 +24,17 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   Ordinary Cash In
 
-        Sample request: OrdinaryCashIn:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
+        Sample request: OrdinaryCashIn:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD", "PublicWallet":"xxx"}
         Sample response: OrdinaryCashIn:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   Cash Out
 
-        Sample request: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx"}
+        Sample request: CashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD"}
         Sample response: CashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   Ordinary Cash Out
 
-        Sample request: OrdinaryCashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD","PrivateKey":"xxx", "PublicWallet":"xxx"}
+        Sample request: OrdinaryCashOut:{"TransactionId":"10","MultisigAddress":"2NC9qfGybmWgKUdfSebana1HPsAUcXvMmpo","Amount":200,"Currency":"bjkUSD", "PublicWallet":"xxx"}
         Sample response: OrdinaryCashOut:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
 
 *   GetCurrentBalance
@@ -49,17 +49,17 @@ When a call ends with an error, the error (in the following responses) will be a
 
 *   Transfer
 
-        Sample request: Transfer:{"TransactionId":"10","SourceAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU","SourcePrivateKey":"???","DestinationAddress":"2MxTYg5MsBANnTQVB88AtUmQw5zhj5gayxT", "Amount":2, "Asset":"TestExchangeUSD"}
+        Sample request: Transfer:{"TransactionId":"10","SourceAddress":"2NDT6sp172w2Hxzkcp8CUQW9bB36EYo3NFU","DestinationAddress":"2MxTYg5MsBANnTQVB88AtUmQw5zhj5gayxT", "Amount":2, "Asset":"TestExchangeUSD"}
         Sample response: Transfer:{"TransactionId":"10","Result":{"TransactionHex":"???","TransactionHash":"???"},"Error":null}
 
 *   GenerateFeeOutputs
 
-        Sample request: GenerateFeeOutputs:{"TransactionId":"10","WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.00015,"Count":1000}
+        Sample request: GenerateFeeOutputs:{"TransactionId":"10","WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","FeeAmount":0.00015,"Count":1000}
         Sample response: GenerateFeeOutputs:{"TransactionId":"10","Result":{"TransactionHash":"xxx"},"Error":null}
 
 *   GenerateIssuerOutputs
 
-        Sample request: GenerateIssuerOutputs:{"TransactionId":"10","WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","PrivateKey":"???","FeeAmount":0.0000273,"Count":10, "AssetName":"bjkUSD"}
+        Sample request: GenerateIssuerOutputs:{"TransactionId":"10","WalletAddress":"mybDLSPHeYvbvLRrKTF7xiuQ9nRKyGfFFw","FeeAmount":0.0000273,"Count":10, "AssetName":"bjkUSD"}
         Sample response: GenerateIssuerOutputs:{"TransactionId":"10","Result":{"TransactionHash":"xxx"},"Error":null}
 
 *   Getting fee outputs count
@@ -80,8 +80,6 @@ When a call ends with an error, the error (in the following responses) will be a
 JustRefundTheNonRefunded flag indicates the old refund method should be used. If false or omitted the new refunding method will be used. Old refund method is deprecated.
 
 FeeWillBeInsertedNow flag indicates whether fees will be inserted when creating refund or it will be left to the time when the client is signing and broadcasting the transaction. If omitted it will be considered as true.
-
-If PubKey is null or not provided the conventional method of retrieving public key from private key is used, otherwise the provided public key is used to build the multi sig.
 
 *   Uncoloring colored transactions
 
@@ -109,10 +107,8 @@ If MultisigAddress is null (not passed), appropriate transactions for all addres
 
 *   Transfer all assets to an address
 
-        Sample request: TransferAllAssetsToAddress:{"TransactionId":"10","SourceAddress":"xxx","SourcePrivateKey":"xxx","DestinationAddress":"xxx"}
+        Sample request: TransferAllAssetsToAddress:{"TransactionId":"10","SourceAddress":"xxx","DestinationAddress":"xxx"}
         Sample response: TransferAllAssetsToAddress:{"TransactionId":"10","Result":{"TransactionHex":"xxx","TransactionHash":"xxx"},"Error":null}
-
-SourcePrivateKey is required only if the private keys are not submitted
 
 ## Important Error Codes
 
@@ -148,7 +144,7 @@ RaceWithRefund (14): Indicates an input spending could be in race with refund, t
 |GenerateRefundingTransactionMinimumConfirmationNumber|1|Minimum number of confirmations required to consider the transaction as final for the generate refunding transaction operation|
 |BroadcastGroup|400|The Broadcast Group used to send the email for insufficient fee outputs to (optional).|
 |EnvironmentName|null|The name environment in which the program is being runned, for example test or production.|
-|PrivateKeyWillBeSubmitted|false|If the private key will be submitted through POST via url [RestEndPoint]/PrivateKey/Add |
+|PrivateKeyWillBeSubmitted|false|If the private key will be submitted through POST via url [RestEndPoint]/PrivateKey/Add, if new http based method is not used; it is recommended to submit private keys, previous methods has become obsolete|
 |UseSegKeysTable|true|If the SegKeys table will be used for exchange private key|
 |UnsignedTransactionsUpdaterPeriod|10 minutes|The timer period for updating the unsigned transaction status and their consumed fees.|
 |UnsignedTransactionTimeoutInMinutes|5 minutes|Number of minutes after which unsigned transactions are timed out.|

@@ -4,7 +4,22 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-    <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+      <Schema Namespace="SqlexpressLykkeModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="ChannelCoin">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="TransactionId" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="OutputNumber" Type="int" Nullable="false" />
+          <Property Name="ReservedForChannel" Type="bigint" Nullable="false" />
+          <Property Name="ReservationFinalized" Type="bit" />
+          <Property Name="ReservationTimedout" Type="bit" />
+          <Property Name="ReservationCreationDate" Type="datetime" Nullable="false" />
+          <Property Name="ReservedForMultisig" Type="nchar" MaxLength="35" Nullable="false" />
+          <Property Name="ReservationEndDate" Type="datetime" Nullable="false" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
         <EntityType Name="ChannelPreGeneratedOutput">
           <Key>
             <PropertyRef Name="TransactionId" />
@@ -73,6 +88,23 @@
           <Property Name="Network" Type="varchar" MaxLength="100" Nullable="false" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
         </EntityType>
+        <EntityType Name="MultisigChannel">
+          <Key>
+            <PropertyRef Name="MultisigAddress" />
+          </Key>
+          <Property Name="MultisigAddress" Type="varchar" MaxLength="35" Nullable="false" />
+          <Property Name="ChannelId" Type="bigint" Nullable="false" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
+        <EntityType Name="OffchainChannel">
+          <Key>
+            <PropertyRef Name="ChannelId" />
+          </Key>
+          <Property Name="ChannelId" Type="bigint" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="ReplacedBy" Type="bigint" />
+          <Property Name="unsignedTransactionHash" Type="varchar" MaxLength="64" Nullable="false" />
+          <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+        </EntityType>
         <EntityType Name="PreGeneratedOutput">
           <Key>
             <PropertyRef Name="TransactionId" />
@@ -100,6 +132,8 @@
           <Property Name="PreGeneratedOutputN" Type="int" Nullable="false" />
           <Property Name="CreationTime" Type="datetime" Nullable="false" />
           <Property Name="Version" Type="timestamp" StoreGeneratedPattern="Computed" Nullable="false" />
+          <Property Name="ReservationEndDate" Type="datetime" />
+          <Property Name="ReservedForAddress" Type="varchar" MaxLength="70" />
         </EntityType>
         <EntityType Name="RefundedOutputs">
           <Key>
@@ -229,6 +263,42 @@
           <Property Name="SpentTransactionId" Type="varchar" MaxLength="64" Nullable="false" />
           <Property Name="SpentTransactionOutputNumber" Type="int" Nullable="false" />
         </EntityType>
+        <Association Name="FK_ChannelCoin_OffchainChannel">
+          <End Role="OffchainChannel" Type="Self.OffchainChannel" Multiplicity="1" />
+          <End Role="ChannelCoin" Type="Self.ChannelCoin" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="OffchainChannel">
+              <PropertyRef Name="ChannelId" />
+            </Principal>
+            <Dependent Role="ChannelCoin">
+              <PropertyRef Name="ReservedForChannel" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_MultisigChannel_OffchainChannel">
+          <End Role="OffchainChannel" Type="Self.OffchainChannel" Multiplicity="1" />
+          <End Role="MultisigChannel" Type="Self.MultisigChannel" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="OffchainChannel">
+              <PropertyRef Name="ChannelId" />
+            </Principal>
+            <Dependent Role="MultisigChannel">
+              <PropertyRef Name="ChannelId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_OffchainChannel_OffchainChannel">
+          <End Role="OffchainChannel" Type="Self.OffchainChannel" Multiplicity="0..1" />
+          <End Role="OffchainChannel1" Type="Self.OffchainChannel" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="OffchainChannel">
+              <PropertyRef Name="ChannelId" />
+            </Principal>
+            <Dependent Role="OffchainChannel1">
+              <PropertyRef Name="ReplacedBy" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         <Association Name="FK_PregeneratedReserve_PregeneratedReserve">
           <End Role="PreGeneratedOutput" Type="Self.PreGeneratedOutput" Multiplicity="1" />
           <End Role="PregeneratedReserve" Type="Self.PregeneratedReserve" Multiplicity="*" />
@@ -328,12 +398,15 @@
           </ReferentialConstraint>
         </Association>
         <EntityContainer Name="SqlexpressLykkeModelStoreContainer">
+          <EntitySet Name="ChannelCoin" EntityType="Self.ChannelCoin" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="ChannelPreGeneratedOutput" EntityType="Self.ChannelPreGeneratedOutput" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="DBLog" EntityType="Self.DBLog" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="EmailMessages" EntityType="Self.EmailMessages" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="ExchangeRequests" EntityType="Self.ExchangeRequests" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="InputOutputMessageLog" EntityType="Self.InputOutputMessageLog" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="KeyStorage" EntityType="Self.KeyStorage" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="MultisigChannel" EntityType="Self.MultisigChannel" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="OffchainChannel" EntityType="Self.OffchainChannel" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="PreGeneratedOutput" EntityType="Self.PreGeneratedOutput" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="PregeneratedReserve" EntityType="Self.PregeneratedReserve" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="RefundedOutputs" EntityType="Self.RefundedOutputs" Schema="dbo" store:Type="Tables" />
@@ -347,6 +420,18 @@
           <EntitySet Name="UnsignedTransactionSpentOutputs" EntityType="Self.UnsignedTransactionSpentOutputs" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="WholeRefund" EntityType="Self.WholeRefund" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="WholeRefundSpentOutputs" EntityType="Self.WholeRefundSpentOutputs" Schema="dbo" store:Type="Tables" />
+          <AssociationSet Name="FK_ChannelCoin_OffchainChannel" Association="Self.FK_ChannelCoin_OffchainChannel">
+            <End Role="OffchainChannel" EntitySet="OffchainChannel" />
+            <End Role="ChannelCoin" EntitySet="ChannelCoin" />
+          </AssociationSet>
+          <AssociationSet Name="FK_MultisigChannel_OffchainChannel" Association="Self.FK_MultisigChannel_OffchainChannel">
+            <End Role="OffchainChannel" EntitySet="OffchainChannel" />
+            <End Role="MultisigChannel" EntitySet="MultisigChannel" />
+          </AssociationSet>
+          <AssociationSet Name="FK_OffchainChannel_OffchainChannel" Association="Self.FK_OffchainChannel_OffchainChannel">
+            <End Role="OffchainChannel" EntitySet="OffchainChannel" />
+            <End Role="OffchainChannel1" EntitySet="OffchainChannel" />
+          </AssociationSet>
           <AssociationSet Name="FK_PregeneratedReserve_PregeneratedReserve" Association="Self.FK_PregeneratedReserve_PregeneratedReserve">
             <End Role="PreGeneratedOutput" EntitySet="PreGeneratedOutput" />
             <End Role="PregeneratedReserve" EntitySet="PregeneratedReserve" />
@@ -380,14 +465,14 @@
             <End Role="WholeRefundSpentOutputs" EntitySet="WholeRefundSpentOutputs" />
           </AssociationSet>
         </EntityContainer>
-      </Schema></edmx:StorageModels>
+      </Schema>
+    </edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="SqlexpressLykkeModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
         <EntityContainer Name="SqlexpressLykkeEntities" annotation:LazyLoadingEnabled="true">
           <EntitySet Name="ExchangeRequests" EntityType="SqlexpressLykkeModel.ExchangeRequest" />
           <EntitySet Name="KeyStorages" EntityType="SqlexpressLykkeModel.KeyStorage" />
-          <EntitySet Name="PreGeneratedOutputs" EntityType="SqlexpressLykkeModel.PreGeneratedOutput" />
           <EntitySet Name="SpentOutputs" EntityType="SqlexpressLykkeModel.SpentOutput" />
           <EntitySet Name="RefundedOutputs" EntityType="SqlexpressLykkeModel.RefundedOutput" />
           <EntitySet Name="RefundTransactions" EntityType="SqlexpressLykkeModel.RefundTransaction" />
@@ -417,11 +502,6 @@
             <End Role="SentTransaction" EntitySet="SentTransactions" />
             <End Role="SpentOutput" EntitySet="SpentOutputs" />
           </AssociationSet>
-          <EntitySet Name="PregeneratedReserves" EntityType="SqlexpressLykkeModel.PregeneratedReserve" />
-          <AssociationSet Name="FK_PregeneratedReserve_PregeneratedReserve" Association="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve">
-            <End Role="PreGeneratedOutput" EntitySet="PreGeneratedOutputs" />
-            <End Role="PregeneratedReserve" EntitySet="PregeneratedReserves" />
-          </AssociationSet>
           <EntitySet Name="TransactionsToBeSigneds" EntityType="SqlexpressLykkeModel.TransactionsToBeSigned" />
           <EntitySet Name="SegKeys" EntityType="SqlexpressLykkeModel.SegKey" />
           <EntitySet Name="UnsignedTransactions" EntityType="SqlexpressLykkeModel.UnsignedTransaction" />
@@ -436,6 +516,27 @@
           </AssociationSet>
           <EntitySet Name="DBLogs" EntityType="SqlexpressLykkeModel.DBLog" />
           <EntitySet Name="ChannelPreGeneratedOutputs" EntityType="SqlexpressLykkeModel.ChannelPreGeneratedOutput" />
+          <EntitySet Name="ChannelCoins" EntityType="SqlexpressLykkeModel.ChannelCoin" />
+          <EntitySet Name="MultisigChannels" EntityType="SqlexpressLykkeModel.MultisigChannel" />
+          <EntitySet Name="OffchainChannels" EntityType="SqlexpressLykkeModel.OffchainChannel" />
+          <AssociationSet Name="FK_ChannelCoin_OffchainChannel" Association="SqlexpressLykkeModel.FK_ChannelCoin_OffchainChannel">
+            <End Role="OffchainChannel" EntitySet="OffchainChannels" />
+            <End Role="ChannelCoin" EntitySet="ChannelCoins" />
+          </AssociationSet>
+          <AssociationSet Name="FK_MultisigChannel_OffchainChannel" Association="SqlexpressLykkeModel.FK_MultisigChannel_OffchainChannel">
+            <End Role="OffchainChannel" EntitySet="OffchainChannels" />
+            <End Role="MultisigChannel" EntitySet="MultisigChannels" />
+          </AssociationSet>
+          <AssociationSet Name="FK_OffchainChannel_OffchainChannel" Association="SqlexpressLykkeModel.FK_OffchainChannel_OffchainChannel">
+            <End Role="OffchainChannel" EntitySet="OffchainChannels" />
+            <End Role="OffchainChannel1" EntitySet="OffchainChannels" />
+          </AssociationSet>
+          <EntitySet Name="PreGeneratedOutputs" EntityType="SqlexpressLykkeModel.PreGeneratedOutput" />
+          <EntitySet Name="PregeneratedReserves" EntityType="SqlexpressLykkeModel.PregeneratedReserve" />
+          <AssociationSet Name="FK_PregeneratedReserve_PregeneratedReserve" Association="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve">
+            <End Role="PreGeneratedOutput" EntitySet="PreGeneratedOutputs" />
+            <End Role="PregeneratedReserve" EntitySet="PregeneratedReserves" />
+          </AssociationSet>
         </EntityContainer>
         <EntityType Name="ExchangeRequest">
           <Key>
@@ -464,24 +565,6 @@
           <Property Name="ExchangePrivateKey" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Network" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
-        </EntityType>
-        <EntityType Name="PreGeneratedOutput">
-          <Key>
-            <PropertyRef Name="TransactionId" />
-            <PropertyRef Name="OutputNumber" />
-          </Key>
-          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="OutputNumber" Type="Int32" Nullable="false" />
-          <Property Name="Amount" Type="Int64" Nullable="false" />
-          <Property Name="PrivateKey" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="Consumed" Type="Int32" Nullable="false" />
-          <Property Name="Script" Type="String" Nullable="false" MaxLength="1000" FixedLength="false" Unicode="false" />
-          <Property Name="AssetId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="Address" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="Network" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
-          <Property Name="ReservedForAddress" Type="String" MaxLength="70" FixedLength="false" Unicode="false" />
-          <NavigationProperty Name="PregeneratedReserves" Relationship="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" FromRole="PreGeneratedOutput" ToRole="PregeneratedReserve" />
         </EntityType>
         <EntityType Name="SpentOutput">
           <Key>
@@ -647,32 +730,6 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
-        <EntityType Name="PregeneratedReserve">
-          <Key>
-            <PropertyRef Name="id" />
-          </Key>
-          <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
-          <Property Name="ReserveId" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
-          <Property Name="PreGeneratedOutputTxId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="PreGeneratedOutputN" Type="Int32" Nullable="false" />
-          <Property Name="CreationTime" Type="DateTime" Nullable="false" Precision="3" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
-          <NavigationProperty Name="PreGeneratedOutput" Relationship="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" FromRole="PregeneratedReserve" ToRole="PreGeneratedOutput" />
-        </EntityType>
-        <Association Name="FK_PregeneratedReserve_PregeneratedReserve">
-          <End Type="SqlexpressLykkeModel.PreGeneratedOutput" Role="PreGeneratedOutput" Multiplicity="1" />
-          <End Type="SqlexpressLykkeModel.PregeneratedReserve" Role="PregeneratedReserve" Multiplicity="*" />
-          <ReferentialConstraint>
-            <Principal Role="PreGeneratedOutput">
-              <PropertyRef Name="TransactionId" />
-              <PropertyRef Name="OutputNumber" />
-            </Principal>
-            <Dependent Role="PregeneratedReserve">
-              <PropertyRef Name="PreGeneratedOutputTxId" />
-              <PropertyRef Name="PreGeneratedOutputN" />
-            </Dependent>
-          </ReferentialConstraint>
-        </Association>
         <EntityType Name="TransactionsToBeSigned">
           <Key>
             <PropertyRef Name="ExchangeId" />
@@ -707,7 +764,7 @@
           <Property Name="TransactionSendingSuccessful" Type="Boolean" />
           <Property Name="TransactionSendingError" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="TransactionId" Type="String" MaxLength="64" FixedLength="false" Unicode="false" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
           <Property Name="CreationTime" Type="DateTime" Precision="3" />
           <Property Name="HasTimedout" Type="Boolean" />
           <Property Name="id" Type="Guid" Nullable="false" />
@@ -773,8 +830,128 @@
           <Property Name="AssetId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Address" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Network" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
-          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
         </EntityType>
+        <EntityType Name="ChannelCoin">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="OutputNumber" Type="Int32" Nullable="false" />
+          <Property Name="ReservedForChannel" Type="Int64" Nullable="false" />
+          <Property Name="ReservationFinalized" Type="Boolean" />
+          <Property Name="ReservationTimedout" Type="Boolean" />
+          <Property Name="ReservationCreationDate" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="ReservedForMultisig" Type="String" Nullable="false" MaxLength="35" FixedLength="true" Unicode="true" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <NavigationProperty Name="OffchainChannel" Relationship="SqlexpressLykkeModel.FK_ChannelCoin_OffchainChannel" FromRole="ChannelCoin" ToRole="OffchainChannel" />
+          <Property Name="ReservationEndDate" Type="DateTime" Nullable="false" Precision="3" />
+        </EntityType>
+        <EntityType Name="MultisigChannel">
+          <Key>
+            <PropertyRef Name="MultisigAddress" />
+          </Key>
+          <Property Name="MultisigAddress" Type="String" Nullable="false" MaxLength="35" FixedLength="false" Unicode="false" />
+          <Property Name="ChannelId" Type="Int64" Nullable="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <NavigationProperty Name="OffchainChannel" Relationship="SqlexpressLykkeModel.FK_MultisigChannel_OffchainChannel" FromRole="MultisigChannel" ToRole="OffchainChannel" />
+        </EntityType>
+        <EntityType Name="OffchainChannel">
+          <Key>
+            <PropertyRef Name="ChannelId" />
+          </Key>
+          <Property Name="ChannelId" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="ReplacedBy" Type="Int64" />
+          <Property Name="unsignedTransactionHash" Type="String" Nullable="false" MaxLength="64" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <NavigationProperty Name="ChannelCoins" Relationship="SqlexpressLykkeModel.FK_ChannelCoin_OffchainChannel" FromRole="OffchainChannel" ToRole="ChannelCoin" />
+          <NavigationProperty Name="MultisigChannels" Relationship="SqlexpressLykkeModel.FK_MultisigChannel_OffchainChannel" FromRole="OffchainChannel" ToRole="MultisigChannel" />
+          <NavigationProperty Name="OffchainChannel1" Relationship="SqlexpressLykkeModel.FK_OffchainChannel_OffchainChannel" FromRole="OffchainChannel" ToRole="OffchainChannel1" />
+          <NavigationProperty Name="OffchainChannel2" Relationship="SqlexpressLykkeModel.FK_OffchainChannel_OffchainChannel" FromRole="OffchainChannel1" ToRole="OffchainChannel" />
+        </EntityType>
+        <Association Name="FK_ChannelCoin_OffchainChannel">
+          <End Type="SqlexpressLykkeModel.OffchainChannel" Role="OffchainChannel" Multiplicity="1" />
+          <End Type="SqlexpressLykkeModel.ChannelCoin" Role="ChannelCoin" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="OffchainChannel">
+              <PropertyRef Name="ChannelId" />
+            </Principal>
+            <Dependent Role="ChannelCoin">
+              <PropertyRef Name="ReservedForChannel" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_MultisigChannel_OffchainChannel">
+          <End Type="SqlexpressLykkeModel.OffchainChannel" Role="OffchainChannel" Multiplicity="1" />
+          <End Type="SqlexpressLykkeModel.MultisigChannel" Role="MultisigChannel" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="OffchainChannel">
+              <PropertyRef Name="ChannelId" />
+            </Principal>
+            <Dependent Role="MultisigChannel">
+              <PropertyRef Name="ChannelId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_OffchainChannel_OffchainChannel">
+          <End Type="SqlexpressLykkeModel.OffchainChannel" Role="OffchainChannel" Multiplicity="0..1" />
+          <End Type="SqlexpressLykkeModel.OffchainChannel" Role="OffchainChannel1" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="OffchainChannel">
+              <PropertyRef Name="ChannelId" />
+            </Principal>
+            <Dependent Role="OffchainChannel1">
+              <PropertyRef Name="ReplacedBy" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="PreGeneratedOutput">
+          <Key>
+            <PropertyRef Name="TransactionId" />
+            <PropertyRef Name="OutputNumber" />
+          </Key>
+          <Property Name="TransactionId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="OutputNumber" Type="Int32" Nullable="false" />
+          <Property Name="Amount" Type="Int64" Nullable="false" />
+          <Property Name="PrivateKey" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Consumed" Type="Int32" Nullable="false" />
+          <Property Name="Script" Type="String" Nullable="false" MaxLength="1000" FixedLength="false" Unicode="false" />
+          <Property Name="AssetId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Address" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Network" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <Property Name="ReservedForAddress" Type="String" MaxLength="70" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="PregeneratedReserves" Relationship="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" FromRole="PreGeneratedOutput" ToRole="PregeneratedReserve" />
+        </EntityType>
+        <EntityType Name="PregeneratedReserve">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int64" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="ReserveId" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="PreGeneratedOutputTxId" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="PreGeneratedOutputN" Type="Int32" Nullable="false" />
+          <Property Name="CreationTime" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="Version" Type="Binary" Nullable="false" MaxLength="8" FixedLength="true" annotation:StoreGeneratedPattern="Computed" ConcurrencyMode="Fixed" />
+          <Property Name="ReservationEndDate" Type="DateTime" Precision="3" />
+          <Property Name="ReservedForAddress" Type="String" MaxLength="70" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="PreGeneratedOutput" Relationship="SqlexpressLykkeModel.FK_PregeneratedReserve_PregeneratedReserve" FromRole="PregeneratedReserve" ToRole="PreGeneratedOutput" />
+        </EntityType>
+        <Association Name="FK_PregeneratedReserve_PregeneratedReserve">
+          <End Type="SqlexpressLykkeModel.PreGeneratedOutput" Role="PreGeneratedOutput" Multiplicity="1" />
+          <End Type="SqlexpressLykkeModel.PregeneratedReserve" Role="PregeneratedReserve" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PreGeneratedOutput">
+              <PropertyRef Name="TransactionId" />
+              <PropertyRef Name="OutputNumber" />
+            </Principal>
+            <Dependent Role="PregeneratedReserve">
+              <PropertyRef Name="PreGeneratedOutputTxId" />
+              <PropertyRef Name="PreGeneratedOutputN" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -808,23 +985,6 @@
                 <ScalarProperty Name="MultiSigAddress" ColumnName="MultiSigAddress" />
                 <ScalarProperty Name="WalletPrivateKey" ColumnName="WalletPrivateKey" />
                 <ScalarProperty Name="WalletAddress" ColumnName="WalletAddress" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
-          <EntitySetMapping Name="PreGeneratedOutputs">
-            <EntityTypeMapping TypeName="SqlexpressLykkeModel.PreGeneratedOutput">
-              <MappingFragment StoreEntitySet="PreGeneratedOutput">
-                <ScalarProperty Name="ReservedForAddress" ColumnName="ReservedForAddress" />
-                <ScalarProperty Name="Version" ColumnName="Version" />
-                <ScalarProperty Name="Network" ColumnName="Network" />
-                <ScalarProperty Name="Address" ColumnName="Address" />
-                <ScalarProperty Name="AssetId" ColumnName="AssetId" />
-                <ScalarProperty Name="Script" ColumnName="Script" />
-                <ScalarProperty Name="Consumed" ColumnName="Consumed" />
-                <ScalarProperty Name="PrivateKey" ColumnName="PrivateKey" />
-                <ScalarProperty Name="Amount" ColumnName="Amount" />
-                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
-                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
@@ -930,18 +1090,6 @@
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
-          <EntitySetMapping Name="PregeneratedReserves">
-            <EntityTypeMapping TypeName="SqlexpressLykkeModel.PregeneratedReserve">
-              <MappingFragment StoreEntitySet="PregeneratedReserve">
-                <ScalarProperty Name="Version" ColumnName="Version" />
-                <ScalarProperty Name="CreationTime" ColumnName="CreationTime" />
-                <ScalarProperty Name="PreGeneratedOutputN" ColumnName="PreGeneratedOutputN" />
-                <ScalarProperty Name="PreGeneratedOutputTxId" ColumnName="PreGeneratedOutputTxId" />
-                <ScalarProperty Name="ReserveId" ColumnName="ReserveId" />
-                <ScalarProperty Name="id" ColumnName="id" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
           <EntitySetMapping Name="TransactionsToBeSigneds">
             <EntityTypeMapping TypeName="SqlexpressLykkeModel.TransactionsToBeSigned">
               <MappingFragment StoreEntitySet="TransactionsToBeSigned">
@@ -1015,6 +1163,72 @@
                 <ScalarProperty Name="Amount" ColumnName="Amount" />
                 <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
                 <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ChannelCoins">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.ChannelCoin">
+              <MappingFragment StoreEntitySet="ChannelCoin">
+                <ScalarProperty Name="ReservationEndDate" ColumnName="ReservationEndDate" />
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="ReservedForMultisig" ColumnName="ReservedForMultisig" />
+                <ScalarProperty Name="ReservationCreationDate" ColumnName="ReservationCreationDate" />
+                <ScalarProperty Name="ReservationTimedout" ColumnName="ReservationTimedout" />
+                <ScalarProperty Name="ReservationFinalized" ColumnName="ReservationFinalized" />
+                <ScalarProperty Name="ReservedForChannel" ColumnName="ReservedForChannel" />
+                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="MultisigChannels">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.MultisigChannel">
+              <MappingFragment StoreEntitySet="MultisigChannel">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="ChannelId" ColumnName="ChannelId" />
+                <ScalarProperty Name="MultisigAddress" ColumnName="MultisigAddress" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="OffchainChannels">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.OffchainChannel">
+              <MappingFragment StoreEntitySet="OffchainChannel">
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="unsignedTransactionHash" ColumnName="unsignedTransactionHash" />
+                <ScalarProperty Name="ReplacedBy" ColumnName="ReplacedBy" />
+                <ScalarProperty Name="ChannelId" ColumnName="ChannelId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="PreGeneratedOutputs">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.PreGeneratedOutput">
+              <MappingFragment StoreEntitySet="PreGeneratedOutput">
+                <ScalarProperty Name="ReservedForAddress" ColumnName="ReservedForAddress" />
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="Network" ColumnName="Network" />
+                <ScalarProperty Name="Address" ColumnName="Address" />
+                <ScalarProperty Name="AssetId" ColumnName="AssetId" />
+                <ScalarProperty Name="Script" ColumnName="Script" />
+                <ScalarProperty Name="Consumed" ColumnName="Consumed" />
+                <ScalarProperty Name="PrivateKey" ColumnName="PrivateKey" />
+                <ScalarProperty Name="Amount" ColumnName="Amount" />
+                <ScalarProperty Name="OutputNumber" ColumnName="OutputNumber" />
+                <ScalarProperty Name="TransactionId" ColumnName="TransactionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="PregeneratedReserves">
+            <EntityTypeMapping TypeName="SqlexpressLykkeModel.PregeneratedReserve">
+              <MappingFragment StoreEntitySet="PregeneratedReserve">
+                <ScalarProperty Name="ReservedForAddress" ColumnName="ReservedForAddress" />
+                <ScalarProperty Name="ReservationEndDate" ColumnName="ReservationEndDate" />
+                <ScalarProperty Name="Version" ColumnName="Version" />
+                <ScalarProperty Name="CreationTime" ColumnName="CreationTime" />
+                <ScalarProperty Name="PreGeneratedOutputN" ColumnName="PreGeneratedOutputN" />
+                <ScalarProperty Name="PreGeneratedOutputTxId" ColumnName="PreGeneratedOutputTxId" />
+                <ScalarProperty Name="ReserveId" ColumnName="ReserveId" />
+                <ScalarProperty Name="id" ColumnName="id" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

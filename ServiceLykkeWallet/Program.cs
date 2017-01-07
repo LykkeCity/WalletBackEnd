@@ -57,7 +57,7 @@ namespace ServiceLykkeWallet
                 SrvGenerateRefundingTransactionTask.GenerateRefundingTransactionMinimumConfirmationNumber =
                     settings.GenerateRefundingTransactionMinimumConfirmationNumber;
             }
-            if(settings.MaximumTransactionSendFeesInSatoshi > 0)
+            if (settings.MaximumTransactionSendFeesInSatoshi > 0)
             {
                 OpenAssetsHelper.MaximumTransactionSendFeesInSatoshi = settings.MaximumTransactionSendFeesInSatoshi;
             }
@@ -97,8 +97,9 @@ namespace ServiceLykkeWallet
             srvQueueReader = new SrvQueueReader(queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
                 settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
-                settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress, settings.FeeAddressPrivateKey,
-                ioc.GetObject<IPreBroadcastHandler>());
+                settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress,
+                settings.FeeAddressPrivateKey, ioc.GetObject<IPreBroadcastHandler>(),
+                settings.QueueReaderIntervalInMiliseconds);
 
             srvQueueReader.Start();
 
@@ -108,8 +109,12 @@ namespace ServiceLykkeWallet
             var srvFeeReserveCleaner = new SrvFeeReserveCleaner(log, settings.ConnectionString);
             srvFeeReserveCleaner.Start();
 
+            var srvOffchainReserveCleaner = new SrvOffchainReserveCleaner(log, settings.ConnectionString);
+            srvOffchainReserveCleaner.Start();
+
             var srvUnsignedTransactionsUpdater = new SrvUnsignedTransactionsUpdater(log, settings.UnsignedTransactionTimeoutInMinutes, settings.UnsignedTransactionsUpdaterPeriod, settings.ConnectionString);
             srvUnsignedTransactionsUpdater.Start();
+
 
 
             Console.WriteLine("Queue reader is started");
@@ -133,7 +138,7 @@ namespace ServiceLykkeWallet
                 Console.ReadLine();
             }
 
-            
+
         }
     }
 }

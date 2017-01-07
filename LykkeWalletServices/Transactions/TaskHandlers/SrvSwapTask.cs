@@ -64,58 +64,62 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                         }
                         else
                         {
-                            using (var transaction = entities.Database.BeginTransaction())
-                            {
-                                long coloredCoinCount1 = 0;
-                                long coloredCoinCount2 = 0;
 
-                                BitcoinSecret[] secret = null;
-                                ScriptCoin[] uncoloredCoins = null;
-                                ColoredCoin[] coloredCoins = null;
-                                BitcoinScriptAddress destAddress = null;
-                                BitcoinScriptAddress changeAddress = null;
-                                AssetMoney coloredAmount = null;
-                                long uncoloredAmount = 0;
-                                string asset = null;
+                            long coloredCoinCount1 = 0;
+                            long coloredCoinCount2 = 0;
 
-                                secret = new BitcoinSecret[] { new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey),
+                            BitcoinSecret[] secret = null;
+                            ScriptCoin[] uncoloredCoins = null;
+                            ColoredCoin[] coloredCoins = null;
+                            BitcoinScriptAddress destAddress = null;
+                            BitcoinScriptAddress changeAddress = null;
+                            AssetMoney coloredAmount = null;
+                            long uncoloredAmount = 0;
+                            string asset = null;
+
+                            secret = new BitcoinSecret[] { new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey),
                                     (new BitcoinSecret(wallet1Coins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey(entities) };
-                                uncoloredCoins = wallet1Coins?.ScriptCoins;
-                                coloredCoins = wallet1Coins?.AssetScriptCoins;
-                                destAddress = new Script(wallet2Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
-                                changeAddress = new Script(wallet1Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
-                                coloredAmount = (wallet1Coins?.Asset?.AssetId == null) ? null : new AssetMoney(new AssetId(new BitcoinAssetId(wallet1Coins?.Asset?.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((data.Amount1 * (wallet1Coins?.Asset?.AssetMultiplicationFactor ?? 0))));
-                                uncoloredAmount = Convert.ToInt64(data.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
-                                asset = data?.Asset1;
+                            uncoloredCoins = wallet1Coins?.ScriptCoins;
+                            coloredCoins = wallet1Coins?.AssetScriptCoins;
+                            destAddress = new Script(wallet2Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
+                            changeAddress = new Script(wallet1Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
+                            coloredAmount = (wallet1Coins?.Asset?.AssetId == null) ? null : new AssetMoney(new AssetId(new BitcoinAssetId(wallet1Coins?.Asset?.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((data.Amount1 * (wallet1Coins?.Asset?.AssetMultiplicationFactor ?? 0))));
+                            uncoloredAmount = Convert.ToInt64(data.Amount1 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+                            asset = data?.Asset1;
 
-                                TransactionBuilder builder = new TransactionBuilder();
-                                builder.BuildHalfOfSwap(secret, uncoloredCoins, coloredCoins, destAddress, changeAddress, coloredAmount,
-                                    uncoloredAmount, asset, out coloredCoinCount1);
+                            TransactionBuilder builder = new TransactionBuilder();
+                            builder.BuildHalfOfSwap(secret, uncoloredCoins, coloredCoins, destAddress, changeAddress, coloredAmount,
+                                uncoloredAmount, asset, out coloredCoinCount1);
 
-                                secret = new BitcoinSecret[] { new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey),
+                            secret = new BitcoinSecret[] { new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey),
                                     (new BitcoinSecret(wallet2Coins.MatchingAddress.WalletPrivateKey)).PubKey.GetExchangePrivateKey(entities) };
-                                uncoloredCoins = wallet2Coins?.ScriptCoins;
-                                coloredCoins = wallet2Coins?.AssetScriptCoins;
-                                destAddress = new Script(wallet1Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
-                                changeAddress = new Script(wallet2Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
-                                coloredAmount = (wallet2Coins?.Asset?.AssetId == null) ? null : new AssetMoney(new AssetId(new BitcoinAssetId(wallet2Coins?.Asset?.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((data.Amount2 * (wallet2Coins?.Asset?.AssetMultiplicationFactor ?? 0))));
-                                uncoloredAmount = Convert.ToInt64(data.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
-                                asset = data?.Asset2;
-                                builder.BuildHalfOfSwap(secret, uncoloredCoins, coloredCoins, destAddress, changeAddress, coloredAmount,
-                                    uncoloredAmount, asset, out coloredCoinCount2);
+                            uncoloredCoins = wallet2Coins?.ScriptCoins;
+                            coloredCoins = wallet2Coins?.AssetScriptCoins;
+                            destAddress = new Script(wallet1Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
+                            changeAddress = new Script(wallet2Coins?.MatchingAddress?.MultiSigScript).GetScriptAddress(connectionParams.BitcoinNetwork);
+                            coloredAmount = (wallet2Coins?.Asset?.AssetId == null) ? null : new AssetMoney(new AssetId(new BitcoinAssetId(wallet2Coins?.Asset?.AssetId, connectionParams.BitcoinNetwork)), Convert.ToInt64((data.Amount2 * (wallet2Coins?.Asset?.AssetMultiplicationFactor ?? 0))));
+                            uncoloredAmount = Convert.ToInt64(data.Amount2 * OpenAssetsHelper.BTCToSathoshiMultiplicationFactor);
+                            asset = data?.Asset2;
+                            builder.BuildHalfOfSwap(secret, uncoloredCoins, coloredCoins, destAddress, changeAddress, coloredAmount,
+                                uncoloredAmount, asset, out coloredCoinCount2);
 
-                                var tx = (await builder.AddEnoughPaymentFee(entities, connectionParams,
-                                    FeeAddress, coloredCoinCount1 + coloredCoinCount2)).BuildTransaction(true);
+                            var feeGuid = Guid.NewGuid().ToString();
+                            var tx = (await builder.AddEnoughPaymentFee(entities, connectionParams,
+                                FeeAddress, coloredCoinCount1 + coloredCoinCount2, -1,
+                                "nonautomatic" + feeGuid, feeGuid, DateTime.UtcNow.AddSeconds(90)))
+                                .BuildTransaction(true);
 
-                                var txHash = tx.GetHash().ToString();
+                            var txHash = tx.GetHash().ToString();
 
-                                var handledTxRequest = new HandleTxRequest
-                                {
-                                    Operation = "Swap",
-                                    TransactionId = data.TransactionId,
-                                    BlockchainHash = txHash
-                                };
+                            var handledTxRequest = new HandleTxRequest
+                            {
+                                Operation = "Swap",
+                                TransactionId = data.TransactionId,
+                                BlockchainHash = txHash
+                            };
 
+                            //using (var transaction = entities.Database.BeginTransaction())
+                            //{
                                 Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
                                         (tx, connectionParams, entities, ConnectionString, handledTxRequest, _preBroadcastHandler)).Error;
 
@@ -132,6 +136,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     error = localerror;
                                 }
 
+                                /*
                                 if (error == null)
                                 {
                                     transaction.Commit();
@@ -140,7 +145,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 {
                                     transaction.Rollback();
                                 }
-                            }
+                                */
+                            //}
                         }
                     }
                 }

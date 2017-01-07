@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using System;
 using System.Threading.Tasks;
 using static LykkeWalletServices.OpenAssetsHelper;
 
@@ -13,7 +14,8 @@ namespace Lykkex.WalletBackend.Tests
             var multisig = (await GenerateNewWalletTests.GenerateNewWallet(QueueReader, QueueWriter)).MultiSigAddress;
             var amount = 5000;
             var asset = "TestExchangeUSD";
-            CashInRequestModel cashin = new CashInRequestModel { TransactionId = "10", MultisigAddress = multisig, Amount = amount , Currency = asset };
+            CashInRequestModel cashin = new CashInRequestModel { TransactionId = Guid.NewGuid().ToString(),
+                MultisigAddress = multisig, Amount = amount , Currency = asset };
             var reply = await CreateLykkeWalletRequestAndProcessResult<CashInResponse>
                 ("CashIn", cashin, QueueReader, QueueWriter);
             await GenerateBlocks(Settings, 1);
@@ -28,6 +30,16 @@ namespace Lykkex.WalletBackend.Tests
         }
     }
 
+    public class SwapRequestModel : BaseRequestModel
+    {
+        public string MultisigCustomer1 { get; set; }
+        public double Amount1 { get; set; }
+        public string Asset1 { get; set; }
+        public string MultisigCustomer2 { get; set; }
+        public double Amount2 { get; set; }
+        public string Asset2 { get; set; }
+    }
+
     public class CashInRequestModel : BaseRequestModel
     {
         public string MultisigAddress
@@ -36,7 +48,7 @@ namespace Lykkex.WalletBackend.Tests
             set;
         }
 
-        public float Amount
+        public double Amount
         {
             get;
             set;

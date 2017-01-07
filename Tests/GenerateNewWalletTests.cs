@@ -42,16 +42,6 @@ namespace Lykkex.WalletBackend.Tests
             Assert.AreEqual((BitcoinAddress.GetFromBase58Data(newWallet.MultiSigAddress) as BitcoinAddress).ToColoredAddress().ToWif(),
                 newWallet.ColoredMultiSigAddress, "Colored addres for multisig wallet is invalid.");
         }
-        public async static Task<Core.GenerateNewWalletTaskResult> GenerateNewWallet
-            (AzureStorage.AzureQueueExt QueueReader, AzureStorage.AzureQueueExt QueueWriter)
-        {
-            GenerateNewWalletModel generateNewWallet = new GenerateNewWalletModel { TransactionId = "10" };
-
-            var reply = await CreateLykkeWalletRequestAndProcessResult<GenerateNewWalletResponse>("GenerateNewWallet", generateNewWallet,
-                QueueReader, QueueWriter);
-
-            return reply.Result;
-        }
     }
 
     public class GenerateNewWalletModel : BaseRequestModel

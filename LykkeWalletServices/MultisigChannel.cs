@@ -12,17 +12,12 @@ namespace LykkeWalletServices
     using System;
     using System.Collections.Generic;
     
-    public partial class PregeneratedReserve
+    public partial class MultisigChannel
     {
-        public long id { get; set; }
-        public string ReserveId { get; set; }
-        public string PreGeneratedOutputTxId { get; set; }
-        public int PreGeneratedOutputN { get; set; }
-        public System.DateTime CreationTime { get; set; }
+        public string MultisigAddress { get; set; }
+        public long ChannelId { get; set; }
         public byte[] Version { get; set; }
-        public Nullable<System.DateTime> ReservationEndDate { get; set; }
-        public string ReservedForAddress { get; set; }
     
-        public virtual PreGeneratedOutput PreGeneratedOutput { get; set; }
+        public virtual OffchainChannel OffchainChannel { get; set; }
     }
 }

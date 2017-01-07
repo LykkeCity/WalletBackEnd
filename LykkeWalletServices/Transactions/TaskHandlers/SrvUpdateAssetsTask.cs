@@ -36,6 +36,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             public string FeeAddressPrivateKey { get; set; }
 
             public string QBitNinjaBaseUrl { get; set; }
+
+            public string WalletBackendUrl { get; set; }
             public int PreGeneratedOutputMinimumCount { get; set; }
 
             [DefaultValue("outdata")]
@@ -153,6 +155,14 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
             [DefaultValue(5)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public int UnsignedTransactionTimeoutInMinutes
+            {
+                get;
+                set;
+            }
+
+            [DefaultValue(5000)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int QueueReaderIntervalInMiliseconds
             {
                 get;
                 set;

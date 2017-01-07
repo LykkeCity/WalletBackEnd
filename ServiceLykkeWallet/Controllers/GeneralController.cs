@@ -18,6 +18,15 @@ namespace ServiceLykkeWallet.Controllers
 {
     public class GeneralController : ApiController
     {
+        // curl http://localhost:8989/General/GetAssetFromName?assetname=TestExchangeUSD
+        [System.Web.Http.HttpGet]
+        public async Task<IHttpActionResult> GetAssetFromName(string assetname)
+        {
+            var asset = OpenAssetsHelper.GetAssetFromName(null, assetname,
+                WebSettings.ConnectionParams.BitcoinNetwork);
+            return Json(new { AssetAddress = asset.AssetAddress.ToString(), AssetId = asset.AssetId, AssetMultiplicationFactor = asset.AssetMultiplicationFactor });
+        }
+
         // curl http://localhost:8989/General/IsAlive
         [System.Web.Http.HttpGet]
         public async Task<IHttpActionResult> IsAlive()
@@ -34,7 +43,7 @@ namespace ServiceLykkeWallet.Controllers
                     new SqlexpressLykkeEntities(WebSettings.ConnectionString))
                 {
                     // Checking if DB is 
-                    long count = entities.InputOutputMessageLogs.Count();
+                    long count = entities.SegKeys.Count();
 
                     // Checking if Blockchain explorer is accessable
                     // The address is a random one taken from blockchain, does not have a special meaning

@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using NBitcoin;
+using System;
 
 namespace Lykkex.WalletBackend.Tests
 {
@@ -26,7 +27,8 @@ namespace Lykkex.WalletBackend.Tests
         public async static Task<double> GetAssetBalanceForMultisig(string multisig, string assetName, int confirmationNamber,
             AzureStorage.AzureQueueExt QueueReader, AzureStorage.AzureQueueExt QueueWriter)
         {
-            GetCurrentBalanceModel getCurrentBalance = new GetCurrentBalanceModel { TransactionId = "10", MultisigAddress = multisig, MinimumConfirmation = confirmationNamber };
+            GetCurrentBalanceModel getCurrentBalance = new GetCurrentBalanceModel { TransactionId = Guid.NewGuid().ToString(),
+                MultisigAddress = multisig, MinimumConfirmation = confirmationNamber };
 
             var reply = await CreateLykkeWalletRequestAndProcessResult<GetCurrentBalanceResponse>("GetCurrentBalance", getCurrentBalance,
                 QueueReader, QueueWriter);
