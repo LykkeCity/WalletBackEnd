@@ -14,6 +14,11 @@ using Core.LykkeIntegration.Services;
 using LykkeIntegrationServices;
 using NBitcoin;
 using LykkeWalletServices.Transactions.TaskHandlers;
+using Castle.Windsor;
+using Castle.MicroKernel.Registration;
+using Castle.DynamicProxy;
+using Castle.Core;
+using Common;
 
 namespace ServiceLykkeWallet
 {
@@ -30,10 +35,19 @@ namespace ServiceLykkeWallet
             // ToDo - Then we go production - put here log to Database
             var log = new LogToConsole();
 
-            // ToDo - Local Azure Emulator could not be started yet
-
-            var queueReader = new AzureQueueReader(new AzureQueueExt(settings.InQueueConnectionString, "indata"));
-            var queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, settings.OutdataQueueName));
+            AzureQueueReader queueReader = null;
+            AzureQueueWriter queueWriter = null;
+            if (Container == null)
+            {
+                queueReader = new AzureQueueReader(new AzureQueueExt(settings.InQueueConnectionString, "indata"));
+                queueWriter = new AzureQueueWriter(new AzureQueueExt(settings.OutQueueConnectionString, settings.OutdataQueueName));
+            }
+            else
+            {
+                queueReader = new AzureQueueReader(Container.Resolve<IQueueExt>(new { conectionString = settings.InQueueConnectionString, queueName = "indata", types = new QueueType[] { } }));
+                queueWriter = new AzureQueueWriter(Container.Resolve<IQueueExt>(new { conectionString = settings.OutQueueConnectionString, queueName = settings.OutdataQueueName, types = new QueueType[] { } }));
+            }
+            
             var emailQueueWriter = new AzureQueueExt(settings.OutQueueConnectionString, "emailsqueue");
 
             OpenAssetsHelper.QBitNinjaBaseUrl = settings.QBitNinjaBaseUrl;
@@ -120,24 +134,56 @@ namespace ServiceLykkeWallet
             Console.WriteLine("Queue reader is started");
         }
 
+        public static WindsorContainer Container
+        {
+            get;
+            set;
+        }
+
         static void Main(string[] args)
         {
-            var settingsTask = SettingsReader.ReadAppSettins();
-            settingsTask.Wait();
-            var settings = settingsTask.Result;
-            SrvUpdateAssetsTask.IsConfigurationEncrypted = settings.IsConfigurationEncrypted;
-
-            if (!settings.IsConfigurationEncrypted)
+            using (WindsorContainer container = new WindsorContainer())
             {
-                ConfigureAppUsingSettings(settings);
-            }
+                container.Register(
+                    Component.For<IInterceptor>()
+                    .ImplementedBy<AsyncLoggingWithExceptionInterceptor>()
+                    .Named("loggingInterceptor").LifeStyle.Transient);
 
-            using (WebApp.Start(settings.RestEndPoint))
-            {
-                Console.WriteLine($"Http Server started: {settings.RestEndPoint}");
-                Console.ReadLine();
-            }
+                container.Register(
+                    Component.For<ILog>()
+                    .ImplementedBy<LykkeInterceptLogger>().LifeStyle.Transient);
 
+                container.Register(
+                    Component.For<IExceptionHandler>()
+                    .ImplementedBy<DefaultExceptionHandler>().LifeStyle.Transient);
+
+                container.Register(
+                    Component.For<IMethodSelectorForLogging>()
+                    .ImplementedBy<QueueMethodSelectorForLogging>().LifeStyle.Transient);
+
+                container.Register(
+                    Component.For<IQueueExt>()
+                    .ImplementedBy<AzureQueueExt>()
+                 .Interceptors(InterceptorReference.ForKey("loggingInterceptor")).Anywhere.LifeStyle.Transient);
+
+                Program.Container = container;
+
+                var settingsTask = SettingsReader.ReadAppSettins();
+                settingsTask.Wait();
+                var settings = settingsTask.Result;
+                SrvUpdateAssetsTask.IsConfigurationEncrypted = settings.IsConfigurationEncrypted;
+
+                if (!settings.IsConfigurationEncrypted)
+                {
+                    ConfigureAppUsingSettings(settings);
+                }
+
+                using (WebApp.Start(settings.RestEndPoint))
+                {
+                    Console.WriteLine($"Http Server started: {settings.RestEndPoint}");
+                    Console.ReadLine();
+                }
+            }
 
         }
     }

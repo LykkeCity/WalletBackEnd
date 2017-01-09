@@ -18,6 +18,20 @@ namespace ServiceLykkeWallet.Controllers
 {
     public class GeneralController : ApiController
     {
+        [System.Web.Http.HttpGet]
+        public IHttpActionResult EnableInterceptor()
+        {
+            QueueMethodSelectorForLogging.EnableQueueLogging();
+            return Ok();
+        }
+
+        [System.Web.Http.HttpGet]
+        public IHttpActionResult DisableInterceptor()
+        {
+            QueueMethodSelectorForLogging.DisableQueueLogging();
+            return Ok();
+        }
+
         // curl http://localhost:8989/General/GetAssetFromName?assetname=TestExchangeUSD
         [System.Web.Http.HttpGet]
         public async Task<IHttpActionResult> GetAssetFromName(string assetname)
