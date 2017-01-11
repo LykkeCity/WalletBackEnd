@@ -127,7 +127,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 {
                                     result = new SwapTaskResult
                                     {
-                                        TransactionHex = tx.ToHex(),
+                                        TransactionHex = string.Empty,
                                         TransactionHash = tx.GetHash().ToString()
                                     };
                                 }
