@@ -10,11 +10,16 @@ namespace LykkeWalletServices
 {
     public class SrvFeeReserveCleaner : TimerPeriod
     {
+        private uint numOfRowsToTakeEachTime = 0;
+
         private string connectionString = null;
 
-        public SrvFeeReserveCleaner(ILog log, string connectionString) : base("SrvFeeReserveCleaner", 10 * 60 * 1000, log)
+        public SrvFeeReserveCleaner(ILog log, string connectionString,
+            uint timerPeriodInSeconds, uint numOfRowsToTakeEachTime)
+            : base("SrvFeeReserveCleaner", (int) timerPeriodInSeconds * 1000, log)
         {
             this.connectionString = connectionString;
+            this.numOfRowsToTakeEachTime = numOfRowsToTakeEachTime;
         }
 
         protected override async Task Execute()
@@ -24,9 +29,10 @@ namespace LykkeWalletServices
                 var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
                 using (SqlexpressLykkeEntities entities = new SqlexpressLykkeEntities(connectionString))
                 {
-                    var reserveds = from r in entities.PregeneratedReserves
-                                    where r.ReservationEndDate == null ? r.CreationTime < fiveMinutesAgo : r.ReservationEndDate < DateTime.UtcNow
-                                    select r;
+                    // ToArray is required, otherwise random select (NewGuid) will be called each time in the for loop
+                    var reserveds = (from r in entities.PregeneratedReserves
+                                     where r.ReservationEndDate == null ? r.CreationTime < fiveMinutesAgo : r.ReservationEndDate < DateTime.UtcNow
+                                     select r).OrderBy(r => Guid.NewGuid()).Take((int) numOfRowsToTakeEachTime).ToArray();
 
                     foreach (var item in reserveds)
                     {
@@ -40,6 +46,8 @@ namespace LykkeWalletServices
                             item.PreGeneratedOutput.ReservedForAddress = null;
                         }
                     }
+
+                    await entities.SaveChangesAsync();
 
                     entities.PregeneratedReserves.RemoveRange(reserveds);
 

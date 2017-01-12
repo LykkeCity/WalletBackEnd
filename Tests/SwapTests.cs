@@ -147,7 +147,7 @@ namespace Lykkex.WalletBackend.Tests
                         (fee, WebSettings.ConnectionParams);
                     if(actualSpentStatus != (fee.Consumed == 1 ? true : false))
                     {
-                        Assert.Fail(string.Format("Please check fee for TxId: and output number: ",
+                        Assert.Fail(string.Format("Please check fee for TxId:{0} and output number:{1} ",
                             fee.TransactionId, fee.OutputNumber));
                     }
                 }
@@ -155,11 +155,11 @@ namespace Lykkex.WalletBackend.Tests
         }
 
         [Test]
-        public async Task SwapFeeStressTestFailuresLess3Percent()
+        public async Task SwapFeeStressTestFailuresLess5Percent()
         {
             await Perform100SwapsFromClearState();
 
-            Assert.LessOrEqual(swapError.Count(), 3);
+            Assert.LessOrEqual(swapError.Count(), 5);
         }
 
         private async Task<Asset> GetAssetFromName(string assetname)
