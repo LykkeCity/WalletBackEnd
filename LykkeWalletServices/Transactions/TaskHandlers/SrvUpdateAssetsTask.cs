@@ -183,6 +183,22 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                 get;
                 set;
             }
+
+            [DefaultValue(60)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public uint FeeReserveCleanerTimerPeriodInSeconds
+            {
+                get;
+                set;
+            }
+
+            [DefaultValue(20)]
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public uint FeeReserveCleanerNumberOfFeesToCleanEachTime
+            {
+                get;
+                set;
+            }
         }
 
         public static async Task<TheSettings> ReadAppSettins(bool logToConsole = true)

@@ -120,7 +120,8 @@ namespace ServiceLykkeWallet
             var srvFeeUpdater = new SrvFeeUpdater(log);
             srvFeeUpdater.Start();
 
-            var srvFeeReserveCleaner = new SrvFeeReserveCleaner(log, settings.ConnectionString);
+            var srvFeeReserveCleaner = new SrvFeeReserveCleaner(log, settings.ConnectionString,
+                settings.FeeReserveCleanerTimerPeriodInSeconds, settings.FeeReserveCleanerNumberOfFeesToCleanEachTime);
             srvFeeReserveCleaner.Start();
 
             var srvOffchainReserveCleaner = new SrvOffchainReserveCleaner(log, settings.ConnectionString);

@@ -153,6 +153,9 @@ RaceWithRefund (14): Indicates an input spending could be in race with refund, t
 |TransferFromMultisigWalletMinimumConfirmationNumber|0|The number of confirmations required to send transaction from private wallet.|
 |FeeMultiplicationFactor|1|The multiplication factor used for fee generation.|
 |FeeType|HalfHourFee|21.co fee type to be used, valid values are FastestFee , HalfHourFee , HourFee|
+|FeeReserveCleanerTimerPeriodInSeconds|60|Fee reserve cleaner cleans the fee reserves periodically, this is the period in seconds.|
+|FeeReserveCleanerNumberOfFeesToCleanEachTime|20|Number of items cleaned each time by fee reserve cleaner.|
+
 
 The AssetDefinitions is an array of json, with the following fields:
 
