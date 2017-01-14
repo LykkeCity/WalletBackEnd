@@ -118,8 +118,8 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 BlockchainHash = txHash
                             };
 
-                            //using (var transaction = entities.Database.BeginTransaction())
-                            //{
+                            using (var transaction = entities.Database.BeginTransaction(System.Data.IsolationLevel.ReadUncommitted))
+                            {
                                 Error localerror = (await OpenAssetsHelper.CheckTransactionForDoubleSpentThenSendIt
                                         (tx, connectionParams, entities, ConnectionString, handledTxRequest, _preBroadcastHandler)).Error;
 
@@ -136,7 +136,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                     error = localerror;
                                 }
 
-                                /*
+                                
                                 if (error == null)
                                 {
                                     transaction.Commit();
@@ -145,8 +145,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
                                 {
                                     transaction.Rollback();
                                 }
-                                */
-                            //}
+                            }
                         }
                     }
                 }
