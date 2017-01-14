@@ -1,0 +1,1 @@
+Transaction level ReadUncommitted is choosen (A transaction type, begging with swap) to prevent data incosistency, but also high rate. dirty reads will be at most false positives.
