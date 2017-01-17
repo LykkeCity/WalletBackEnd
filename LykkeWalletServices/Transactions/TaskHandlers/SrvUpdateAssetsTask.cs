@@ -260,13 +260,13 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
         public static bool IsConfigurationEncrypted { get; set; }
         public static string EncryptionKey { get; set; }
 
-        SrvQueueReader QueueReaderInstance
+        TransactionProcessor QueueReaderInstance
         {
             get;
             set;
         }
 
-        public SrvUpdateAssetsTask(SrvQueueReader queueReaderInstance)
+        public SrvUpdateAssetsTask(TransactionProcessor queueReaderInstance)
         {
             QueueReaderInstance = queueReaderInstance;
         }
@@ -323,7 +323,7 @@ namespace LykkeWalletServices.Transactions.TaskHandlers
 
                 using (StreamWriter writer = new StreamWriter(SETTINGSFILEPATH))
                 {
-                    await writer.WriteAsync(Newtonsoft.Json.JsonConvert.SerializeObject(settingsToWrite, Newtonsoft.Json.Formatting.Indented));
+                    await writer.WriteAsync(JsonConvert.SerializeObject(settingsToWrite, Newtonsoft.Json.Formatting.Indented));
                     writer.Flush();
                 }
 

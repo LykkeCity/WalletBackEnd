@@ -93,6 +93,7 @@
     <Compile Include="InputOutputMessageLog.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
+    <Compile Include="ITransactionProcessor.cs" />
     <Compile Include="KeyStorage.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
@@ -145,10 +146,12 @@
     </Compile>
     <Compile Include="TimerServices\FeeType21co.cs" />
     <Compile Include="TimerServices\SrvOffchainReserveCleaner.cs" />
+    <Compile Include="TimerServices\SrvTransactionSchedulerSender.cs" />
     <Compile Include="TimerServices\SrvUnsignedTransactionsUpdater.cs" />
     <Compile Include="TimerServices\SrvFeeReserveCleaner.cs" />
     <Compile Include="TimerServices\SrvFeeUpdater.cs" />
     <Compile Include="TimerServices\SrvQueueReader.cs" />
+    <Compile Include="TransactionProcessor.cs" />
     <Compile Include="TransactionsToBeSigned.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>
     </Compile>
@@ -194,6 +197,8 @@
     <Compile Include="Transactions\TaskHandlers\SrvNetworkBase.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvReturnSignedTransactionTask.cs" />
     <Compile Include="Transactions\TaskHandlers\SrvGetTransactionToSignTask.cs" />
+    <Compile Include="Transactions\TransactionScheduler\DefaultTransactionScheduler.cs" />
+    <Compile Include="Transactions\TransactionScheduler\ITransactionScheduler.cs" />
     <Compile Include="TripleDES.cs" />
     <Compile Include="UnsignedTransaction.cs">
       <DependentUpon>SqlServerLykkeEntities.tt</DependentUpon>

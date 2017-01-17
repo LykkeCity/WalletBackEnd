@@ -108,12 +108,40 @@ namespace ServiceLykkeWallet
 
             ioc.BindLykkeServices(settings.UseMockAsLykkeNotification);
 
+            /*
+             * IQueueWriter queueWriter, ILog log,
+            Network network, AssetDefinition[] assets, string rpcUsername,
+            string rpcPassword, string rpcServer, string connectionString, string feeAddress,
+            string feeAddressPrivateKey, IPreBroadcastHandler preBroadcastHandler
+            */
+
+            Container.Register(
+                    Component.For<ITransactionProcessor>()
+                    .ImplementedBy<TransactionProcessor>()
+                    .DependsOn(Dependency.OnValue("queueWriter", queueWriter))
+                    .DependsOn(Dependency.OnValue("log", log))
+                    .DependsOn(Dependency.OnValue("network", settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet))
+                    .DependsOn(Dependency.OnValue("assets", settings.AssetDefinitions))
+                    .DependsOn(Dependency.OnValue("rpcUsername", settings.RPCUsername))
+                    .DependsOn(Dependency.OnValue("rpcPassword", settings.RPCPassword))
+                    .DependsOn(Dependency.OnValue("rpcServer", settings.RPCServerIpAddress))
+                    .DependsOn(Dependency.OnValue("connectionString", settings.ConnectionString))
+                    .DependsOn(Dependency.OnValue("feeAddress", settings.FeeAddress))
+                    .DependsOn(Dependency.OnValue("feeAddressPrivateKey", settings.FeeAddressPrivateKey))
+                    .DependsOn(Dependency.OnValue("preBroadcastHandler", ioc.GetObject<IPreBroadcastHandler>()))
+                    .LifeStyle.Singleton);
+
+            srvQueueReader = new SrvQueueReader(queueReader, log,
+                settings.QueueReaderIntervalInMiliseconds);
+            srvQueueReader.TransactionProcessor = Container.Resolve<ITransactionProcessor>();
+            /*
             srvQueueReader = new SrvQueueReader(queueReader, queueWriter,
                 log, settings.NetworkType == NetworkType.Main ? Network.Main : Network.TestNet,
                 settings.AssetDefinitions, settings.RPCUsername, settings.RPCPassword,
                 settings.RPCServerIpAddress, settings.ConnectionString, settings.FeeAddress,
                 settings.FeeAddressPrivateKey, ioc.GetObject<IPreBroadcastHandler>(),
                 settings.QueueReaderIntervalInMiliseconds);
+                */
 
             srvQueueReader.Start();
 
